@@ -1,146 +1,191 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  Wallet,
-  LogOut,
-  Layers,
-  Globe,
-  BarChart2,
-  User,
+  Home, Compass, Globe2, Calendar, Trophy, Gift, User,
+  Flame, Bell, Zap, Menu, X, BookOpen
 } from "lucide-react";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useAuth } from "@/context/AuthContext";
+import { ThemeToggle } from "./ThemeToggle";
+
+const NAV_LINKS = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/tasks", label: "Quests", icon: Compass },
+  { href: "/explore", label: "Explore", icon: Globe2 },
+  { href: "/learn", label: "Learn", icon: BookOpen },
+  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { href: "/reward", label: "Rewards", icon: Gift },
+];
 
 export function Navbar() {
   const pathname = usePathname();
-  const { walletAddress, user, connectWallet, disconnectWallet, isConnecting } = useAuth();
+  const router = useRouter();
+  const { walletAddress, connectWallet, user, stats } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const links = [
-    { label: "Quests", href: "/tasks", icon: Layers },
-    { label: ".bcl Names", href: "/domains", icon: Globe },
-    { label: "Leaderboard", href: "/leaderboard", icon: BarChart2 },
-    { label: "Portfolio", href: "/profile", icon: User },
-  ];
+  const shortAddr = walletAddress
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+    : null;
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
+
+  const handleClaimIdentity = () => {
+    router.push("/onboarding");
+  };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#06080e]/95 backdrop-blur-sm">
-      {/* Protocol Ticker Strip */}
-      <div className="border-b border-white/[0.04] bg-[#04050a] px-4 py-1 text-[11px] font-medium tracking-wide text-zinc-500">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-zinc-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#0052ff] animate-pulse" />
-              <span>BOTCHAIN TESTNET</span>
-            </span>
-            <span className="hidden sm:inline text-zinc-700">|</span>
-            <span className="hidden sm:inline text-zinc-400">ENGAGE • EARN • BUILD</span>
-            <span className="hidden md:inline text-zinc-700">|</span>
-            <span className="hidden md:inline text-zinc-500">ZERO NETWORK FEES</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-zinc-500 font-semibold tracking-wider text-[10px]">BLOCKCHAIN LAUTECH</span>
-          </div>
+    <header className="navbar-glass sticky top-0 z-50">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        
+        {/* Left: Logo & Network */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href="/" className="flex items-center gap-2">
+            <Image 
+              src="/logo.png" 
+              alt="BCL Onchain Logo" 
+              width={32} 
+              height={32} 
+              className="object-contain"
+            />
+          </Link>
+          <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-semibold text-accent-fg bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            Mainnet Connected
+          </span>
         </div>
-      </div>
 
-      {/* Main Navbar */}
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Left: Brand with official Logo + Nav */}
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="relative h-8 w-8 rounded overflow-hidden border border-white/[0.1] bg-[#0c101a] flex items-center justify-center p-0.5 group-hover:border-[#0052ff]/60 transition">
-              <Image
-                src="/bcl-onchain_logo.PNG"
-                alt="BCL Logo"
-                width={32}
-                height={32}
-                className="object-contain"
-                priority
-              />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1 font-heading">
-                <span className="font-extrabold text-white text-base tracking-tight">BCL</span>
-                <span className="font-extrabold text-[#0052ff] text-base tracking-tight">ONCHAIN</span>
-              </div>
-              <span className="text-[10px] text-zinc-400 font-medium tracking-wider uppercase -mt-0.5">
-                Engage • Earn • Build
-              </span>
-            </div>
+        {/* Center: Desktop Nav Pill */}
+        <nav className="hidden lg:flex items-center gap-1 bg-surface border border-ink/[0.06] rounded-full p-1.5 shadow-sm">
+          {NAV_LINKS.map(({ href, label }) => {
+            const active = isActive(href) && (href !== "/" || pathname === "/");
+            return (
+              <Link
+                key={label}
+                href={href}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+                  active
+                    ? "bg-brand text-white shadow-md shadow-brand/20"
+                    : "text-ink-3 hover:text-ink hover:bg-ink/[0.04]"
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Right Side */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/profile"
+            className={`hidden sm:flex items-center px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              pathname === "/profile"
+                ? "bg-accent/15 text-accent-fg border border-accent/20"
+                : "text-ink-3 hover:text-ink hover:bg-ink/[0.04]"
+            }`}
+          >
+            Profile
           </Link>
 
-          {/* Segmented Nav */}
-          <nav className="hidden md:flex items-center gap-1">
-            {links.map((link) => {
-              const Icon = link.icon;
-              const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                    isActive
-                      ? "bg-white/[0.08] text-white border border-white/[0.12] font-semibold"
-                      : "text-zinc-400 hover:text-white hover:bg-white/[0.03]"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{link.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+          <ThemeToggle />
 
-        {/* Right: User State / Connect */}
-        <div className="flex items-center gap-3">
           {walletAddress ? (
-            <div className="flex items-center gap-2">
-              {/* Points badge */}
-              <div className="hidden sm:flex items-center gap-2 border border-white/[0.08] bg-[#0c101a] px-2.5 py-1 rounded-lg text-xs font-medium">
-                <span className="text-zinc-400 text-[11px]">LVL {user?.level || 1}</span>
-                <span className="text-zinc-700">·</span>
-                <span className="text-[#0052ff] font-bold num-mono">{user?.total_points || 0} PTS</span>
+            <>
+              {/* Streak */}
+              <div className="hidden sm:flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-full">
+                <Flame className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                <span className="text-xs font-bold text-orange-600 dark:text-orange-400 num-mono">
+                  {stats?.streak_days || 7}d
+                </span>
               </div>
 
               {/* Notification Bell */}
-              <NotificationBell />
-
-              {/* Wallet Address button */}
               <Link
-                href="/profile"
-                className="flex items-center gap-2 border border-white/[0.08] bg-[#0c101a] hover:bg-[#121827] px-3 py-1 rounded-lg text-xs font-mono text-zinc-300 transition"
+                href="/notifications"
+                className={`relative w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${
+                  pathname === "/notifications"
+                    ? "bg-accent/10 border-accent/25 text-accent-fg"
+                    : "bg-ink/[0.04] border-ink/[0.06] text-ink-3 hover:text-ink"
+                }`}
+                aria-label="Notifications"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0052ff]" />
-                <span>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
+                <Bell className="w-4 h-4" />
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent" />
               </Link>
 
-              {/* Logout button */}
-              <button
-                onClick={disconnectWallet}
-                title="Disconnect"
-                className="p-1.5 rounded-lg border border-white/[0.08] bg-[#0c101a] text-zinc-400 hover:text-red-400 hover:border-red-500/30 transition cursor-pointer"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-              </button>
-            </div>
+              {/* User Avatar */}
+              <div className="flex items-center gap-2 bg-ink/[0.04] border border-ink/[0.06] px-3 py-1.5 rounded-full">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-brand to-brand-soft flex items-center justify-center shadow-inner">
+                  <User className="w-3 h-3 text-white" />
+                </div>
+                <span className="hidden sm:block text-xs font-medium text-ink">
+                  {user?.bcl_domain || shortAddr || "philip.bcl"}
+                </span>
+              </div>
+            </>
           ) : (
             <button
-              onClick={connectWallet}
-              disabled={isConnecting}
-              className="flex items-center gap-1.5 rounded-lg bg-[#0052ff] hover:bg-[#1a68ff] px-4 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-sm hover:shadow-md hover:shadow-[#0052ff]/20 disabled:opacity-50"
+              onClick={handleClaimIdentity}
+              className="btn-primary flex items-center gap-1.5 px-5 py-2 text-xs rounded-full"
             >
-              <Wallet className="h-3.5 w-3.5" />
-              <span>{isConnecting ? "CONNECTING..." : "CONNECT"}</span>
+              <Zap className="w-3.5 h-3.5" />
+              Claim Identity
             </button>
           )}
+
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="lg:hidden w-8 h-8 rounded-full bg-ink/[0.04] border border-ink/[0.06] flex items-center justify-center text-ink-3"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          >
+            {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Dropdown */}
+      {mobileOpen && (
+        <div className="lg:hidden border-t border-ink/[0.06] bg-surface/95 backdrop-blur-xl px-4 py-3 space-y-1 shadow-xl">
+          {NAV_LINKS.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={label}
+              href={href}
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                isActive(href)
+                  ? "bg-brand/10 text-brand"
+                  : "text-ink-3 hover:text-ink hover:bg-ink/[0.03]"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </Link>
+          ))}
+          <Link
+            href="/profile"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-ink-3 hover:text-ink hover:bg-ink/[0.03] transition"
+          >
+            <User className="w-4 h-4" />
+            Profile
+          </Link>
+          <button
+            onClick={() => { setMobileOpen(false); router.push("/onboarding"); }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-sm font-medium bg-brand text-white hover:bg-brand-hi transition shadow-md"
+          >
+            <Zap className="w-4 h-4" />
+            Claim Identity
+          </button>
+        </div>
+      )}
     </header>
   );
 }

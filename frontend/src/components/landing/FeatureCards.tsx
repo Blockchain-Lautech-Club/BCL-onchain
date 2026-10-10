@@ -34,10 +34,10 @@ export function FeatureCards() {
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 my-20">
       <div className="text-center mb-12">
-        <h2 className="text-xs font-semibold text-emerald-400 uppercase tracking-widest font-heading mb-2">
+        <h2 className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest font-heading mb-2">
           Platform Highlights
         </h2>
-        <h3 className="text-2xl sm:text-4xl font-bold font-heading text-white tracking-tight">
+        <h3 className="text-2xl sm:text-4xl font-bold font-heading text-ink tracking-tight">
           Engineered for Practical Learning &amp; Reputation
         </h3>
       </div>
@@ -48,19 +48,19 @@ export function FeatureCards() {
           return (
             <div
               key={i}
-              className="glass-panel glass-panel-hover rounded-2xl p-7 border border-white/[0.07] flex flex-col justify-between group"
+              className="glass-panel glass-panel-hover rounded-2xl p-7 border border-ink/[0.07] flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 group-hover:scale-110 transition">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <span className="rounded-full bg-white/[0.04] border border-white/[0.08] px-2.5 py-0.5 text-[10px] font-medium tracking-wider uppercase text-zinc-400">
+                  <span className="rounded-full bg-ink/[0.04] border border-ink/[0.08] px-2.5 py-0.5 text-[10px] font-medium tracking-wider uppercase text-ink-3">
                     {f.badge}
                   </span>
                 </div>
-                <h4 className="text-lg font-semibold text-white mb-2">{f.title}</h4>
-                <p className="text-sm text-zinc-400 leading-relaxed">{f.desc}</p>
+                <h4 className="text-lg font-semibold text-ink mb-2">{f.title}</h4>
+                <p className="text-sm text-ink-3 leading-relaxed">{f.desc}</p>
               </div>
             </div>
           );

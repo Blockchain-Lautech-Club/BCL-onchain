@@ -1,130 +1,88 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { Trophy, ArrowRight, ShieldCheck } from "lucide-react";
-import { api, LeaderboardEntry } from "@/lib/api";
+import { ArrowRight, Trophy, CheckCircle2 } from "lucide-react";
+
+const TOP = [
+  { rank: 1, handle: "samuel.bcl", role: "Fullstack Protocol Engineer", xp: 4120, quests: 46, poaps: 22, color: "rank-1", crown: true },
+  { rank: 2, handle: "amina.bcl", role: "Designer Guild Lead", xp: 3650, quests: 39, poaps: 14, color: "rank-2" },
+  { rank: 3, handle: "tobi.bcl", role: "Security & Audit Guild", xp: 3110, quests: 34, poaps: 11, color: "rank-3" },
+];
+
+const TABLE = [
+  { rank: 4, handle: "funke.bcl", focus: "DeFi Architect", level: 15, xp: 2990 },
+  { rank: 5, handle: "chidi.bcl", focus: "Campus Ambassador", level: 15, xp: 2940 },
+  { rank: 6, handle: "zainab.bcl", focus: "ZK Cryptography", level: 14, xp: 2890 },
+  { rank: 7, handle: "david.bcl", focus: "Solidity Guild", level: 14, xp: 2875 },
+];
 
 export function LeaderboardSpotlight() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
-        const data = await api.getLeaderboard(5);
-        setEntries(data?.slice(0, 5) || []);
-      } catch (err) {
-        console.error("Failed to load spotlight leaderboard:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
-
-  const fallbackEntries: LeaderboardEntry[] = [
-    {
-      rank: 1,
-      wallet_address: "0x71C...492b",
-      bcl_domain: "adebayo.bcl",
-      username: "Adebayo",
-      level: 4,
-      total_points: 1250,
-    },
-    {
-      rank: 2,
-      wallet_address: "0x89A...134e",
-      bcl_domain: "builder.bcl",
-      username: "Builder",
-      level: 3,
-      total_points: 980,
-    },
-    {
-      rank: 3,
-      wallet_address: "0x3F2...88cc",
-      bcl_domain: "solidity_dev.bcl",
-      username: "Solidity Dev",
-      level: 3,
-      total_points: 840,
-    },
-  ];
-
-  const displayEntries = entries.length > 0 ? entries : fallbackEntries;
-
   return (
-    <section className="space-y-6 py-6">
-      <div className="surface-card rounded-2xl p-6 sm:p-8 border border-white/[0.08] relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.06] pb-5 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center shrink-0">
-              <Trophy className="h-5 w-5" />
-            </div>
+    <section className="py-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-ink-5 mb-1">// VERIFIED STANDINGS</div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading text-ink tracking-tight">Top Contributors</h2>
+        </div>
+        <Link href="/leaderboard" className="flex items-center gap-1 text-xs text-accent-fg font-semibold hover:gap-2 transition-all">
+          View All 500+ <ArrowRight className="w-3 h-3" />
+        </Link>
+      </div>
+
+      {/* Podium */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        {TOP.map(({ rank, handle, role, xp, quests, poaps, color, crown }) => (
+          <div key={rank} className={`quest-card ${color} p-4 flex flex-col items-center text-center gap-2`}>
+            {crown && <Trophy className="w-5 h-5 text-yellow-700 dark:text-yellow-400 mb-1" />}
+            {!crown && <div className="text-sm font-bold text-ink-3">#{rank}</div>}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 border border-white/10" />
             <div>
-              <h3 className="text-lg font-bold font-heading text-white">
-                Builder Leaderboard
-              </h3>
-              <p className="text-xs text-zinc-400 font-sans">
-                Top contributors ranked by verified on-chain proof of work.
-              </p>
+              <div className="font-heading font-bold text-xs text-ink flex items-center gap-1 justify-center">
+                {handle} <CheckCircle2 className="w-3 h-3 text-accent-fg" />
+              </div>
+              <div className="text-[10px] text-ink-4">{role}</div>
+            </div>
+            <div className="flex items-center gap-3 text-[10px]">
+              <span><span className="text-ink font-bold num-mono">{xp}</span> <span className="text-ink-5">XP</span></span>
+              <span><span className="text-ink font-bold">{quests}</span> <span className="text-ink-5">Quests</span></span>
             </div>
           </div>
+        ))}
+      </div>
 
-          <Link
-            href="/leaderboard"
-            className="flex items-center gap-1.5 text-xs font-bold text-[#0052ff] hover:text-[#1a68ff] transition shrink-0"
-          >
-            <span>Full Rankings &rarr;</span>
-          </Link>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-sans">
-            <thead className="text-[10px] uppercase text-zinc-400 font-semibold border-b border-white/[0.04]">
-              <tr>
-                <th className="pb-3 px-3 w-12 text-center">Rank</th>
-                <th className="pb-3 px-3">Builder</th>
-                <th className="pb-3 px-3">Wallet</th>
-                <th className="pb-3 px-3 text-center">Level</th>
-                <th className="pb-3 px-3 text-right">Points</th>
+      {/* Table */}
+      <div className="surface-card rounded-xl overflow-hidden">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-page border-b border-ink/[0.05]">
+            <tr>
+              <th className="py-2.5 px-4 text-[10px] font-bold uppercase tracking-wider text-ink-5">Rank</th>
+              <th className="py-2.5 px-4 text-[10px] font-bold uppercase tracking-wider text-ink-5">Citizen</th>
+              <th className="py-2.5 px-4 text-[10px] font-bold uppercase tracking-wider text-ink-5 hidden sm:table-cell">Guild Focus</th>
+              <th className="py-2.5 px-4 text-[10px] font-bold uppercase tracking-wider text-ink-5 text-center">Lvl</th>
+              <th className="py-2.5 px-4 text-[10px] font-bold uppercase tracking-wider text-ink-5 text-right">Total XP</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink/[0.04]">
+            {TABLE.map(({ rank, handle, focus, level, xp }) => (
+              <tr key={rank} className="hover:bg-ink/[0.02] transition">
+                <td className="py-3 px-4 text-ink-3 font-bold num-mono">#{rank}</td>
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 shrink-0" />
+                    <span className="font-semibold text-ink">{handle}</span>
+                    <CheckCircle2 className="w-3 h-3 text-accent-fg" />
+                  </div>
+                </td>
+                <td className="py-3 px-4 hidden sm:table-cell">
+                  <span className="text-[11px] text-accent-fg bg-accent/10 border border-accent/15 px-2 py-0.5 rounded-md">{focus}</span>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <span className="text-[10px] font-semibold text-ink-3 bg-ink/[0.04] border border-ink/[0.06] px-2 py-0.5 rounded-full">L{level}</span>
+                </td>
+                <td className="py-3 px-4 text-right font-bold text-ink num-mono">{xp.toLocaleString()}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {displayEntries.map((e) => (
-                <tr key={e.rank} className="hover:bg-white/[0.02] transition">
-                  <td className="py-3 px-3 text-center font-bold num-mono">
-                    {e.rank === 1 ? (
-                      <span className="text-amber-400">#1</span>
-                    ) : e.rank === 2 ? (
-                      <span className="text-zinc-300">#2</span>
-                    ) : e.rank === 3 ? (
-                      <span className="text-amber-600">#3</span>
-                    ) : (
-                      <span className="text-zinc-500">#{e.rank}</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-3 font-bold font-heading text-white">
-                    <span className="text-emerald-400">{e.bcl_domain || e.username || "Anonymous"}</span>
-                  </td>
-                  <td className="py-3 px-3 text-zinc-400 font-mono text-[11px]">
-                    {e.wallet_address.length > 14
-                      ? `${e.wallet_address.slice(0, 6)}...${e.wallet_address.slice(-4)}`
-                      : e.wallet_address}
-                  </td>
-                  <td className="py-3 px-3 text-center">
-                    <span className="text-[10px] font-medium bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 rounded-full text-zinc-300">
-                      LVL {e.level}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right font-bold text-white num-mono">
-                    +{e.total_points.toLocaleString()} PTS
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );

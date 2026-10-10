@@ -10,7 +10,7 @@ export function CampaignTopBanner() {
   if (closed) return null;
 
   return (
-    <div className="w-full bg-gradient-to-r from-[#002f99] via-[#0052ff] to-[#002f99] px-4 py-2 text-xs font-sans text-white">
+    <div className="w-full bg-gradient-to-r from-[#002f99] via-brand to-[#002f99] px-4 py-2 text-xs font-sans text-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         <div className="flex-1 flex items-center justify-center gap-2 text-center">
           <span className="font-semibold">BCL Onchain is live on Botchain Testnet</span>

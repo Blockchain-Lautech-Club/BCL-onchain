@@ -221,17 +221,17 @@ function DomainsContent() {
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink/[0.08] pb-5">
         <div>
-          <div className="text-xs font-semibold text-[#0052ff] uppercase tracking-wider">
+          <div className="text-xs font-semibold text-brand uppercase tracking-wider">
             Web3 Handles &amp; Domains
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-white tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-ink tracking-tight mt-1">
             Claim &amp; Manage Your .bcl Name
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-1.5 rounded-xl text-xs font-medium text-emerald-400">
+        <div className="flex items-center gap-2 border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-1.5 rounded-xl text-xs font-medium text-emerald-700 dark:text-emerald-400">
           <Zap className="h-3.5 w-3.5" />
           <span>ZERO NETWORK FEES ON BOTCHAIN</span>
         </div>
@@ -241,11 +241,11 @@ function DomainsContent() {
         {/* Left: Registrar Console (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           <div className="surface-card rounded-2xl p-5 sm:p-6 space-y-5">
-            <div className="border-b border-white/[0.06] pb-3">
-              <span className="text-xs font-bold font-heading text-white uppercase tracking-wider">
+            <div className="border-b border-ink/[0.06] pb-3">
+              <span className="text-xs font-bold font-heading text-ink uppercase tracking-wider">
                 Domain Registrar Console
               </span>
-              <p className="text-xs text-zinc-400 font-sans mt-0.5">
+              <p className="text-xs text-ink-3 font-sans mt-0.5">
                 Register unique, human-readable usernames on Botchain.
               </p>
             </div>
@@ -264,15 +264,15 @@ function DomainsContent() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="e.g. adebayo, builder, ada"
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl pl-4 pr-14 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#0052ff] transition"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl pl-4 pr-14 py-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand transition"
                 />
-                <span className="absolute right-4 top-3 text-xs text-zinc-400 font-bold">.bcl</span>
+                <span className="absolute right-4 top-3 text-xs text-ink-3 font-bold">.bcl</span>
               </div>
 
               <button
                 type="submit"
                 disabled={isSearching || !searchQuery.trim()}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#0052ff] hover:bg-[#1a68ff] py-3 text-xs font-bold text-white transition cursor-pointer disabled:opacity-40 shadow-md shadow-[#0052ff]/20"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand hover:bg-brand-hi py-3 text-xs font-bold text-white transition cursor-pointer disabled:opacity-40 shadow-md shadow-brand/20"
               >
                 {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 <span>CHECK AVAILABILITY</span>
@@ -281,16 +281,16 @@ function DomainsContent() {
 
             {/* Search Result Box */}
             {searchResult && (
-              <div className="border border-white/[0.08] bg-[#090b10] rounded-xl p-4 space-y-3 animate-in fade-in">
+              <div className="border border-ink/[0.08] bg-page rounded-xl p-4 space-y-3 animate-in fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-white font-heading">{searchResult.name}</span>
+                  <span className="text-sm font-bold text-ink font-heading">{searchResult.name}</span>
                   {searchResult.available ? (
-                    <span className="flex items-center gap-1 text-emerald-400 font-semibold text-xs">
+                    <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-xs">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       AVAILABLE
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-red-400 font-semibold text-xs">
+                    <span className="flex items-center gap-1 text-red-700 dark:text-red-400 font-semibold text-xs">
                       <XCircle className="h-3.5 w-3.5" />
                       UNAVAILABLE / CLAIMED
                     </span>
@@ -298,14 +298,14 @@ function DomainsContent() {
                 </div>
 
                 {searchResult.available && (
-                  <div className="space-y-3 pt-3 border-t border-white/[0.06]">
+                  <div className="space-y-3 pt-3 border-t border-ink/[0.06]">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <span className="text-[10px] text-zinc-400 uppercase block mb-1">Duration</span>
+                        <span className="text-[10px] text-ink-3 uppercase block mb-1">Duration</span>
                         <select
                           value={years}
                           onChange={(e) => setYears(Number(e.target.value))}
-                          className="w-full bg-[#0d1017] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                          className="w-full bg-surface border border-ink/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-ink focus:outline-none"
                         >
                           {[1, 2, 3, 5, 10].map((y) => (
                             <option key={y} value={y}>
@@ -316,8 +316,8 @@ function DomainsContent() {
                       </div>
 
                       <div>
-                        <span className="text-[10px] text-zinc-400 uppercase block mb-1">Total Fee</span>
-                        <div className="border border-white/[0.08] bg-[#0d1017] rounded-lg px-2.5 py-1.5 text-xs text-emerald-400 font-bold">
+                        <span className="text-[10px] text-ink-3 uppercase block mb-1">Total Fee</span>
+                        <div className="border border-ink/[0.08] bg-surface rounded-lg px-2.5 py-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-bold">
                           <span className="num-mono">{bclTokensRequired}</span> BCL (Sponsored Free)
                         </div>
                       </div>
@@ -334,7 +334,7 @@ function DomainsContent() {
                     ) : (
                       <button
                         onClick={connectWallet}
-                        className="w-full rounded-xl bg-white text-black font-semibold py-2.5 text-xs transition cursor-pointer"
+                        className="w-full rounded-xl bg-ink text-page font-semibold py-2.5 text-xs transition cursor-pointer"
                       >
                         CONNECT WALLET TO CLAIM
                       </button>
@@ -348,13 +348,13 @@ function DomainsContent() {
               <div
                 className={`rounded-xl p-3 text-xs border ${
                   regResult.success
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                    : "bg-red-500/10 border-red-500/30 text-red-300"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                    : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300"
                 }`}
               >
                 <div>{regResult.message}</div>
                 {regResult.txHash && (
-                  <div className="text-[10px] text-zinc-400 truncate mt-1 font-mono">
+                  <div className="text-[10px] text-ink-3 truncate mt-1 font-mono">
                     TX: {regResult.txHash}
                   </div>
                 )}
@@ -366,55 +366,55 @@ function DomainsContent() {
         {/* Right: Portfolio Domains (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="surface-card rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <span className="text-xs font-bold font-heading text-white uppercase tracking-wider">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <span className="text-xs font-bold font-heading text-ink uppercase tracking-wider">
                 Your Registered Names
               </span>
-              <span className="text-[10px] text-zinc-400 font-medium">{myDomains.length} Active</span>
+              <span className="text-[10px] text-ink-3 font-medium">{myDomains.length} Active</span>
             </div>
 
             {loadingMyDomains ? (
-              <div className="py-8 text-center text-zinc-500 text-xs">
-                <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1 text-[#0052ff]" />
+              <div className="py-8 text-center text-ink-4 text-xs">
+                <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1 text-brand" />
                 <span>Loading your names...</span>
               </div>
             ) : myDomains.length === 0 ? (
-              <div className="py-8 text-center text-zinc-500 text-xs space-y-1">
-                <Globe className="h-6 w-6 mx-auto mb-2 opacity-30 text-zinc-400" />
+              <div className="py-8 text-center text-ink-4 text-xs space-y-1">
+                <Globe className="h-6 w-6 mx-auto mb-2 opacity-30 text-ink-3" />
                 <p>No active .bcl names registered yet.</p>
-                <p className="text-[11px] text-zinc-600">Claim your first handle on the left console.</p>
+                <p className="text-[11px] text-ink-5">Claim your first handle on the left console.</p>
               </div>
             ) : (
               <div className="space-y-3 text-xs">
                 {myDomains.map((d) => (
                   <div
                     key={d.id || d.normalized_name}
-                    className="border border-white/[0.06] bg-[#0c0e14] rounded-xl p-3.5 space-y-2.5"
+                    className="border border-ink/[0.06] bg-surface rounded-xl p-3.5 space-y-2.5"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-white text-sm font-heading">{d.normalized_name}</span>
-                      <span className="text-[10px] uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-medium">
+                      <span className="font-bold text-ink text-sm font-heading">{d.normalized_name}</span>
+                      <span className="text-[10px] uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-medium">
                         {d.status || "ACTIVE"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                    <div className="flex items-center justify-between text-[11px] text-ink-3">
                       <span>Expires: {new Date(d.expires_at).toLocaleDateString()}</span>
                       {d.resolver_data && (
-                        <span className="truncate max-w-[140px] text-zinc-500 font-mono">
+                        <span className="truncate max-w-[140px] text-ink-4 font-mono">
                           {d.resolver_data}
                         </span>
                       )}
                     </div>
 
                     {/* Domain Action Buttons */}
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.04]">
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-ink/[0.04]">
                       <button
                         onClick={() => {
                           setRenewDomain(d);
                           setRenewYears(1);
                         }}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-ink/[0.04] hover:bg-ink/[0.08] text-[11px] font-medium text-ink-2 hover:text-ink transition cursor-pointer"
                       >
                         <RefreshCw className="h-3 w-3" />
                         <span>Renew</span>
@@ -425,7 +425,7 @@ function DomainsContent() {
                           setResolverDomain(d);
                           setResolverText(d.resolver_data || "");
                         }}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-ink/[0.04] hover:bg-ink/[0.08] text-[11px] font-medium text-ink-2 hover:text-ink transition cursor-pointer"
                       >
                         <FileText className="h-3 w-3" />
                         <span>Records</span>
@@ -436,7 +436,7 @@ function DomainsContent() {
                           setTransferDomain(d);
                           setTransferRecipient("");
                         }}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-ink/[0.04] hover:bg-ink/[0.08] text-[11px] font-medium text-ink-2 hover:text-ink transition cursor-pointer"
                       >
                         <Send className="h-3 w-3" />
                         <span>Transfer</span>
@@ -452,15 +452,15 @@ function DomainsContent() {
 
       {/* Renew Modal */}
       {renewDomain && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-sm rounded-2xl border border-white/[0.1] bg-[#0c101a] p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-bold font-heading text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <h3 className="text-sm font-bold font-heading text-ink">
                 Renew {renewDomain.normalized_name}
               </h3>
               <button
                 onClick={() => setRenewDomain(null)}
-                className="text-zinc-400 hover:text-white cursor-pointer"
+                className="text-ink-3 hover:text-ink cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -468,13 +468,13 @@ function DomainsContent() {
 
             <form onSubmit={handleRenewSubmit} className="space-y-3 text-xs font-sans">
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">
+                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">
                   Extension Duration
                 </label>
                 <select
                   value={renewYears}
                   onChange={(e) => setRenewYears(Number(e.target.value))}
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                 >
                   {[1, 2, 3, 5, 10].map((y) => (
                     <option key={y} value={y}>
@@ -484,29 +484,29 @@ function DomainsContent() {
                 </select>
               </div>
 
-              <div className="border border-white/[0.06] bg-[#08090d] rounded-xl p-3 text-[11px] text-zinc-400 space-y-1">
+              <div className="border border-ink/[0.06] bg-page rounded-xl p-3 text-[11px] text-ink-3 space-y-1">
                 <div className="flex justify-between">
                   <span>Current Expiry:</span>
-                  <span className="text-white font-mono">{new Date(renewDomain.expires_at).toLocaleDateString()}</span>
+                  <span className="text-ink font-mono">{new Date(renewDomain.expires_at).toLocaleDateString()}</span>
                 </div>
-                <div className="flex justify-between text-emerald-400 font-semibold">
+                <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-semibold">
                   <span>Network Gas:</span>
                   <span>100% Sponsored (Free)</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                 <button
                   type="button"
                   onClick={() => setRenewDomain(null)}
-                  className="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg text-ink-3 hover:text-ink cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isRenewing}
-                  className="px-4 py-1.5 rounded-lg bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold transition cursor-pointer disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition cursor-pointer disabled:opacity-50"
                 >
                   {isRenewing ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
                   <span>Confirm Renewal</span>
@@ -519,15 +519,15 @@ function DomainsContent() {
 
       {/* Resolver Records Modal */}
       {resolverDomain && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#0c101a] p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-bold font-heading text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <h3 className="text-sm font-bold font-heading text-ink">
                 Resolver Records for {resolverDomain.normalized_name}
               </h3>
               <button
                 onClick={() => setResolverDomain(null)}
-                className="text-zinc-400 hover:text-white cursor-pointer"
+                className="text-ink-3 hover:text-ink cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -535,7 +535,7 @@ function DomainsContent() {
 
             <form onSubmit={handleResolverSubmit} className="space-y-3 text-xs font-sans">
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">
+                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">
                   Resolver Data (Text / JSON / Bio / Socials)
                 </label>
                 <textarea
@@ -544,25 +544,25 @@ function DomainsContent() {
                   onChange={(e) => setResolverText(e.target.value)}
                   placeholder="e.g. github: adebayo, twitter: @adebayo_web3, avatar: ipfs://bafy..."
                   maxLength={1024}
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#0052ff]"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand"
                 />
-                <span className="text-[10px] text-zinc-500 mt-1 block">
+                <span className="text-[10px] text-ink-4 mt-1 block">
                   Max 1,024 bytes. Saved directly to the BCLNameNFT contract resolver.
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                 <button
                   type="button"
                   onClick={() => setResolverDomain(null)}
-                  className="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg text-ink-3 hover:text-ink cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingResolver}
-                  className="px-4 py-1.5 rounded-lg bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold transition cursor-pointer disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition cursor-pointer disabled:opacity-50"
                 >
                   {isSavingResolver ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
                   <span>Save Records</span>
@@ -575,15 +575,15 @@ function DomainsContent() {
 
       {/* Transfer Domain Modal */}
       {transferDomain && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-sm rounded-2xl border border-white/[0.1] bg-[#0c101a] p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-bold font-heading text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <h3 className="text-sm font-bold font-heading text-ink">
                 Transfer {transferDomain.normalized_name}
               </h3>
               <button
                 onClick={() => setTransferDomain(null)}
-                className="text-zinc-400 hover:text-white cursor-pointer"
+                className="text-ink-3 hover:text-ink cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -591,7 +591,7 @@ function DomainsContent() {
 
             <form onSubmit={handleTransferSubmit} className="space-y-3 text-xs font-sans">
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">
+                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">
                   Recipient Wallet Address
                 </label>
                 <input
@@ -600,18 +600,18 @@ function DomainsContent() {
                   value={transferRecipient}
                   onChange={(e) => setTransferRecipient(e.target.value)}
                   placeholder="0x..."
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-[#0052ff]"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-4 font-mono focus:outline-none focus:border-brand"
                 />
-                <span className="text-[10px] text-amber-400 mt-1 block">
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 block">
                   Warning: Transfers are permanent. The new owner will gain complete control of this .bcl NFT.
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                 <button
                   type="button"
                   onClick={() => setTransferDomain(null)}
-                  className="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-white cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg text-ink-3 hover:text-ink cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -634,7 +634,7 @@ function DomainsContent() {
 
 export default function DomainsPage() {
   return (
-    <Suspense fallback={<div className="py-20 text-center text-zinc-500 text-xs">Loading domains...</div>}>
+    <Suspense fallback={<div className="py-20 text-center text-ink-4 text-xs">Loading domains...</div>}>
       <DomainsContent />
     </Suspense>
   );

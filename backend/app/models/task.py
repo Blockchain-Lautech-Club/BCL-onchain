@@ -14,6 +14,8 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text)
     category: Mapped[str] = mapped_column(String(48), default="general", index=True)
+    # Cover art shown on every quest card (grid, dashboard, landing, detail). Absolute https URL or /quests/... path.
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     points: Mapped[int]
     verification_type: Mapped[str] = mapped_column(String(24))
     requirements: Mapped[dict] = mapped_column(JSONType, default=dict)

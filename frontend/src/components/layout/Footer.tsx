@@ -1,46 +1,30 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { Zap } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="w-full border-t border-white/[0.08] bg-[#04050a] py-8 text-zinc-500 font-sans text-xs">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/[0.04]">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-6 rounded overflow-hidden border border-white/[0.1] bg-[#0c101a] p-0.5 shrink-0 flex items-center justify-center">
-              <Image
-                src="/bcl-onchain_logo.PNG"
-                alt="BCL Logo"
-                width={24}
-                height={24}
-                className="object-contain"
-              />
-            </div>
-            <div className="flex items-center gap-2 text-zinc-300">
-              <span className="font-bold text-white">BCL/ONCHAIN</span>
-              <span>—</span>
-              <span className="text-[#0052ff] font-semibold">ENGAGE • EARN • BUILD</span>
-            </div>
+    <footer className="border-t border-ink/[0.05] mt-auto">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded bg-gradient-to-br from-accent to-brand flex items-center justify-center">
+            <Zap className="w-2.5 h-2.5 text-white" />
           </div>
-
-          <div className="flex items-center gap-6 text-zinc-400">
-            <Link href="/tasks" className="hover:text-white transition">Quests</Link>
-            <Link href="/domains" className="hover:text-white transition">.bcl Names</Link>
-            <Link href="/leaderboard" className="hover:text-white transition">Leaderboard</Link>
-            <Link href="/profile" className="hover:text-white transition">Portfolio</Link>
-          </div>
+          <span className="text-xs text-ink-5 font-medium">
+            © 2025 Blockchain Community LAUTECH
+          </span>
         </div>
 
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-zinc-600">
-          <div>
-            Powered by Botchain • Zero Network Fees for Members
-          </div>
-          <div>
-            © 2026 Blockchain LAUTECH Club. All rights reserved.
-          </div>
+        <div className="flex items-center gap-5">
+          {["Ecosystem Guilds", "Leaderboard", "Smart Contracts", "Governance"].map((item) => (
+            <Link
+              key={item}
+              href="#"
+              className="text-xs text-ink-5 hover:text-ink-3 transition"
+            >
+              {item}
+            </Link>
+          ))}
         </div>
       </div>
     </footer>

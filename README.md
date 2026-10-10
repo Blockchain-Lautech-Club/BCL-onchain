@@ -66,4 +66,3 @@ python -m app.workers.mint_worker             # relayer (run exactly ONE)
 - **Not compiled or run here.** The authoring environment had no Foundry, no network, and none of the Python dependencies installed, so I could only syntax-check the Python. Run `forge build && forge test` and `pytest` first and expect to fix small things.
 - Alembic migrations (use `init_db.py` for dev only), rate limiting on `/auth/*` and `/tasks/*/submit`, real social-API adapters, metadata JSON/IPFS for the NFT levels, and an independent contract audit before mainnet.
 - Hand-written ABIs in `chain/abis.py` must be kept in sync with the contracts (`forge inspect BCLLevelNFT abi`).
-# BCL-onchain

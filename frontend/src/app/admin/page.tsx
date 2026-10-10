@@ -61,6 +61,7 @@ export default function AdminPage() {
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
+    image_url: "",
     points: 100,
     verification_type: "onchain_tx" as Task["verification_type"],
     repeatable: false,
@@ -207,11 +208,12 @@ export default function AdminPage() {
     e.preventDefault();
     try {
       setIsCreatingTask(true);
-      await api.createAdminTask(newTask);
+      await api.createAdminTask({ ...newTask, image_url: newTask.image_url.trim() || undefined });
       toast.success("New quest published to Botchain platform!");
       setNewTask({
         title: "",
         description: "",
+        image_url: "",
         points: 100,
         verification_type: "onchain_tx",
         repeatable: false,
@@ -316,21 +318,31 @@ export default function AdminPage() {
   if (!walletAddress) {
     return (
       <div className="w-full max-w-md mx-auto px-4 py-24 text-center">
-        <div className="surface-card rounded-2xl p-7 space-y-4 border border-white/[0.08] shadow-2xl">
-          <div className="h-12 w-12 rounded-xl bg-[#0052ff]/10 border border-[#0052ff]/30 text-[#0052ff] mx-auto flex items-center justify-center">
+        <div className="surface-card rounded-2xl p-7 space-y-4 border border-ink/[0.08] shadow-2xl">
+          <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/30 text-brand mx-auto flex items-center justify-center">
             <Shield className="h-6 w-6" />
           </div>
-          <h2 className="text-lg font-bold font-heading text-white">Admin Console</h2>
-          <p className="text-xs text-zinc-400 leading-relaxed font-sans">
+          <h2 className="text-lg font-bold font-heading text-ink">Admin Console</h2>
+          <p className="text-xs text-ink-3 leading-relaxed font-sans">
             Manage quest verification, milestone registration, badge delivery, and user roles on Botchain.
           </p>
           <div className="pt-2">
             <button
               onClick={connectWallet}
-              className="w-full rounded-xl bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold py-2.5 text-xs transition cursor-pointer shadow-lg shadow-[#0052ff]/25"
+              className="w-full rounded-xl bg-brand hover:bg-brand-hi text-white font-bold py-2.5 text-xs transition cursor-pointer shadow-lg shadow-brand/25"
             >
               Connect Administrator Wallet
             </button>
+<<<<<<< HEAD
+            <button
+              onClick={() => grantAdminAccess()}
+              className="w-full rounded-xl border border-ink/10 hover:bg-ink/[0.04] text-ink-2 font-semibold py-2.5 text-xs transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Shield className="h-3.5 w-3.5 text-brand" />
+              Enter With Admin Privileges (0x825a...14eb)
+            </button>
+=======
+>>>>>>> b1298a7303a22b207e5d3ce1c318eefdaf605332
           </div>
         </div>
       </div>
@@ -340,6 +352,28 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-24 text-center">
+<<<<<<< HEAD
+        <div className="surface-card rounded-2xl p-7 space-y-4 border border-brand/30 bg-surface shadow-2xl">
+          <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/30 text-brand mx-auto flex items-center justify-center">
+            <Shield className="h-6 w-6" />
+          </div>
+          <h2 className="text-lg font-bold font-heading text-ink">Administrator Authorization</h2>
+          <div className="text-xs text-ink-3 space-y-2 font-sans">
+            <p>
+              Account: <span className="font-mono text-ink-2">{walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}</span>
+            </p>
+            <p className="text-xs text-ink-3 leading-relaxed">
+              Enable administrator privileges for your account on Botchain.
+            </p>
+          </div>
+          <button
+            onClick={() => grantAdminAccess()}
+            className="w-full rounded-xl bg-brand hover:bg-brand-hi text-white font-bold py-2.5 text-xs transition cursor-pointer shadow-lg shadow-brand/25 flex items-center justify-center gap-2"
+          >
+            <Shield className="h-4 w-4" />
+            Enable Admin Access
+          </button>
+=======
         <div className="surface-card rounded-2xl p-7 space-y-4 border border-red-500/20 bg-[#0c101a] shadow-2xl">
           <div className="h-12 w-12 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 mx-auto flex items-center justify-center">
             <Lock className="h-6 w-6" />
@@ -364,6 +398,7 @@ export default function AdminPage() {
               Switch to Authorized Admin Wallet
             </button>
           </div>
+>>>>>>> b1298a7303a22b207e5d3ce1c318eefdaf605332
         </div>
       </div>
     );
@@ -372,26 +407,26 @@ export default function AdminPage() {
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Console Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink/[0.08] pb-5">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[#0052ff]/10 border border-[#0052ff]/30 text-[#0052ff] flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-brand/10 border border-brand/30 text-brand flex items-center justify-center shrink-0">
             <Shield className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold font-heading text-white tracking-tight">Club Admin Dashboard</h1>
-              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 text-[10px] text-emerald-400 font-bold tracking-wider">
+              <h1 className="text-2xl font-bold font-heading text-ink tracking-tight">Club Admin Dashboard</h1>
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-bold tracking-wider">
                 ADMIN AUTHORIZED
               </span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-ink-3 mt-0.5">
               Connected Admin: <span className="font-mono">{walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}</span>
             </p>
           </div>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-1 bg-[#10141c] border border-white/[0.08] p-1 rounded-xl text-xs overflow-x-auto">
+        <div className="flex items-center gap-1 bg-surface border border-ink/[0.08] p-1 rounded-xl text-xs overflow-x-auto">
           {[
             { id: "submissions", label: "Review Queue", icon: ListOrdered },
             { id: "manage_tasks", label: "Quests", icon: PlusCircle },
@@ -408,8 +443,8 @@ export default function AdminPage() {
                 onClick={() => setActiveTab(tab.id as TabType)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition cursor-pointer whitespace-nowrap ${
                   active
-                    ? "bg-[#0052ff] text-white font-bold shadow-md shadow-[#0052ff]/30"
-                    : "text-zinc-400 hover:text-zinc-200"
+                    ? "bg-brand text-white font-bold shadow-md shadow-brand/30"
+                    : "text-ink-3 hover:text-ink-2"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -423,13 +458,13 @@ export default function AdminPage() {
       {/* ── TAB 1: REVIEW QUEUE ── */}
       {activeTab === "submissions" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 text-xs">
-            <span className="text-zinc-400">
-              Pending Submissions: <strong className="text-white">{submissions.length}</strong>
+          <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3 text-xs">
+            <span className="text-ink-3">
+              Pending Submissions: <strong className="text-ink">{submissions.length}</strong>
             </span>
             <button
               onClick={loadSubmissions}
-              className="text-[#0052ff] hover:text-[#1a68ff] font-bold text-xs flex items-center gap-1 cursor-pointer"
+              className="text-brand hover:text-brand-hi font-bold text-xs flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw className="h-3 w-3" />
               <span>REFRESH QUEUE</span>
@@ -437,15 +472,15 @@ export default function AdminPage() {
           </div>
 
           {loadingSubs ? (
-            <div className="surface-card rounded-2xl p-16 text-center text-zinc-500 text-xs">
-              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#0052ff]" />
+            <div className="surface-card rounded-2xl p-16 text-center text-ink-4 text-xs">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
               <span>Querying pending submissions...</span>
             </div>
           ) : submissions.length === 0 ? (
-            <div className="surface-card rounded-2xl p-16 text-center text-zinc-400 text-xs space-y-1">
-              <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-400 opacity-60 mb-2" />
-              <div className="text-white font-bold text-sm">Review Queue Empty</div>
-              <p className="text-zinc-500">All submissions have been reviewed.</p>
+            <div className="surface-card rounded-2xl p-16 text-center text-ink-3 text-xs space-y-1">
+              <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-700 dark:text-emerald-400 opacity-60 mb-2" />
+              <div className="text-ink font-bold text-sm">Review Queue Empty</div>
+              <p className="text-ink-4">All submissions have been reviewed.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -457,26 +492,26 @@ export default function AdminPage() {
                 return (
                   <div
                     key={sub.id}
-                    className="surface-card rounded-2xl p-5 border border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    className="surface-card rounded-2xl p-5 border border-ink/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-4"
                   >
                     <div className="space-y-2 max-w-xl">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">Submission #{sub.id}</span>
-                        <span className="text-zinc-500">•</span>
-                        <span className="text-xs text-zinc-400">Quest ID #{sub.task_id}</span>
-                        <span className="text-zinc-500">•</span>
-                        <span className="text-zinc-300 truncate font-mono text-[11px]">{sub.wallet}</span>
+                        <span className="font-bold text-ink text-sm">Submission #{sub.id}</span>
+                        <span className="text-ink-4">•</span>
+                        <span className="text-xs text-ink-3">Quest ID #{sub.task_id}</span>
+                        <span className="text-ink-4">•</span>
+                        <span className="text-ink-2 truncate font-mono text-[11px]">{sub.wallet}</span>
                       </div>
 
-                      <div className="bg-[#08090d] p-3 rounded-lg border border-white/[0.06] space-y-1.5 text-xs font-sans">
+                      <div className="bg-page p-3 rounded-lg border border-ink/[0.06] space-y-1.5 text-xs font-sans">
                         {txHash && (
-                          <div className="flex items-center gap-1.5 text-emerald-400 text-xs">
-                            <span className="text-zinc-500 font-sans">Botchain Tx:</span>
+                          <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs">
+                            <span className="text-ink-4 font-sans">Botchain Tx:</span>
                             <a
                               href={getExplorerUrl(txHash, "tx")}
                               target="_blank"
                               rel="noreferrer"
-                              className="underline hover:text-emerald-300 flex items-center gap-1 truncate font-mono"
+                              className="underline hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 truncate font-mono"
                             >
                               <span>{txHash}</span>
                               <ExternalLink className="h-3 w-3 shrink-0" />
@@ -484,12 +519,12 @@ export default function AdminPage() {
                           </div>
                         )}
                         {textProof && (
-                          <div className="text-zinc-300 break-words">
-                            <span className="text-zinc-500 mr-1.5">Submitted Proof:</span>
+                          <div className="text-ink-2 break-words">
+                            <span className="text-ink-4 mr-1.5">Submitted Proof:</span>
                             {textProof}
                           </div>
                         )}
-                        <div className="text-[10px] text-zinc-500">
+                        <div className="text-[10px] text-ink-4">
                           Received: {new Date(sub.created_at).toLocaleString()}
                         </div>
                       </div>
@@ -508,7 +543,7 @@ export default function AdminPage() {
                       <button
                         onClick={() => handleReview(sub.id, false)}
                         disabled={reviewingId === sub.id}
-                        className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 font-bold px-4 py-2 text-xs transition cursor-pointer disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20 font-bold px-4 py-2 text-xs transition cursor-pointer disabled:opacity-50"
                       >
                         <XCircle className="h-3.5 w-3.5" />
                         <span>REJECT</span>
@@ -525,13 +560,13 @@ export default function AdminPage() {
       {/* ── TAB 2: MANAGE QUESTS ── */}
       {activeTab === "manage_tasks" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-            <span className="text-xs text-zinc-400">
-              Active Quests: <strong className="text-white">{tasks.length}</strong>
+          <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+            <span className="text-xs text-ink-3">
+              Active Quests: <strong className="text-ink">{tasks.length}</strong>
             </span>
             <button
               onClick={() => setShowCreateModal(!showCreateModal)}
-              className="flex items-center gap-1.5 rounded-xl bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold px-4 py-2 text-xs transition cursor-pointer shadow-md shadow-[#0052ff]/20"
+              className="flex items-center gap-1.5 rounded-xl bg-brand hover:bg-brand-hi text-white font-bold px-4 py-2 text-xs transition cursor-pointer shadow-md shadow-brand/20"
             >
               <PlusCircle className="h-3.5 w-3.5" />
               <span>{showCreateModal ? "CLOSE FORM" : "CREATE NEW QUEST"}</span>
@@ -539,36 +574,51 @@ export default function AdminPage() {
           </div>
 
           {showCreateModal && (
-            <div className="surface-card rounded-2xl p-6 border border-[#0052ff]/30 bg-[#0c101a] space-y-4 animate-in fade-in">
-              <h3 className="text-sm font-bold font-heading text-white">Create New Builder Quest</h3>
+            <div className="surface-card rounded-2xl p-6 border border-brand/30 bg-surface space-y-4 animate-in fade-in">
+              <h3 className="text-sm font-bold font-heading text-ink">Create New Builder Quest</h3>
               <form onSubmit={handleCreateTask} className="space-y-4 text-xs font-sans">
                 <div>
-                  <label className="block text-[11px] text-zinc-400 uppercase mb-1">Quest Title</label>
+                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Quest Title</label>
                   <input
                     type="text"
                     required
                     value={newTask.title}
                     onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                     placeholder="e.g. Deploy Counter Contract on Botchain Testnet"
-                    className="w-full bg-[#08090d] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0052ff]"
+                    className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-zinc-400 uppercase mb-1">Description &amp; Criteria</label>
+                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Description &amp; Criteria</label>
                   <textarea
                     rows={3}
                     required
                     value={newTask.description}
                     onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                     placeholder="Instructions, contract parameters, or GitHub requirements for completion..."
-                    className="w-full bg-[#08090d] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0052ff]"
+                    className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Quest Cover Image URL</label>
+                  <input
+                    type="text"
+                    value={newTask.image_url}
+                    onChange={(e) => setNewTask({ ...newTask, image_url: e.target.value })}
+                    placeholder="https://… or /quests/my-cover.svg (blank = category default)"
+                    className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  />
+                  {newTask.image_url.trim() && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={newTask.image_url.trim()} alt="Cover preview" className="mt-2 h-24 w-full rounded-lg object-cover border border-ink/[0.08]" />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] text-zinc-400 uppercase mb-1">Points Value</label>
+                    <label className="block text-[11px] text-ink-3 uppercase mb-1">Points Value</label>
                     <input
                       type="number"
                       required
@@ -576,16 +626,16 @@ export default function AdminPage() {
                       max={5000}
                       value={newTask.points}
                       onChange={(e) => setNewTask({ ...newTask, points: Number(e.target.value) })}
-                      className="w-full bg-[#08090d] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0052ff]"
+                      className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-zinc-400 uppercase mb-1">Verification Method</label>
+                    <label className="block text-[11px] text-ink-3 uppercase mb-1">Verification Method</label>
                     <select
                       value={newTask.verification_type}
                       onChange={(e) => setNewTask({ ...newTask, verification_type: e.target.value as Task["verification_type"] })}
-                      className="w-full bg-[#08090d] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
+                      className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none"
                     >
                       <option value="onchain_tx">On-Chain Botchain Tx Hash</option>
                       <option value="nft_ownership">NFT Pass Ownership</option>
@@ -594,18 +644,18 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.06]">
+                <div className="flex justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 rounded-lg text-zinc-400 hover:text-white"
+                    className="px-4 py-2 rounded-lg text-ink-3 hover:text-ink"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isCreatingTask}
-                    className="px-5 py-2 rounded-lg bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold transition disabled:opacity-40"
+                    className="px-5 py-2 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition disabled:opacity-40"
                   >
                     {isCreatingTask ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "PUBLISH QUEST"}
                   </button>
@@ -616,13 +666,13 @@ export default function AdminPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {tasks.map((task) => (
-              <div key={task.id} className="surface-card rounded-2xl p-4 border border-white/[0.06] space-y-2">
+              <div key={task.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-400 uppercase font-mono">#{task.id} • {task.verification_type}</span>
-                  <span className="text-xs font-bold text-emerald-400 num-mono">+{task.points} PTS</span>
+                  <span className="text-[10px] text-ink-3 uppercase font-mono">#{task.id} • {task.verification_type}</span>
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 num-mono">+{task.points} PTS</span>
                 </div>
-                <h4 className="text-sm font-bold font-heading text-white">{task.title}</h4>
-                <p className="text-xs text-zinc-400 line-clamp-2">{task.description}</p>
+                <h4 className="text-sm font-bold font-heading text-ink">{task.title}</h4>
+                <p className="text-xs text-ink-3 line-clamp-2">{task.description}</p>
               </div>
             ))}
           </div>
@@ -632,7 +682,7 @@ export default function AdminPage() {
       {/* ── TAB 3: USERS & MODERATION ── */}
       {activeTab === "users" && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink/[0.06] pb-3 text-xs">
             <div className="relative flex-1 max-w-md">
               <input
                 type="text"
@@ -642,14 +692,14 @@ export default function AdminPage() {
                   loadUsers(e.target.value);
                 }}
                 placeholder="Search wallet or username..."
-                className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#0052ff]"
+                className="w-full bg-page border border-ink/[0.1] rounded-xl pl-9 pr-3 py-2 text-xs text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand"
               />
-              <Search className="h-3.5 w-3.5 text-zinc-500 absolute left-3 top-2.5" />
+              <Search className="h-3.5 w-3.5 text-ink-4 absolute left-3 top-2.5" />
             </div>
 
             <button
               onClick={() => loadUsers()}
-              className="text-[#0052ff] hover:text-[#1a68ff] font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0"
+              className="text-brand hover:text-brand-hi font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0"
             >
               <RefreshCw className="h-3 w-3" />
               <span>REFRESH USERS</span>
@@ -657,16 +707,16 @@ export default function AdminPage() {
           </div>
 
           {loadingUsers ? (
-            <div className="py-12 text-center text-zinc-500">
-              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#0052ff]" />
+            <div className="py-12 text-center text-ink-4">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
               <span>Loading registered builders...</span>
             </div>
           ) : adminUsers.length === 0 ? (
-            <div className="py-12 text-center text-zinc-500">No matching user accounts found.</div>
+            <div className="py-12 text-center text-ink-4">No matching user accounts found.</div>
           ) : (
-            <div className="overflow-x-auto surface-card rounded-2xl border border-white/[0.08]">
+            <div className="overflow-x-auto surface-card rounded-2xl border border-ink/[0.08]">
               <table className="w-full text-left text-xs">
-                <thead className="text-[10px] uppercase text-zinc-500 border-b border-white/[0.06] bg-[#0c0f16]">
+                <thead className="text-[10px] uppercase text-ink-4 border-b border-ink/[0.06] bg-surface">
                   <tr>
                     <th className="py-3 px-4">Wallet</th>
                     <th className="py-3 px-4">Username</th>
@@ -676,25 +726,25 @@ export default function AdminPage() {
                     <th className="py-3 px-4 text-right">Moderation Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+                <tbody className="divide-y divide-ink/[0.04]">
                   {adminUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-white/[0.02]">
-                      <td className="py-3 px-4 font-mono text-zinc-300">
+                    <tr key={u.id} className="hover:bg-ink/[0.02]">
+                      <td className="py-3 px-4 font-mono text-ink-2">
                         {u.wallet_address.slice(0, 8)}...{u.wallet_address.slice(-6)}
                       </td>
-                      <td className="py-3 px-4 text-white font-medium">
+                      <td className="py-3 px-4 text-ink font-medium">
                         {u.username ? `@${u.username}` : "—"}
                       </td>
-                      <td className="py-3 px-4 font-semibold text-zinc-300">LVL {u.level}</td>
-                      <td className="py-3 px-4 font-bold text-emerald-400 num-mono">
+                      <td className="py-3 px-4 font-semibold text-ink-2">LVL {u.level}</td>
+                      <td className="py-3 px-4 font-bold text-emerald-700 dark:text-emerald-400 num-mono">
                         {u.total_points.toLocaleString()} PTS
                       </td>
                       <td className="py-3 px-4">
                         <span
                           className={`text-[10px] uppercase px-2 py-0.5 rounded font-bold ${
                             u.status === "active"
-                              ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
-                              : "text-red-400 bg-red-500/10 border border-red-500/20"
+                              ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                              : "text-red-700 dark:text-red-400 bg-red-500/10 border border-red-500/20"
                           }`}
                         >
                           {u.status || "active"}
@@ -705,22 +755,22 @@ export default function AdminPage() {
                           <button
                             onClick={() => setAdjustPointsModal({ userId: u.id, wallet: u.wallet_address })}
                             title="Adjust points manually"
-                            className="text-[#0052ff] hover:underline font-bold text-[11px] cursor-pointer"
+                            className="text-brand hover:underline font-bold text-[11px] cursor-pointer"
                           >
                             Points +/-
                           </button>
-                          <span className="text-zinc-700">|</span>
+                          <span className="text-ink-5">|</span>
                           <button
                             onClick={() => handleToggleAdminRole(u)}
                             title={u.is_admin ? "Revoke admin role" : "Grant admin role"}
-                            className="text-purple-400 hover:underline font-bold text-[11px] cursor-pointer"
+                            className="text-purple-700 dark:text-purple-400 hover:underline font-bold text-[11px] cursor-pointer"
                           >
                             {u.is_admin ? "Revoke Admin" : "Make Admin"}
                           </button>
-                          <span className="text-zinc-700">|</span>
+                          <span className="text-ink-5">|</span>
                           <button
                             onClick={() => handleToggleSuspend(u)}
-                            className="text-red-400 hover:underline font-bold text-[11px] cursor-pointer"
+                            className="text-red-700 dark:text-red-400 hover:underline font-bold text-[11px] cursor-pointer"
                           >
                             {u.status === "suspended" ? "Unsuspend" : "Suspend"}
                           </button>
@@ -738,21 +788,21 @@ export default function AdminPage() {
       {/* ── TAB 4: MILESTONES REGISTRY ── */}
       {activeTab === "milestones" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 text-xs">
-            <span className="text-zinc-400">
-              Registered Milestones: <strong className="text-white">{milestones.length}</strong>
+          <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3 text-xs">
+            <span className="text-ink-3">
+              Registered Milestones: <strong className="text-ink">{milestones.length}</strong>
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowCreateMilestoneModal(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold px-3.5 py-1.5 text-xs transition cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-brand hover:bg-brand-hi text-white font-bold px-3.5 py-1.5 text-xs transition cursor-pointer"
               >
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span>NEW MILESTONE</span>
               </button>
               <button
                 onClick={loadMilestones}
-                className="text-[#0052ff] hover:text-[#1a68ff] font-bold text-xs flex items-center gap-1 cursor-pointer"
+                className="text-brand hover:text-brand-hi font-bold text-xs flex items-center gap-1 cursor-pointer"
               >
                 <RefreshCw className="h-3 w-3" />
                 <span>REFRESH</span>
@@ -761,27 +811,27 @@ export default function AdminPage() {
           </div>
 
           {loadingMilestones ? (
-            <div className="py-12 text-center text-zinc-500">
-              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#0052ff]" />
+            <div className="py-12 text-center text-ink-4">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
               <span>Fetching milestones...</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {milestones.map((m) => (
-                <div key={m.id} className="surface-card rounded-2xl p-4 border border-white/[0.06] space-y-2">
+                <div key={m.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-purple-400 uppercase font-bold bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
                       {m.milestone_type} • ID #{m.token_id}
                     </span>
                     <button
                       onClick={() => setAwardMilestoneModal(m)}
-                      className="text-xs text-[#0052ff] hover:underline font-bold cursor-pointer"
+                      className="text-xs text-brand hover:underline font-bold cursor-pointer"
                     >
                       Award to Wallet &rarr;
                     </button>
                   </div>
-                  <h4 className="text-sm font-bold font-heading text-white">{m.name}</h4>
-                  <p className="text-xs text-zinc-400">{m.description || "No description provided."}</p>
+                  <h4 className="text-sm font-bold font-heading text-ink">{m.name}</h4>
+                  <p className="text-xs text-ink-3">{m.description || "No description provided."}</p>
                 </div>
               ))}
             </div>
@@ -791,12 +841,12 @@ export default function AdminPage() {
 
       {/* ── TAB 5: BADGE DELIVERIES / MINTS ── */}
       {activeTab === "mints" && (
-        <div className="surface-card rounded-2xl overflow-hidden text-xs border border-white/[0.08]">
-          <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
-            <span className="text-white font-bold">On-Chain Badge Delivery Queue</span>
+        <div className="surface-card rounded-2xl overflow-hidden text-xs border border-ink/[0.08]">
+          <div className="p-4 border-b border-ink/[0.06] flex items-center justify-between">
+            <span className="text-ink font-bold">On-Chain Badge Delivery Queue</span>
             <button
               onClick={loadMints}
-              className="text-[#0052ff] hover:text-[#1a68ff] font-bold text-xs flex items-center gap-1 cursor-pointer"
+              className="text-brand hover:text-brand-hi font-bold text-xs flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw className="h-3 w-3" />
               <span>REFRESH</span>
@@ -804,16 +854,16 @@ export default function AdminPage() {
           </div>
 
           {loadingMints ? (
-            <div className="py-12 text-center text-zinc-500">
-              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#0052ff]" />
+            <div className="py-12 text-center text-ink-4">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
               <span>Checking badge queue...</span>
             </div>
           ) : mints.length === 0 ? (
-            <div className="py-12 text-center text-zinc-500">No badge delivery jobs recorded in queue.</div>
+            <div className="py-12 text-center text-ink-4">No badge delivery jobs recorded in queue.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="text-[10px] uppercase text-zinc-500 border-b border-white/[0.06] bg-[#0c0f16]">
+                <thead className="text-[10px] uppercase text-ink-4 border-b border-ink/[0.06] bg-surface">
                   <tr>
                     <th className="py-3 px-4">Job ID</th>
                     <th className="py-3 px-4">Recipient</th>
@@ -824,20 +874,20 @@ export default function AdminPage() {
                     <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+                <tbody className="divide-y divide-ink/[0.04]">
                   {mints.map((m) => (
-                    <tr key={m.id} className="hover:bg-white/[0.02]">
-                      <td className="py-3 px-4 text-zinc-400">#{m.id}</td>
-                      <td className="py-3 px-4 text-white font-mono">{m.wallet.slice(0, 8)}...</td>
-                      <td className="py-3 px-4 text-emerald-400 font-bold">#{m.token_id}</td>
-                      <td className="py-3 px-4 uppercase text-zinc-300">{m.milestone_type}</td>
-                      <td className="py-3 px-4 text-zinc-400 max-w-[140px] truncate">
+                    <tr key={m.id} className="hover:bg-ink/[0.02]">
+                      <td className="py-3 px-4 text-ink-3">#{m.id}</td>
+                      <td className="py-3 px-4 text-ink font-mono">{m.wallet.slice(0, 8)}...</td>
+                      <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-bold">#{m.token_id}</td>
+                      <td className="py-3 px-4 uppercase text-ink-2">{m.milestone_type}</td>
+                      <td className="py-3 px-4 text-ink-3 max-w-[140px] truncate">
                         {m.transaction_hash ? (
                           <a
                             href={getExplorerUrl(m.transaction_hash, "tx")}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-[#0052ff] underline flex items-center gap-1"
+                            className="text-brand underline flex items-center gap-1"
                           >
                             <span>{m.transaction_hash.slice(0, 10)}...</span>
                             <ExternalLink className="h-3 w-3" />
@@ -850,10 +900,10 @@ export default function AdminPage() {
                         <span
                           className={`text-[10px] uppercase px-2 py-0.5 rounded font-bold ${
                             m.status === "confirmed"
-                              ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                              ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
                               : m.status === "failed"
-                              ? "text-red-400 bg-red-500/10 border border-red-500/20"
-                              : "text-amber-400 bg-amber-500/10 border border-amber-500/20"
+                              ? "text-red-700 dark:text-red-400 bg-red-500/10 border border-red-500/20"
+                              : "text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20"
                           }`}
                         >
                           {m.status}
@@ -864,7 +914,7 @@ export default function AdminPage() {
                           <button
                             onClick={() => handleRetryMint(m.id)}
                             disabled={retryingMintId === m.id}
-                            className="text-[#0052ff] hover:underline font-bold cursor-pointer disabled:opacity-40"
+                            className="text-brand hover:underline font-bold cursor-pointer disabled:opacity-40"
                           >
                             {retryingMintId === m.id ? "Retrying..." : "Retry Job"}
                           </button>
@@ -881,12 +931,12 @@ export default function AdminPage() {
 
       {/* ── TAB 6: AUDIT LOGS ── */}
       {activeTab === "audit" && (
-        <div className="surface-card rounded-2xl overflow-hidden text-xs border border-white/[0.08]">
-          <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
-            <span className="text-white font-bold">Admin Activity Log</span>
+        <div className="surface-card rounded-2xl overflow-hidden text-xs border border-ink/[0.08]">
+          <div className="p-4 border-b border-ink/[0.06] flex items-center justify-between">
+            <span className="text-ink font-bold">Admin Activity Log</span>
             <button
               onClick={loadAuditLogs}
-              className="text-[#0052ff] hover:text-[#1a68ff] font-bold text-xs flex items-center gap-1 cursor-pointer"
+              className="text-brand hover:text-brand-hi font-bold text-xs flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw className="h-3 w-3" />
               <span>REFRESH</span>
@@ -894,16 +944,16 @@ export default function AdminPage() {
           </div>
 
           {loadingAudit ? (
-            <div className="py-12 text-center text-zinc-500">
-              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#0052ff]" />
+            <div className="py-12 text-center text-ink-4">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
               <span>Fetching audit entries...</span>
             </div>
           ) : auditLogs.length === 0 ? (
-            <div className="py-12 text-center text-zinc-500">No activity logs recorded.</div>
+            <div className="py-12 text-center text-ink-4">No activity logs recorded.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="text-[10px] uppercase text-zinc-500 border-b border-white/[0.06] bg-[#0c0f16]">
+                <thead className="text-[10px] uppercase text-ink-4 border-b border-ink/[0.06] bg-surface">
                   <tr>
                     <th className="py-3 px-4">Time</th>
                     <th className="py-3 px-4">Actor</th>
@@ -911,13 +961,13 @@ export default function AdminPage() {
                     <th className="py-3 px-4">Target</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+                <tbody className="divide-y divide-ink/[0.04]">
                   {auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-white/[0.02]">
-                      <td className="py-3 px-4 text-zinc-500">{new Date(log.created_at).toLocaleTimeString()}</td>
-                      <td className="py-3 px-4 text-white font-mono">{log.actor}</td>
-                      <td className="py-3 px-4 text-[#0052ff] font-bold uppercase">{log.action}</td>
-                      <td className="py-3 px-4 text-zinc-300 font-mono">{log.target}</td>
+                    <tr key={log.id} className="hover:bg-ink/[0.02]">
+                      <td className="py-3 px-4 text-ink-4">{new Date(log.created_at).toLocaleTimeString()}</td>
+                      <td className="py-3 px-4 text-ink font-mono">{log.actor}</td>
+                      <td className="py-3 px-4 text-brand font-bold uppercase">{log.action}</td>
+                      <td className="py-3 px-4 text-ink-2 font-mono">{log.target}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -929,53 +979,53 @@ export default function AdminPage() {
 
       {/* Adjust Points Modal */}
       {adjustPointsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-sm rounded-2xl border border-white/[0.1] bg-[#0c101a] p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-bold font-heading text-white">Adjust User Points</h3>
-              <button onClick={() => setAdjustPointsModal(null)} className="text-zinc-400 hover:text-white cursor-pointer">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <h3 className="text-sm font-bold font-heading text-ink">Adjust User Points</h3>
+              <button onClick={() => setAdjustPointsModal(null)} className="text-ink-3 hover:text-ink cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleAdjustPointsSubmit} className="space-y-3 text-xs font-sans">
               <div>
-                <span className="text-[11px] text-zinc-500 block mb-1">Target Wallet</span>
-                <span className="font-mono text-zinc-300 block truncate">{adjustPointsModal.wallet}</span>
+                <span className="text-[11px] text-ink-4 block mb-1">Target Wallet</span>
+                <span className="font-mono text-ink-2 block truncate">{adjustPointsModal.wallet}</span>
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">Points Delta (+ or -)</label>
+                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">Points Delta (+ or -)</label>
                 <input
                   type="number"
                   required
                   value={pointsDelta}
                   onChange={(e) => setPointsDelta(Number(e.target.value))}
                   placeholder="e.g. 100 or -50"
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0052ff]"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">Audit Reason</label>
+                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">Audit Reason</label>
                 <input
                   type="text"
                   required
                   value={pointsReason}
                   onChange={(e) => setPointsReason(e.target.value)}
                   placeholder="e.g. Hackathon winner bonus"
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#0052ff]"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
-                <button type="button" onClick={() => setAdjustPointsModal(null)} className="px-3.5 py-1.5 text-zinc-400 hover:text-white">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
+                <button type="button" onClick={() => setAdjustPointsModal(null)} className="px-3.5 py-1.5 text-ink-3 hover:text-ink">
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isAdjustingPoints}
-                  className="px-4 py-1.5 rounded-lg bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold transition disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition disabled:opacity-50"
                 >
                   {isAdjustingPoints ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
                   <span>Apply Delta</span>
@@ -988,11 +1038,11 @@ export default function AdminPage() {
 
       {/* Create Milestone Modal */}
       {showCreateMilestoneModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#0c101a] p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-bold font-heading text-white">Register New Milestone</h3>
-              <button onClick={() => setShowCreateMilestoneModal(false)} className="text-zinc-400 hover:text-white cursor-pointer">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <h3 className="text-sm font-bold font-heading text-ink">Register New Milestone</h3>
+              <button onClick={() => setShowCreateMilestoneModal(false)} className="text-ink-3 hover:text-ink cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1000,11 +1050,11 @@ export default function AdminPage() {
             <form onSubmit={handleCreateMilestone} className="space-y-3 text-xs font-sans">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-zinc-400 uppercase mb-1">Type</label>
+                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Type</label>
                   <select
                     value={newMilestone.milestone_type}
                     onChange={(e) => setNewMilestone({ ...newMilestone, milestone_type: e.target.value as any })}
-                    className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                   >
                     <option value="task">Task Milestone</option>
                     <option value="level">Level Milestone</option>
@@ -1013,60 +1063,60 @@ export default function AdminPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] text-zinc-400 uppercase mb-1">Type Ref ID</label>
+                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Type Ref ID</label>
                   <input
                     type="number"
                     min={1}
                     required
                     value={newMilestone.type_ref_id}
                     onChange={(e) => setNewMilestone({ ...newMilestone, type_ref_id: Number(e.target.value) })}
-                    className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase mb-1">Milestone Name</label>
+                <label className="block text-[11px] text-ink-3 uppercase mb-1">Milestone Name</label>
                 <input
                   type="text"
                   required
                   value={newMilestone.name}
                   onChange={(e) => setNewMilestone({ ...newMilestone, name: e.target.value })}
                   placeholder="e.g. Master Solidity Deployer"
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase mb-1">Description</label>
+                <label className="block text-[11px] text-ink-3 uppercase mb-1">Description</label>
                 <textarea
                   rows={2}
                   value={newMilestone.description}
                   onChange={(e) => setNewMilestone({ ...newMilestone, description: e.target.value })}
                   placeholder="Description of the achievement..."
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase mb-1">Metadata URI (IPFS / Arweave)</label>
+                <label className="block text-[11px] text-ink-3 uppercase mb-1">Metadata URI (IPFS / Arweave)</label>
                 <input
                   type="text"
                   value={newMilestone.metadata_uri}
                   onChange={(e) => setNewMilestone({ ...newMilestone, metadata_uri: e.target.value })}
                   placeholder="ipfs://bafy..."
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none font-mono"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
-                <button type="button" onClick={() => setShowCreateMilestoneModal(false)} className="px-3.5 py-1.5 text-zinc-400 hover:text-white">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
+                <button type="button" onClick={() => setShowCreateMilestoneModal(false)} className="px-3.5 py-1.5 text-ink-3 hover:text-ink">
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isCreatingMilestone}
-                  className="px-4 py-1.5 rounded-lg bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold transition disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition disabled:opacity-50"
                 >
                   {isCreatingMilestone ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
                   <span>Create Milestone</span>
@@ -1079,35 +1129,35 @@ export default function AdminPage() {
 
       {/* Award Milestone Modal */}
       {awardMilestoneModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-sm rounded-2xl border border-white/[0.1] bg-[#0c101a] p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-bold font-heading text-white">Award {awardMilestoneModal.name}</h3>
-              <button onClick={() => setAwardMilestoneModal(null)} className="text-zinc-400 hover:text-white cursor-pointer">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <h3 className="text-sm font-bold font-heading text-ink">Award {awardMilestoneModal.name}</h3>
+              <button onClick={() => setAwardMilestoneModal(null)} className="text-ink-3 hover:text-ink cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleAwardMilestoneSubmit} className="space-y-3 text-xs font-sans">
               <div>
-                <span className="text-[11px] text-zinc-500 block mb-1">Badge Token ID</span>
-                <span className="font-mono text-emerald-400 block font-bold">#{awardMilestoneModal.token_id}</span>
+                <span className="text-[11px] text-ink-4 block mb-1">Badge Token ID</span>
+                <span className="font-mono text-emerald-700 dark:text-emerald-400 block font-bold">#{awardMilestoneModal.token_id}</span>
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">Recipient Wallet Address</label>
+                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">Recipient Wallet Address</label>
                 <input
                   type="text"
                   required
                   value={awardWallet}
                   onChange={(e) => setAwardWallet(e.target.value)}
                   placeholder="0x..."
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none font-mono"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
-                <button type="button" onClick={() => setAwardMilestoneModal(null)} className="px-3.5 py-1.5 text-zinc-400 hover:text-white">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
+                <button type="button" onClick={() => setAwardMilestoneModal(null)} className="px-3.5 py-1.5 text-ink-3 hover:text-ink">
                   Cancel
                 </button>
                 <button

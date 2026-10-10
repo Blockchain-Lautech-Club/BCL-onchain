@@ -126,8 +126,7 @@ contract BCLNameNFT is
         address bclToken_,
         uint256 pricePerYear_,
         address treasury_,
-        string  memory baseURI_,
-        address initialRegistrar
+        string  memory baseURI_
     )
         ERC721("BCL Name", "BCLNAME")
         AccessControlDefaultAdminRules(adminTransferDelay, admin)
@@ -142,12 +141,6 @@ contract BCLNameNFT is
 
         _grantRole(PAUSER_ROLE,    admin);
         _grantRole(REGISTRAR_ROLE, admin);
-        // Grant REGISTRAR_ROLE to the relayer inside the constructor so the deployer
-        // doesn't need to call grantRole() after construction (where it would no longer
-        // hold DEFAULT_ADMIN_ROLE if admin != deployer).
-        if (initialRegistrar != address(0) && initialRegistrar != admin) {
-            _grantRole(REGISTRAR_ROLE, initialRegistrar);
-        }
     }
 
     // ─────────────────────── metadata ────────────────────────────────────────

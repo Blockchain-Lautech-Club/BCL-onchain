@@ -34,14 +34,14 @@ export function HowItWorks() {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+      <div className="flex items-center justify-between border-b border-ink/[0.08] pb-3">
         <div>
-          <span className="text-[10px] font-semibold text-[#0052ff] uppercase tracking-wider">
+          <span className="text-[10px] font-semibold text-brand uppercase tracking-wider">
             HOW IT WORKS
           </span>
-          <h2 className="text-xl font-bold font-heading text-white tracking-tight">How BCL Onchain Works</h2>
+          <h2 className="text-xl font-bold font-heading text-ink tracking-tight">How BCL Onchain Works</h2>
         </div>
-        <span className="text-xs font-medium text-zinc-500 hidden sm:inline tracking-wider">3 SIMPLE STEPS</span>
+        <span className="text-xs font-medium text-ink-4 hidden sm:inline tracking-wider">3 SIMPLE STEPS</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -54,23 +54,23 @@ export function HowItWorks() {
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#0052ff] num-mono">{s.num}.</span>
-                  <span className="text-[10px] font-semibold text-zinc-400 bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 rounded tracking-wider">
+                  <span className="text-xs font-bold text-brand num-mono">{s.num}.</span>
+                  <span className="text-[10px] font-semibold text-ink-3 bg-ink/[0.05] border border-ink/[0.08] px-2 py-0.5 rounded tracking-wider">
                     {s.tagline}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-[#0052ff]/10 border border-[#0052ff]/20 text-[#0052ff] flex items-center justify-center shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-brand/10 border border-brand/20 text-brand flex items-center justify-center shrink-0">
                     <Icon className="h-4 w-4" />
                   </div>
-                  <h3 className="text-sm font-bold text-white font-heading">{s.title}</h3>
+                  <h3 className="text-sm font-bold text-ink font-heading">{s.title}</h3>
                 </div>
 
-                <p className="text-xs text-zinc-400 leading-relaxed font-sans">{s.desc}</p>
+                <p className="text-xs text-ink-3 leading-relaxed font-sans">{s.desc}</p>
               </div>
 
-              <div className="pt-3 border-t border-white/[0.04] text-[10px] font-medium text-zinc-500">
+              <div className="pt-3 border-t border-ink/[0.04] text-[10px] font-medium text-ink-4">
                 {s.highlight}
               </div>
             </div>

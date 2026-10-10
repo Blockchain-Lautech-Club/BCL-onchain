@@ -28,7 +28,7 @@ export function CampaignFilterBar({
   ];
 
   return (
-    <div className="w-full space-y-4 pt-4 border-t border-white/[0.08]">
+    <div className="w-full space-y-4 pt-4 border-t border-ink/[0.08]">
       {/* Category Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-sans">
         {tabs.map((tab) => (
@@ -37,8 +37,8 @@ export function CampaignFilterBar({
             onClick={() => onFilterChange(tab.id)}
             className={`rounded-full px-4 py-1.5 font-medium transition cursor-pointer shrink-0 ${
               activeFilter === tab.id
-                ? "bg-[#0052ff] text-white font-semibold shadow-md shadow-[#0052ff]/25"
-                : "bg-white/[0.05] text-zinc-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.06]"
+                ? "bg-brand text-white font-semibold shadow-md shadow-brand/25"
+                : "bg-ink/[0.05] text-ink-3 hover:text-ink hover:bg-ink/[0.08] border border-ink/[0.06]"
             }`}
           >
             {tab.label}
@@ -50,13 +50,13 @@ export function CampaignFilterBar({
       <div className="flex flex-col sm:flex-row items-center gap-3">
         {/* Search Input */}
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-ink-4" />
           <input
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search active quests or rewards..."
-            className="w-full rounded-xl border border-white/[0.08] bg-[#0c101a] pl-10 pr-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#0052ff]"
+            className="w-full rounded-xl border border-ink/[0.08] bg-surface pl-10 pr-4 py-2 text-xs text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand"
           />
         </div>
 
@@ -65,11 +65,11 @@ export function CampaignFilterBar({
           onClick={() => onToggleAvailable(!availableOnly)}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium border transition cursor-pointer shrink-0 ${
             availableOnly
-              ? "border-[#0052ff]/40 bg-[#0052ff]/15 text-[#0052ff]"
-              : "border-white/[0.08] bg-[#0c101a] text-zinc-400 hover:text-white"
+              ? "border-brand/40 bg-brand/15 text-brand"
+              : "border-ink/[0.08] bg-surface text-ink-3 hover:text-ink"
           }`}
         >
-          <CheckCircle2 className={`h-4 w-4 ${availableOnly ? "text-[#0052ff]" : "text-zinc-600"}`} />
+          <CheckCircle2 className={`h-4 w-4 ${availableOnly ? "text-brand" : "text-ink-5"}`} />
           <span>Available to Claim</span>
         </button>
       </div>

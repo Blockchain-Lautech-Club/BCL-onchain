@@ -16,13 +16,13 @@ export function HeroSection() {
 
       <div className="relative mx-auto max-w-5xl px-4 sm:px-6 text-center">
         {/* Top Tag */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-3.5 py-1 text-xs text-emerald-400 font-medium mb-8 backdrop-blur-sm">
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-3.5 py-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-8 backdrop-blur-sm">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
           <span>Blockchain LAUTECH Club • Onchain Protocol</span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.1] font-heading">
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-ink mb-6 leading-[1.1] font-heading">
           The On-Chain Identity &amp;{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-300 to-teal-400">
             Reputation Protocol
@@ -30,9 +30,9 @@ export function HeroSection() {
         </h1>
 
         {/* Subtitle */}
-        <p className="mx-auto max-w-2xl text-base sm:text-lg text-zinc-400 leading-relaxed mb-10 font-normal">
+        <p className="mx-auto max-w-2xl text-base sm:text-lg text-ink-3 leading-relaxed mb-10 font-normal">
           Complete club quests, unlock verified milestone badges, and claim your custom{" "}
-          <span className="text-zinc-200 font-bold">.bcl</span> username with zero network fees.
+          <span className="text-ink-2 font-bold">.bcl</span> username with zero network fees.
         </p>
 
         {/* Action CTAs */}
@@ -48,25 +48,25 @@ export function HeroSection() {
 
           <Link
             href="/domains"
-            className="flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-6 py-3 text-sm font-semibold text-zinc-200 hover:bg-white/[0.08] hover:border-emerald-500/40 transition"
+            className="flex items-center gap-2 rounded-xl border border-ink/[0.12] bg-ink/[0.04] px-6 py-3 text-sm font-semibold text-ink-2 hover:bg-ink/[0.08] hover:border-emerald-500/40 transition"
           >
-            <Globe className="h-4 w-4 text-emerald-400" />
+            <Globe className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             <span>Claim .bcl Domain</span>
           </Link>
         </div>
 
         {/* Micro Badges */}
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-zinc-400 font-medium">
+        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-ink-3 font-medium">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-emerald-400" />
+            <Shield className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             <span>Permanent Milestone Badges</span>
           </div>
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             <span>Zero Network Fees</span>
           </div>
           <div className="flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-emerald-400" />
+            <Terminal className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             <span>Automated Activity Verification</span>
           </div>
         </div>

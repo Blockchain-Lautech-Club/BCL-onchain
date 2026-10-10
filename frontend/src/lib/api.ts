@@ -19,13 +19,17 @@ export interface Task {
   id: number;
   title: string;
   description: string;
+  category: string;
+  /** Cover art for the quest card. https URL or /quests/... path; null -> category cover. */
+  image_url?: string | null;
   points: number;
   verification_type: "onchain_tx" | "nft_ownership" | "social_api" | "manual";
-  verification_config?: Record<string, unknown>;
+  requirements?: Record<string, unknown>;
   repeatable: boolean;
   status: "draft" | "published" | "archived";
-  deadline?: string;
-  user_state?: "not_started" | "submitted" | "under_review" | "verified" | "rejected" | "expired";
+  deadline?: string | null;
+  /** Per-user state, returned by backend as `my_state`. */
+  my_state?: "not_started" | "submitted" | "under_review" | "verified" | "rejected" | "expired" | null;
 }
 
 export interface TaskSubmission {

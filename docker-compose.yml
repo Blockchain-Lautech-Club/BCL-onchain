@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_USER: bcl, POSTGRES_PASSWORD: bcl, POSTGRES_DB: bcl }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    environment: { DATABASE_URL: "postgresql+asyncpg://bcl:bcl@db:5432/bcl" }
+    depends_on: [db]
+    ports: ["8000:8000"]
+
+  mint-worker:            # run exactly one replica (single relayer nonce stream)
+    build: ./backend
+    command: python -m app.workers.mint_worker
+    env_file: ./backend/.env
+    environment: { DATABASE_URL: "postgresql+asyncpg://bcl:bcl@db:5432/bcl" }
+    depends_on: [db]
+
+  indexer:
+    build: ./backend
+    command: python -m app.workers.indexer_worker
+    env_file: ./backend/.env
+    environment: { DATABASE_URL: "postgresql+asyncpg://bcl:bcl@db:5432/bcl" }
+    depends_on: [db]
+
+volumes:
+  pgdata:

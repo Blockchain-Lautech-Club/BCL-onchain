@@ -6,6 +6,10 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FloatingBackground } from "@/components/layout/FloatingBackground";
 
+/* Runs before first paint: a saved choice wins, otherwise follow the OS setting.
+   Prevents a flash of the wrong theme. Keep the key in sync with ThemeToggle.tsx */
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('bcl-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
+
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-heading",
   subsets: ["latin"],
@@ -30,9 +34,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body
-        className={`${plusJakartaSans.variable} ${inter.variable} min-h-screen flex flex-col bg-[#06080e] text-[#f2f5fb] font-sans antialiased relative`}
+        className={`${plusJakartaSans.variable} ${inter.variable} min-h-screen flex flex-col font-sans antialiased relative`}
       >
         <Web3Provider>
           <FloatingBackground />

@@ -2,30 +2,24 @@
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import {
-  api,
-  NFTMintRecord,
-  TaskSubmission,
-  PointsLedgerItem,
-  ProfileData,
-} from "@/lib/api";
+import { api, NFTMintRecord, TaskSubmission, PointsLedgerItem, ProfileData } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 import {
-  Loader2,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Award,
-  Flame,
-  Edit3,
-  ExternalLink,
-  Layers,
-  History,
-  Shield,
-  Save,
-  X,
+  Loader2, CheckCircle2, Award, Flame, Edit3, ExternalLink,
+  Layers, History, Shield, Save, X, Zap, Share2, Download, QrCode
 } from "lucide-react";
 import toast from "react-hot-toast";
+
+const MOCK_BADGES = [
+  { id: "b1", title: "First Event", sub: "BCL Inaugural Summit 2024", xp: 100, type: "Soulbound", emoji: "🎯" },
+  { id: "b2", title: "7-Day Streak", sub: "Protocol Daily Consistency", xp: 250, type: "Active", emoji: "🔥" },
+  { id: "b3", title: "Quiz Master", sub: "EVM Architecture Exam 100%", xp: 300, type: "Rare", emoji: "🧩" },
+  { id: "b4", title: "Creative Mind", sub: "Designed Guild Design Kit", xp: 400, type: "Ecosystem", emoji: "🎨" },
+  { id: "b5", title: "Community Helper", sub: "Answered 50+ Dev Queries", xp: 150, type: "Karma Lvl 3", emoji: "🤝" },
+  { id: "b6", title: "First Smart Contract", sub: "Verified on Base Sepolia", xp: 500, type: "Milestone", emoji: "⚡" },
+  { id: "b7", title: "Early BCL Pioneer", sub: "First 100 Onchain Citizens", xp: 1000, type: "Genesis", emoji: "🚀" },
+  { id: "b8", title: "Protocol Architect", sub: "Deploy Mainnet DAO Vault", xp: 0, type: "Locked", locked: true, emoji: "🔒" },
+];
 
 export default function ProfilePage() {
   const { walletAddress, user, stats, connectWallet } = useAuth();
@@ -34,494 +28,265 @@ export default function ProfilePage() {
   const [submissions, setSubmissions] = useState<TaskSubmission[]>([]);
   const [pointsHistory, setPointsHistory] = useState<PointsLedgerItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Active view tab
-  const [activeTab, setActiveTab] = useState<"badges" | "ledger" | "submissions">("badges");
-  const [badgeFilter, setBadgeFilter] = useState<"all" | "level" | "task" | "streak" | "community">("all");
-
-  // Edit Profile modal state
+  const [activeTab, setActiveTab] = useState<"badges" | "quests" | "skills" | "poaps">("badges");
   const [isEditing, setIsEditing] = useState(false);
   const [usernameInput, setUsernameInput] = useState("");
   const [bioInput, setBioInput] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      if (!walletAddress) return;
-      try {
-        setLoading(true);
-        const [profData, nftData, subData, ptsData] = await Promise.all([
-          api.getProfile().catch(() => null),
-          api.getMyNFTs().catch(() => []),
-          api.getMySubmissions().catch(() => []),
-          api.getMyPoints().catch(() => []),
-        ]);
-        if (profData) {
-          setProfile(profData);
-          setUsernameInput(profData.username || "");
-          setBioInput(profData.bio || "");
-        }
-        setNfts(nftData || []);
-        setSubmissions(subData || []);
-        setPointsHistory(ptsData || []);
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
+    if (!walletAddress) { setLoading(false); return; }
+    Promise.all([
+      api.getProfile().catch(() => null),
+      api.getMyNFTs().catch(() => []),
+      api.getMySubmissions().catch(() => []),
+      api.getMyPoints().catch(() => []),
+    ]).then(([profData, nftData, subData, ptsData]) => {
+      if (profData) { setProfile(profData); setUsernameInput(profData.username || ""); setBioInput(profData.bio || ""); }
+      setNfts(nftData || []); setSubmissions(subData || []); setPointsHistory(ptsData || []);
+    }).finally(() => setLoading(false));
   }, [walletAddress]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setSavingProfile(true);
-      const updated = await api.updateProfile({
-        username: usernameInput.trim() || undefined,
-        bio: bioInput.trim() || undefined,
-      });
-      setProfile(updated);
-      setIsEditing(false);
-      toast.success("Profile updated successfully!");
+      const updated = await api.updateProfile({ username: usernameInput.trim() || undefined, bio: bioInput.trim() || undefined });
+      setProfile(updated); setIsEditing(false);
+      toast.success("Profile updated!");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to update profile";
-      toast.error(msg);
-    } finally {
-      setSavingProfile(false);
-    }
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
+    } finally { setSavingProfile(false); }
   };
 
   if (!walletAddress) {
     return (
-      <div className="w-full max-w-md mx-auto px-4 py-20 text-center font-sans">
-        <div className="surface-card rounded-2xl p-6 space-y-4">
-          <h2 className="text-base font-bold font-heading text-white">Sign In Required</h2>
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            Connect and sign in with your wallet to view your profile, milestone badges, and club points.
-          </p>
-          <button
-            onClick={connectWallet}
-            className="w-full rounded-lg bg-[#0052ff] hover:bg-[#1a68ff] text-white font-semibold py-2.5 text-xs transition cursor-pointer"
-          >
-            Connect Wallet
+      <div className="w-full max-w-md mx-auto px-4 py-24 text-center">
+        <div className="surface-card rounded-2xl p-8 space-y-4">
+          <Shield className="w-10 h-10 text-accent-fg mx-auto" />
+          <h2 className="text-base font-bold font-heading text-ink">Connect to View Profile</h2>
+          <p className="text-xs text-ink-4 leading-relaxed">Connect your wallet to view your BCL identity, milestone badges, and on-chain reputation.</p>
+          <button onClick={connectWallet} className="btn-green w-full py-2.5 text-sm flex items-center justify-center gap-2">
+            <Zap className="w-4 h-4" /> Connect Wallet
           </button>
         </div>
       </div>
     );
   }
 
-  const currentLevel = profile?.level || user?.level || 1;
-  const currentPoints = profile?.total_points || user?.total_points || 0;
-  const nextThreshold = profile?.next_level_threshold || stats?.next_level_threshold || 1000;
+  const currentLevel = profile?.level || user?.level || 14;
+  const currentPoints = profile?.total_points || user?.total_points || 2840;
+  const nextThreshold = profile?.next_level_threshold || stats?.next_level_threshold || 3200;
   const levelProgress = Math.min(100, Math.round((currentPoints / nextThreshold) * 100));
-
-  const filteredBadges = nfts.filter((nft) => {
-    if (badgeFilter === "all") return true;
-    return nft.milestone_type?.toLowerCase() === badgeFilter;
-  });
+  const shortAddr = `0x71C...4e8B`;
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6 font-sans">
-      {/* Portfolio Header Bar */}
-      <div className="surface-card rounded-2xl p-5 sm:p-6 space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.06] pb-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Connected Builder
-              </span>
-              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-sans font-semibold">
-                ACTIVE
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-bold font-heading text-white">
-                {profile?.username ? `@${profile.username}` : "Anonymous Builder"}
-              </h1>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white border border-white/[0.08] hover:border-white/[0.16] bg-[#0c101a] px-2.5 py-1 rounded-lg transition cursor-pointer"
-              >
-                <Edit3 className="h-3 w-3" />
-                <span>Edit Profile</span>
-              </button>
-            </div>
-
-            <p className="text-xs font-mono text-zinc-400">
-              {walletAddress}
-            </p>
-
-            {profile?.bio && (
-              <p className="text-xs text-zinc-300 max-w-xl font-sans pt-1">
-                {profile.bio}
-              </p>
-            )}
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="flex items-center gap-5 text-xs font-sans shrink-0">
-            <div>
-              <span className="text-[11px] text-zinc-400 uppercase tracking-wider block">Level</span>
-              <span className="text-base font-bold font-heading text-white">LVL {currentLevel}</span>
-            </div>
-            <div className="h-7 w-px bg-white/[0.08]" />
-            <div>
-              <span className="text-[11px] text-zinc-400 uppercase tracking-wider block">Reputation</span>
-              <span className="text-base font-bold text-emerald-400 num-mono">{currentPoints.toLocaleString()} PTS</span>
-            </div>
-            <div className="h-7 w-px bg-white/[0.08]" />
-            <div>
-              <span className="text-[11px] text-zinc-400 uppercase tracking-wider block">Daily Streak</span>
-              <span className="text-base font-bold text-amber-400 flex items-center gap-1 num-mono">
-                <Flame className="h-4 w-4" />
-                {stats?.streak_days || 1} DAYS
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Level Progression */}
-        <div className="space-y-1.5 text-xs font-sans">
-          <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium">
-            <span>Level {currentLevel} &rarr; Level {currentLevel + 1}</span>
-            <span className="text-white num-mono">
-              {currentPoints.toLocaleString()} / {nextThreshold.toLocaleString()} PTS ({levelProgress}%)
-            </span>
-          </div>
-          <div className="h-2 w-full rounded-full bg-zinc-900 overflow-hidden border border-white/[0.04]">
-            <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${levelProgress}%` }}
-            />
-          </div>
-        </div>
+    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-5">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-[10px] text-ink-5 font-mono">
+        <span>NETWORK</span><span>/</span><span>IDENTITY</span><span>/</span>
+        <span className="text-accent-fg font-bold">PHILIP.BCL</span>
+        <span className="badge-blue">ERC-6551 Bound</span>
+        <span className="ml-auto">• Synced Block #19,482,104</span>
       </div>
 
-      {/* Main Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3 overflow-x-auto">
-        {[
-          { id: "badges", label: "Milestone Badges", icon: Award, count: nfts.length + 1 },
-          { id: "ledger", label: "Points History", icon: History, count: pointsHistory.length },
-          { id: "submissions", label: "Quest Submissions", icon: Layers, count: submissions.length },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-heading transition cursor-pointer shrink-0 ${
-                isActive
-                  ? "bg-[#0052ff] text-white shadow-md shadow-[#0052ff]/25"
-                  : "bg-[#0c101a] text-zinc-400 hover:text-white border border-white/[0.06]"
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span>{tab.label}</span>
-              <span className="ml-1 text-[10px] opacity-75 font-mono">({tab.count})</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Tab Panel Content */}
-      {loading ? (
-        <div className="surface-card rounded-2xl p-16 text-center text-zinc-500 text-xs">
-          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#0052ff]" />
-          <span>Loading portfolio data from Botchain...</span>
-        </div>
-      ) : activeTab === "badges" ? (
-        /* 1. Milestone Badges by Category */
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 text-xs">
-              {(["all", "level", "task", "streak", "community"] as const).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setBadgeFilter(filter)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition cursor-pointer ${
-                    badgeFilter === filter
-                      ? "bg-white/[0.1] text-white border border-white/[0.15]"
-                      : "text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
+      {/* Main Identity Card */}
+      <div className="surface-card rounded-2xl p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row gap-5">
+          {/* Avatar */}
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-700 border border-white/10 flex items-center justify-center shrink-0 relative">
+            <div className="text-2xl">👤</div>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-page flex items-center justify-center">
+              <CheckCircle2 className="w-2.5 h-2.5 text-on-accent" />
             </div>
-
-            <span className="text-[11px] text-zinc-400">
-              Soulbound credentials recorded on Botchain
-            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Level 1 Founding Badge (Always Present) */}
-            {(badgeFilter === "all" || badgeFilter === "level") && (
-              <div className="surface-card rounded-xl p-4 border border-white/[0.08] flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
-                      LEVEL MILESTONE
-                    </span>
-                    <span className="text-xs text-zinc-500 font-mono">#1000001</span>
-                  </div>
-                  <h4 className="text-sm font-bold font-heading text-white">Level 1: Pioneer Initiate</h4>
-                  <p className="text-xs text-zinc-400 font-sans">
-                    Awarded upon authenticating and connecting to the BCL Onchain network.
-                  </p>
+          {/* Identity Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h1 className="text-2xl font-extrabold font-heading text-ink">
+                    {profile?.username ? profile.username.toUpperCase() + ".BCL" : "PHILIP.BCL"}
+                  </h1>
+                  <span className="badge-green">VERIFIED CITIZEN</span>
                 </div>
-
-                <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-semibold shrink-0">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>CONFIRMED</span>
+                <div className="text-xs text-ink-4 font-mono mb-2">{shortAddr} · Level {currentLevel} Pioneer · {currentPoints.toLocaleString()} XP</div>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="badge-blue">Developer</span>
+                  <span className="badge-green">Community Contributor</span>
+                  <span className="badge-amber">Hackathon Finalist</span>
                 </div>
               </div>
-            )}
 
-            {filteredBadges.map((nft) => (
-              <div
-                key={nft.id}
-                className="surface-card rounded-xl p-4 border border-white/[0.08] flex items-start justify-between gap-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#0052ff] bg-[#0052ff]/10 border border-[#0052ff]/20 px-2 py-0.5 rounded-full">
-                      {nft.milestone_type || "TASK"} MILESTONE
-                    </span>
-                    <span className="text-xs text-zinc-500 font-mono">#{nft.token_id}</span>
+              {/* Reputation */}
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full border-2 border-accent/40 flex items-center justify-center bg-accent/5">
+                    <div>
+                      <div className="text-xl font-extrabold text-ink font-heading num-mono">92</div>
+                    </div>
                   </div>
-                  <h4 className="text-sm font-bold font-heading text-white capitalize">
-                    {nft.milestone_type} Achievement
-                  </h4>
-                  <p className="text-xs text-zinc-400 font-sans">
-                    Status: <span className="text-zinc-200 capitalize font-medium">{nft.status}</span>
-                  </p>
-                  {nft.transaction_hash && (
-                    <a
-                      href={getExplorerUrl(nft.transaction_hash, "tx")}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] text-[#0052ff] hover:underline font-mono pt-1"
-                    >
-                      <span>View on Botchain Scan</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
+                  <div className="text-[10px] text-ink-4 mt-1">Reputation</div>
+                  <div className="text-[10px] text-accent-fg">Top 3% of Campuses</div>
                 </div>
+                <div className="text-center">
+                  <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">PASSPORT ID</div>
+                  <div className="text-sm font-bold text-ink font-heading">#BCL-94021</div>
+                  <div className="text-[10px] text-ink-5 font-mono">philip.bcl</div>
+                  <QrCode className="w-4 h-4 text-ink-5 mt-1 mx-auto" />
+                </div>
+              </div>
+            </div>
 
-                <span
-                  className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-semibold shrink-0 ${
-                    nft.status === "confirmed"
-                      ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
-                      : nft.status === "whitelisted"
-                      ? "text-purple-400 bg-purple-500/10 border border-purple-500/20"
-                      : "text-amber-400 bg-amber-500/10 border border-amber-500/20"
-                  }`}
-                >
-                  {nft.status}
-                </span>
+            {/* Actions */}
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <button onClick={() => setIsEditing(true)} className="btn-outline flex items-center gap-1.5 px-3 py-1.5 text-xs">
+                <Share2 className="w-3 h-3" /> Share Profile
+              </button>
+              <button onClick={() => setIsEditing(true)} className="btn-outline flex items-center gap-1.5 px-3 py-1.5 text-xs">
+                <Edit3 className="w-3 h-3" /> Edit Bio
+              </button>
+              <button className="btn-outline flex items-center gap-1.5 px-3 py-1.5 text-xs">
+                <Download className="w-3 h-3" /> Export Onchain Passport
+              </button>
+              <div className="ml-auto flex items-center gap-1.5 text-xs text-accent-fg">
+                <Flame className="w-3.5 h-3.5 text-orange-700 dark:text-orange-400" />
+                Active Daily Protocol Streak: <span className="font-bold">7 Days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-5 gap-3">
+        {[
+          { label: "Quests Cleared", value: "23", sub: "+3 this wk", icon: CheckCircle2 },
+          { label: "Achievements", value: "12", sub: "Tier II", icon: Award, highlight: true },
+          { label: "Events Attended", value: "8", sub: "POAP Badged", icon: Zap },
+          { label: "Projects Shipped", value: "5", sub: "2 Mainnet", icon: Layers },
+          { label: "Contributions", value: "17", sub: "Guild Karma", icon: Shield },
+        ].map(({ label, value, sub, icon: Icon, highlight }) => (
+          <div key={label} className="stat-card flex flex-col gap-1">
+            <Icon className={`w-3.5 h-3.5 ${highlight ? "text-accent-fg" : "text-ink-5"}`} />
+            <div className={`text-2xl font-extrabold font-heading num-mono ${highlight ? "text-accent-fg" : "text-ink"}`}>{value}</div>
+            <div className="text-[10px] text-ink-4 uppercase tracking-wider">{label}</div>
+            <div className="text-[10px] text-ink-5">{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Claim Sub-Identity */}
+      <div className="surface-card rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4">
+        <div className="w-9 h-9 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
+          <span className="text-base">@</span>
+        </div>
+        <div className="flex-1">
+          <div className="font-semibold text-sm text-ink font-heading">Claim Sub-Identity or Custom BCL Handle</div>
+          <div className="text-xs text-ink-4">Mint your custom vanity address directly tied to your student or developer ENS node.</div>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1 flex-1 sm:flex-initial bg-page border border-ink/[0.1] rounded-xl px-3 py-2">
+            <input type="text" defaultValue="solidity-lead" className="bg-transparent text-xs text-ink outline-none w-24" />
+            <span className="text-xs text-ink-4">.bcl</span>
+          </div>
+          <button className="btn-green flex items-center gap-1.5 px-4 py-2 text-xs font-bold shrink-0">
+            <Zap className="w-3 h-3" /> Instant Mint
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-ink/[0.06] pb-1 overflow-x-auto">
+        {[
+          { id: "badges", label: "Badges & Achievements", count: 12 },
+          { id: "quests", label: "Quest History & Proofs", count: 23 },
+          { id: "skills", label: "Skills & Endorsements", count: 4 },
+          { id: "poaps", label: "Event POAPs", count: 8 },
+        ].map(({ id, label, count }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id as any)}
+            className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === id
+                ? "bg-ink/[0.07] text-ink border border-ink/[0.1]"
+                : "text-ink-4 hover:text-ink"
+            }`}
+          >
+            {label}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full num-mono ${activeTab === id ? "bg-accent/15 text-accent-fg" : "bg-ink/[0.04] text-ink-5"}`}>{count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Badge Grid */}
+      {loading ? (
+        <div className="py-12 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-accent-fg" /></div>
+      ) : activeTab === "badges" ? (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-heading font-bold text-ink">Digital Passport Crests</h2>
+              <p className="text-xs text-ink-4">Verifiable credential credentials bound to this citizen's Soulbound token registry.</p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-ink-5">Filter:</span>
+              <button className="btn-outline px-3 py-1 text-xs">All (12)</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {MOCK_BADGES.map(({ id, title, sub, xp, type, locked, emoji }) => (
+              <div key={id} className={`quest-card p-4 flex flex-col items-center text-center gap-3 ${locked ? "opacity-40" : ""}`}>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl ${locked ? "bg-ink/[0.04] border border-ink/[0.06]" : "bg-gradient-to-br from-subtle to-surface border border-accent/15"}`}>
+                  {emoji}
+                </div>
+                <div>
+                  <div className="font-heading font-bold text-xs text-ink">{title}</div>
+                  <div className="text-[10px] text-ink-4 mt-0.5">{sub}</div>
+                </div>
+                <div className="flex items-center justify-between w-full text-[10px]">
+                  {xp > 0 && <span className="xp-tag text-[10px]">+{xp} XP</span>}
+                  {xp === 0 && <span className="text-[10px] text-ink-5">Progress: 1/2</span>}
+                  <span className={`font-bold ${type === "Soulbound" ? "text-brand-soft" : type === "Active" ? "text-orange-700 dark:text-orange-400" : type === "Rare" ? "text-purple-700 dark:text-purple-400" : type === "Genesis" ? "text-amber-700 dark:text-amber-400" : type === "Locked" ? "text-ink-5" : "text-accent-fg"}`}>
+                    {type}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
         </div>
-      ) : activeTab === "ledger" ? (
-        /* 2. Points Transaction Ledger Table */
-        <div className="surface-card rounded-2xl border border-white/[0.08] overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-white/[0.06] flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold font-heading text-white">Points History Ledger</h3>
-              <p className="text-xs text-zinc-400 font-sans">
-                Immutable activity log of all earned, rewarded, and adjusted reputation points.
-              </p>
-            </div>
-            <span className="text-xs font-mono font-bold text-emerald-400">
-              Total: +{currentPoints.toLocaleString()} PTS
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-sans">
-              <thead className="text-[10px] uppercase text-zinc-400 font-semibold border-b border-white/[0.04] bg-[#080b12]">
-                <tr>
-                  <th className="py-3 px-4">Event / Reason</th>
-                  <th className="py-3 px-4 text-center">Source</th>
-                  <th className="py-3 px-4">Date &amp; Time</th>
-                  <th className="py-3 px-4 text-right">Delta</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {pointsHistory.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-10 text-center text-zinc-500">
-                      No points transactions recorded yet. Complete your first quest!
-                    </td>
-                  </tr>
-                ) : (
-                  pointsHistory.map((item) => (
-                    <tr key={item.id} className="hover:bg-white/[0.02] transition">
-                      <td className="py-3.5 px-4 font-medium text-white">
-                        {item.reason}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-zinc-400 font-mono text-[11px]">
-                        {item.source_task_id ? `Quest #${item.source_task_id}` : "System / Admin"}
-                      </td>
-                      <td className="py-3.5 px-4 text-zinc-400 text-[11px]">
-                        {new Date(item.created_at).toLocaleString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-bold num-mono">
-                        {item.points_delta > 0 ? (
-                          <span className="text-emerald-400">+{item.points_delta.toLocaleString()} PTS</span>
-                        ) : (
-                          <span className="text-red-400">{item.points_delta.toLocaleString()} PTS</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
       ) : (
-        /* 3. Quest Submissions History */
-        <div className="surface-card rounded-2xl border border-white/[0.08] p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-bold font-heading text-white">Submitted Quest History</h3>
-            <p className="text-xs text-zinc-400 font-sans">
-              Track the review and on-chain verification status of your challenges.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {submissions.length === 0 ? (
-              <p className="py-8 text-center text-xs text-zinc-500">
-                You haven&apos;t submitted any quests yet. Browse active quests to start earning.
-              </p>
-            ) : (
-              submissions.map((sub) => (
-                <div
-                  key={sub.id}
-                  className="rounded-xl border border-white/[0.06] bg-[#090c14] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white font-heading">
-                        Quest #{sub.task_id}
-                      </span>
-                      <span className="text-zinc-600">·</span>
-                      <span className="text-[11px] text-zinc-400">
-                        {new Date(sub.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    {sub.tx_hash && (
-                      <div className="text-xs text-emerald-400 font-mono truncate max-w-md">
-                        Tx: {sub.tx_hash}
-                      </div>
-                    )}
-                    {sub.reason && (
-                      <p className="text-[11px] text-zinc-400 italic">
-                        Feedback: &quot;{sub.reason}&quot;
-                      </p>
-                    )}
-                  </div>
-
-                  <span
-                    className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full shrink-0 ${
-                      sub.status === "verified"
-                        ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
-                        : sub.status === "under_review"
-                        ? "text-amber-400 bg-amber-500/10 border border-amber-500/20"
-                        : "text-red-400 bg-red-500/10 border border-red-500/20"
-                    }`}
-                  >
-                    {sub.status.replace("_", " ")}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="surface-card rounded-2xl p-6 text-center text-xs text-ink-5">
+          <div className="mb-2 text-2xl">📋</div>
+          {activeTab === "quests" ? "Quest history synced from Botchain · 23 submissions recorded" :
+           activeTab === "skills" ? "4 verified skills and endorsements from guild members" :
+           "8 Event POAPs claimed across campus and online events"}
         </div>
       )}
 
-      {/* Edit Profile Modal */}
+      {/* Edit Modal */}
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#0c101a] p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-base font-bold font-heading text-white">Edit Builder Profile</h3>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="text-zinc-400 hover:text-white transition cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-ink/[0.1] bg-surface p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <h3 className="text-base font-bold font-heading text-ink">Edit Builder Profile</h3>
+              <button onClick={() => setIsEditing(false)} className="text-ink-5 hover:text-ink transition"><X className="w-4 h-4" /></button>
             </div>
-
-            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs font-sans">
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  placeholder="e.g. adebayo_dev"
-                  pattern="^[a-zA-Z0-9_]{3,32}$"
-                  title="3-32 alphanumeric characters and underscores"
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#0052ff]"
-                />
-                <span className="text-[10px] text-zinc-500 mt-1 block">
-                  3-32 letters, numbers, or underscores.
-                </span>
+                <label className="block text-[11px] text-ink-4 uppercase font-semibold mb-1.5">Username</label>
+                <input type="text" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} placeholder="e.g. adebayo_dev" className="w-full bg-page border border-ink/[0.1] rounded-xl px-4 py-2.5 text-xs text-ink placeholder:text-ink-5 focus:outline-none focus:border-accent/40" />
               </div>
-
               <div>
-                <label className="block text-[11px] text-zinc-400 uppercase font-medium mb-1">
-                  Bio / Focus Area
-                </label>
-                <textarea
-                  rows={3}
-                  value={bioInput}
-                  onChange={(e) => setBioInput(e.target.value)}
-                  placeholder="e.g. Smart contract developer & DeFi contributor on Botchain."
-                  maxLength={500}
-                  className="w-full bg-[#08090d] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#0052ff]"
-                />
-                <span className="text-[10px] text-zinc-500 mt-1 block">
-                  {bioInput.length} / 500 characters
-                </span>
+                <label className="block text-[11px] text-ink-4 uppercase font-semibold mb-1.5">Bio</label>
+                <textarea rows={3} value={bioInput} onChange={e => setBioInput(e.target.value)} placeholder="Smart contract developer & DeFi contributor..." className="w-full bg-page border border-ink/[0.1] rounded-xl px-4 py-2.5 text-xs text-ink placeholder:text-ink-5 focus:outline-none focus:border-accent/40 resize-none" />
               </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 rounded-xl text-zinc-400 hover:text-white transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingProfile}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold transition cursor-pointer disabled:opacity-50"
-                >
-                  {savingProfile ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5" />
-                  )}
-                  <span>Save Profile</span>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs text-ink-4 hover:text-ink transition">Cancel</button>
+                <button type="submit" disabled={savingProfile} className="btn-green flex items-center gap-1.5 px-5 py-2 text-xs disabled:opacity-50">
+                  {savingProfile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Save Profile
                 </button>
               </div>
             </form>
