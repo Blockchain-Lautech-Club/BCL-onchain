@@ -14,9 +14,15 @@ router = APIRouter(tags=["public"])
 
 
 @router.get("/health")
-async def health(session: AsyncSession = Depends(get_session)):
-    await session.execute(text("SELECT 1"))
-    return {"status": "ok"}
+async def health():
+    try:
+        from app.core.db import SessionLocal
+        from sqlalchemy import text
+        async with SessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "connected"}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "type": type(e).__name__}
 
 
 @router.get("/leaderboard", response_model=list[LeaderboardEntry])
