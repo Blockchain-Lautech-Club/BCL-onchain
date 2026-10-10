@@ -13,6 +13,7 @@ export interface User {
   total_points: number;
   status: string;
   is_admin?: boolean;
+  bcl_domain?: string;   // ← add this
 }
 
 export interface Task {

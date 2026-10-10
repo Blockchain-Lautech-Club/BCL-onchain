@@ -24,15 +24,12 @@ _connect_args = (
     else {}
 )
 
-<<<<<<< HEAD
-=======
 engine = create_async_engine(
     _db_url,
     pool_pre_ping=True,
     connect_args=_connect_args,
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
->>>>>>> b1298a7303a22b207e5d3ce1c318eefdaf605332
 
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Request-scoped session. Routes/services commit explicitly; uncommitted work is rolled back on close."""
