@@ -28,7 +28,8 @@ contract BCLToken is ERC20, ERC20Burnable, ERC20Permit, AccessControlDefaultAdmi
         address admin,
         uint48 adminTransferDelay,
         uint256 initialSupply,
-        uint256 maxSupply_
+        uint256 maxSupply_,
+        address initialMinter
     )
         ERC20("BCL Token", "BCL")
         ERC20Permit("BCL Token")
@@ -36,6 +37,11 @@ contract BCLToken is ERC20, ERC20Burnable, ERC20Permit, AccessControlDefaultAdmi
     {
         maxSupply = maxSupply_;
         _grantRole(MINTER_ROLE, admin);
+        // Grant MINTER_ROLE to the relayer inside the constructor while msg.sender
+        // (deployer) still has implicit authority via _grantRole (internal bypass).
+        if (initialMinter != address(0) && initialMinter != admin) {
+            _grantRole(MINTER_ROLE, initialMinter);
+        }
         if (initialSupply > 0) {
             _requireUnderCap(initialSupply);
             _mint(admin, initialSupply);
