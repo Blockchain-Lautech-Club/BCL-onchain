@@ -1,9 +1,8 @@
 from web3 import AsyncWeb3
 from web3.contract import AsyncContract
 
-from app.chain.abis import BCL_TOKEN_ABI, NAME_NFT_ABI, REGISTRY_ABI, REWARDS_ABI
 from app.core.config import settings
-
+from app.chain.abis import BCL_TOKEN_ABI, ERC721_ABI, NAME_NFT_ABI, REGISTRY_ABI
 
 def get_w3() -> AsyncWeb3:
     return AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(settings.rpc_url))
@@ -23,7 +22,13 @@ def rewards_contract(w3: AsyncWeb3) -> AsyncContract:
         abi=REWARDS_ABI,
     )
 
-
+def erc721_contract(address: str) -> AsyncContract:
+    w3 = get_w3()
+    return w3.eth.contract(
+        address=checksum(address),
+        abi=ERC721_ABI,
+    )
+    
 def registry_contract(w3: AsyncWeb3) -> AsyncContract:
     return w3.eth.contract(
         address=checksum(settings.registry_contract_address),

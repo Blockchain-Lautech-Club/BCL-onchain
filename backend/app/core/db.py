@@ -7,7 +7,11 @@ from app.core.config import settings
 engine = create_async_engine(settings.database_url, pool_pre_ping=True)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
-
+engine = create_async_engine(
+    settings.database_url,
+    pool_pre_ping=True,
+    connect_args={"prepared_statement_cache_size": 0},
+)
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Request-scoped session. Routes/services commit explicitly; uncommitted work is rolled back on close."""
     async with SessionLocal() as session:
