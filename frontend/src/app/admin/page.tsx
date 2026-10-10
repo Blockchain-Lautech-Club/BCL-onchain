@@ -46,7 +46,7 @@ interface AuditLog {
 }
 
 export default function AdminPage() {
-  const { isAdmin, walletAddress, connectWallet, grantAdminAccess } = useAuth();
+  const { isAdmin, walletAddress, connectWallet } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("submissions");
 
   // Submissions State
@@ -324,19 +324,12 @@ export default function AdminPage() {
           <p className="text-xs text-zinc-400 leading-relaxed font-sans">
             Manage quest verification, milestone registration, badge delivery, and user roles on Botchain.
           </p>
-          <div className="space-y-2 pt-2">
+          <div className="pt-2">
             <button
               onClick={connectWallet}
               className="w-full rounded-xl bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold py-2.5 text-xs transition cursor-pointer shadow-lg shadow-[#0052ff]/25"
             >
               Connect Administrator Wallet
-            </button>
-            <button
-              onClick={() => grantAdminAccess()}
-              className="w-full rounded-xl border border-white/10 hover:bg-white/[0.04] text-zinc-300 font-semibold py-2.5 text-xs transition cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Shield className="h-3.5 w-3.5 text-[#0052ff]" />
-              Enter With Admin Privileges (0x825a...14eb)
             </button>
           </div>
         </div>
@@ -347,26 +340,30 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-24 text-center">
-        <div className="surface-card rounded-2xl p-7 space-y-4 border border-[#0052ff]/30 bg-[#0c101a] shadow-2xl">
-          <div className="h-12 w-12 rounded-xl bg-[#0052ff]/10 border border-[#0052ff]/30 text-[#0052ff] mx-auto flex items-center justify-center">
-            <Shield className="h-6 w-6" />
+        <div className="surface-card rounded-2xl p-7 space-y-4 border border-red-500/20 bg-[#0c101a] shadow-2xl">
+          <div className="h-12 w-12 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 mx-auto flex items-center justify-center">
+            <Lock className="h-6 w-6" />
           </div>
-          <h2 className="text-lg font-bold font-heading text-white">Administrator Authorization</h2>
+          <h2 className="text-lg font-bold font-heading text-white">Access Denied</h2>
           <div className="text-xs text-zinc-400 space-y-2 font-sans">
             <p>
-              Account: <span className="font-mono text-zinc-200">{walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}</span>
+              Connected Wallet:{" "}
+              <span className="font-mono text-zinc-200">
+                {walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}
+              </span>
             </p>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Enable administrator privileges for your account on Botchain.
+              This account is not authorized to manage the club administration console on Botchain.
             </p>
           </div>
-          <button
-            onClick={() => grantAdminAccess()}
-            className="w-full rounded-xl bg-[#0052ff] hover:bg-[#1a68ff] text-white font-bold py-2.5 text-xs transition cursor-pointer shadow-lg shadow-[#0052ff]/25 flex items-center justify-center gap-2"
-          >
-            <Shield className="h-4 w-4" />
-            Enable Admin Access
-          </button>
+          <div className="pt-2">
+            <button
+              onClick={connectWallet}
+              className="w-full rounded-xl border border-white/10 hover:bg-white/[0.04] text-zinc-300 font-semibold py-2.5 text-xs transition cursor-pointer"
+            >
+              Switch to Authorized Admin Wallet
+            </button>
+          </div>
         </div>
       </div>
     );

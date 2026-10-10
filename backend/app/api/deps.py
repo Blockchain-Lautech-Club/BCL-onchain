@@ -36,7 +36,7 @@ async def get_current_user(user: User | None = Depends(get_optional_user)) -> Us
 
 
 async def is_admin(session: AsyncSession, user: User) -> bool:
-    if settings.app_env == "development" or "*" in settings.bootstrap_admins or user.wallet_address.lower() in settings.bootstrap_admins:
+    if user.wallet_address.lower() in settings.bootstrap_admins:
         return True
     return bool(await session.scalar(select(Role.id).where(Role.user_id == user.id, Role.role == RoleName.ADMIN)))
 

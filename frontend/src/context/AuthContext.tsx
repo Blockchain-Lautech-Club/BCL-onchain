@@ -16,20 +16,26 @@ interface AuthContextType {
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
   refreshUserData: () => Promise<void>;
-  grantAdminAccess: (customAddress?: string) => void;
 }
+
+const getAdminList = (): string[] => {
+  const envList = process.env.NEXT_PUBLIC_ADMIN_WALLETS || "";
+  return envList
+    .split(",")
+    .map((w) => w.trim().toLowerCase())
+    .filter(Boolean);
+};
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   stats: null,
   walletAddress: null,
-  isAdmin: true,
+  isAdmin: false,
   isLoading: true,
   isConnecting: false,
   connectWallet: async () => {},
   disconnectWallet: async () => {},
   refreshUserData: async () => {},
-  grantAdminAccess: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -38,75 +44,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { disconnectAsync } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
 
-  const [user, setUser] = useState<User | null>({
-    id: 1,
-    wallet_address: "0x825a947d4e51147a228cf08fc81c951909a814eb",
-    level: 5,
-    total_points: 2500,
-    status: "active",
-    is_admin: true,
-  });
-  const [stats, setStats] = useState<UserStats | null>({
-    level: 5,
-    total_points: 2500,
-    points_to_next_level: 500,
-    next_level_threshold: 3000,
-    completed_tasks_count: 12,
-    active_names_count: 1,
-    streak_days: 7,
-  });
-  const [walletAddress, setWalletAddress] = useState<string | null>("0x825a947d4e51147a228cf08fc81c951909a814eb");
-  const [isAdmin, setIsAdmin] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const grantAdminAccess = (customAddress?: string) => {
-    const addr = (customAddress || appKitAddress || walletAddress || "0x825a947d4e51147a228cf08fc81c951909a814eb").toLowerCase();
-    setWalletAddress(addr);
-    setIsAdmin(true);
-    setUser({
-      id: 1,
-      wallet_address: addr,
-      level: 5,
-      total_points: 2500,
-      status: "active",
-      is_admin: true,
-    });
-    toast.success("Admin privileges active!");
-  };
+  // Sync wallet address with connected AppKit wallet
+  useEffect(() => {
+    if (appKitAddress) {
+      const addr = appKitAddress.toLowerCase();
+      const adminList = getAdminList();
+      const isAuthorizedAdmin = adminList.includes(addr);
+
+      setWalletAddress(addr);
+      setIsAdmin(isAuthorizedAdmin);
+      setUser((prev) => ({
+        id: prev?.id || 1,
+        wallet_address: addr,
+        level: prev?.level || 1,
+        total_points: prev?.total_points || 0,
+        status: "active",
+        is_admin: isAuthorizedAdmin,
+      }));
+    } else {
+      setWalletAddress(null);
+      setUser(null);
+      setStats(null);
+      setIsAdmin(false);
+    }
+  }, [appKitAddress]);
 
   // Check existing session
   const checkSession = useCallback(async () => {
     try {
       setIsLoading(true);
+      const adminList = getAdminList();
       const me = await api.getMe();
       if (me && me.wallet_address) {
+        const addr = me.wallet_address.toLowerCase();
+        const isAuthorizedAdmin = Boolean(me.is_admin || adminList.includes(addr));
         setWalletAddress(me.wallet_address);
-        setIsAdmin(true);
+        setIsAdmin(isAuthorizedAdmin);
         setUser({
           id: me.id,
           wallet_address: me.wallet_address,
           level: 1,
           total_points: 0,
           status: "active",
-          is_admin: true,
+          is_admin: isAuthorizedAdmin,
         });
 
         // Load stats
         try {
           const s = await api.getMyStats();
           setStats(s);
-          setUser((prev) => (prev ? { ...prev, level: s.level, total_points: s.total_points, is_admin: true } : null));
+          setUser((prev) => (prev ? { ...prev, level: s.level, total_points: s.total_points, is_admin: isAuthorizedAdmin } : null));
         } catch {
           // stats might fail if user is new
         }
       } else if (appKitAddress) {
-        setWalletAddress(appKitAddress.toLowerCase());
-        setIsAdmin(true);
+        const addr = appKitAddress.toLowerCase();
+        const isAuthorizedAdmin = adminList.includes(addr);
+        setWalletAddress(addr);
+        setIsAdmin(isAuthorizedAdmin);
+      } else {
+        setIsAdmin(false);
       }
     } catch {
-      // In dev, keep admin enabled
-      setIsAdmin(true);
+      if (appKitAddress) {
+        const adminList = getAdminList();
+        setIsAdmin(adminList.includes(appKitAddress.toLowerCase()));
+      } else {
+        setIsAdmin(false);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -210,7 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         connectWallet,
         disconnectWallet,
         refreshUserData,
-        grantAdminAccess,
       }}
     >
       {children}
