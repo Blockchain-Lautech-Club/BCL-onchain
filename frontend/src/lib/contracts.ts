@@ -1,0 +1,116 @@
+import { createPublicClient, http, parseAbi } from "viem";
+
+export const CONTRACT_ADDRESSES = {
+  REWARDS: (process.env.NEXT_PUBLIC_REWARDS_CONTRACT ||
+    "0xDdF69D1b3CD83B8bF9FfEf2ED407be9F9cAb6Cab") as `0x${string}`,
+  REGISTRY: (process.env.NEXT_PUBLIC_REGISTRY_CONTRACT ||
+    "0xb6BaA98648a8D3B5e24f5b029e12d5Cd700398fd") as `0x${string}`,
+  BCL_TOKEN: (process.env.NEXT_PUBLIC_TOKEN_CONTRACT ||
+    "0x13AD24fDF0843c9b3Cc9adbE7C2EC55A48707086") as `0x${string}`,
+  NAME_NFT: (process.env.NEXT_PUBLIC_NAME_NFT_CONTRACT ||
+    "0xa21b4e2d910a106f8783dD8628D8C5Ba3E4b7A96") as `0x${string}`,
+};
+
+export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.bohr.life";
+export const EXPLORER_BASE_URL =
+  process.env.NEXT_PUBLIC_EXPLORER_URL || "https://scan.bohr.life";
+
+export function getExplorerUrl(
+  hashOrAddress: string,
+  type: "tx" | "address" = "tx"
+): string {
+  if (!hashOrAddress) return EXPLORER_BASE_URL;
+  return `${EXPLORER_BASE_URL.replace(/\/$/, "")}/${type}/${hashOrAddress}`;
+}
+
+export const botchainPublicClient = createPublicClient({
+  transport: http(RPC_URL),
+});
+
+const NAME_NFT_ABI = parseAbi([
+  "function available(string calldata label) external view returns (bool)",
+  "function quote(uint256 numYears) external view returns (uint256)",
+  "function resolve(string calldata label) external view returns (address owner, string memory data, uint64 expiresAt)",
+  "function ownerOfLabel(string calldata label) external view returns (address)",
+]);
+
+export async function checkOnchainNameAvailability(label: string): Promise<{
+  name: string;
+  available: boolean;
+  price_per_year_bcl_wei: string;
+}> {
+  const clean = label.trim().toLowerCase().replace(".bcl", "");
+  try {
+    const isAvailable = await botchainPublicClient.readContract({
+      address: CONTRACT_ADDRESSES.NAME_NFT,
+      abi: NAME_NFT_ABI,
+      functionName: "available",
+      args: [clean],
+    });
+
+    let priceWei = "10000000000000000000";
+    try {
+      const q = await botchainPublicClient.readContract({
+        address: CONTRACT_ADDRESSES.NAME_NFT,
+        abi: NAME_NFT_ABI,
+        functionName: "quote",
+        args: [BigInt(1)],
+      });
+      priceWei = q.toString();
+    } catch {
+      // fallback to 10 BCL
+    }
+
+    return {
+      name: `${clean}.bcl`,
+      available: Boolean(isAvailable),
+      price_per_year_bcl_wei: priceWei,
+    };
+  } catch (err) {
+    console.error("Onchain domain query error:", err);
+    throw err;
+  }
+}
+
+const BCL_TOKEN_ABI = parseAbi([
+  "function balanceOf(address account) external view returns (uint256)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+]);
+
+export async function getOnchainBclBalance(wallet: string): Promise<{
+  wallet: string;
+  balance_wei: string;
+  allowance_wei: string;
+  name_nft_address: string;
+}> {
+  try {
+    const bal = await botchainPublicClient.readContract({
+      address: CONTRACT_ADDRESSES.BCL_TOKEN,
+      abi: BCL_TOKEN_ABI,
+      functionName: "balanceOf",
+      args: [wallet as `0x${string}`],
+    });
+
+    const allow = await botchainPublicClient.readContract({
+      address: CONTRACT_ADDRESSES.BCL_TOKEN,
+      abi: BCL_TOKEN_ABI,
+      functionName: "allowance",
+      args: [wallet as `0x${string}`, CONTRACT_ADDRESSES.NAME_NFT],
+    });
+
+    return {
+      wallet,
+      balance_wei: bal.toString(),
+      allowance_wei: allow.toString(),
+      name_nft_address: CONTRACT_ADDRESSES.NAME_NFT,
+    };
+  } catch (err) {
+    console.error("Onchain BCL balance query error:", err);
+    return {
+      wallet,
+      balance_wei: "0",
+      allowance_wei: "0",
+      name_nft_address: CONTRACT_ADDRESSES.NAME_NFT,
+    };
+  }
+}

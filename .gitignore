@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js & Frontend builds
+frontend/.next/
+frontend/out/
+.next/
+out/
+build/
+dist/
+
+# Python & Virtual Envs
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+*.egg-info/
+
+# Database & local data
+*.db
+*.sqlite
+*.sqlite3
+backend/bcl.db
+
+# Environment variables (exclude sensitive keys)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+!*.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Smart Contracts / Hardhat
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+
+# OS / IDE
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
