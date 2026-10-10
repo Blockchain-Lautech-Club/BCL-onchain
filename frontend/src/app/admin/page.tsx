@@ -21,16 +21,12 @@ import {
   PlusCircle,
   ListOrdered,
   History,
-  AlertTriangle,
   Zap,
   Users,
   Award,
   Search,
-  UserCheck,
-  UserX,
-  Sliders,
-  X,
   Lock,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -49,12 +45,10 @@ export default function AdminPage() {
   const { isAdmin, walletAddress, connectWallet } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("submissions");
 
-  // Submissions State
   const [submissions, setSubmissions] = useState<TaskSubmission[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [reviewingId, setReviewingId] = useState<number | null>(null);
 
-  // Manage Tasks State
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -69,7 +63,6 @@ export default function AdminPage() {
   });
   const [isCreatingTask, setIsCreatingTask] = useState(false);
 
-  // Users & Moderation State
   const [adminUsers, setAdminUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -78,7 +71,6 @@ export default function AdminPage() {
   const [pointsReason, setPointsReason] = useState("");
   const [isAdjustingPoints, setIsAdjustingPoints] = useState(false);
 
-  // Milestones State
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loadingMilestones, setLoadingMilestones] = useState(false);
   const [showCreateMilestoneModal, setShowCreateMilestoneModal] = useState(false);
@@ -95,12 +87,10 @@ export default function AdminPage() {
   const [awardWallet, setAwardWallet] = useState("");
   const [isAwardingMilestone, setIsAwardingMilestone] = useState(false);
 
-  // Mints Queue State
   const [mints, setMints] = useState<NFTMintRecord[]>([]);
   const [loadingMints, setLoadingMints] = useState(false);
   const [retryingMintId, setRetryingMintId] = useState<number | null>(null);
 
-  // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
 
@@ -209,7 +199,7 @@ export default function AdminPage() {
     try {
       setIsCreatingTask(true);
       await api.createAdminTask({ ...newTask, image_url: newTask.image_url.trim() || undefined });
-      toast.success("New quest published to Botchain platform!");
+      toast.success("New quest published!");
       setNewTask({
         title: "",
         description: "",
@@ -333,16 +323,6 @@ export default function AdminPage() {
             >
               Connect Administrator Wallet
             </button>
-<<<<<<< HEAD
-            <button
-              onClick={() => grantAdminAccess()}
-              className="w-full rounded-xl border border-ink/10 hover:bg-ink/[0.04] text-ink-2 font-semibold py-2.5 text-xs transition cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Shield className="h-3.5 w-3.5 text-brand" />
-              Enter With Admin Privileges (0x825a...14eb)
-            </button>
-=======
->>>>>>> b1298a7303a22b207e5d3ce1c318eefdaf605332
           </div>
         </div>
       </div>
@@ -352,28 +332,6 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="w-full max-w-lg mx-auto px-4 py-24 text-center">
-<<<<<<< HEAD
-        <div className="surface-card rounded-2xl p-7 space-y-4 border border-brand/30 bg-surface shadow-2xl">
-          <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/30 text-brand mx-auto flex items-center justify-center">
-            <Shield className="h-6 w-6" />
-          </div>
-          <h2 className="text-lg font-bold font-heading text-ink">Administrator Authorization</h2>
-          <div className="text-xs text-ink-3 space-y-2 font-sans">
-            <p>
-              Account: <span className="font-mono text-ink-2">{walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}</span>
-            </p>
-            <p className="text-xs text-ink-3 leading-relaxed">
-              Enable administrator privileges for your account on Botchain.
-            </p>
-          </div>
-          <button
-            onClick={() => grantAdminAccess()}
-            className="w-full rounded-xl bg-brand hover:bg-brand-hi text-white font-bold py-2.5 text-xs transition cursor-pointer shadow-lg shadow-brand/25 flex items-center justify-center gap-2"
-          >
-            <Shield className="h-4 w-4" />
-            Enable Admin Access
-          </button>
-=======
         <div className="surface-card rounded-2xl p-7 space-y-4 border border-red-500/20 bg-[#0c101a] shadow-2xl">
           <div className="h-12 w-12 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 mx-auto flex items-center justify-center">
             <Lock className="h-6 w-6" />
@@ -398,7 +356,6 @@ export default function AdminPage() {
               Switch to Authorized Admin Wallet
             </button>
           </div>
->>>>>>> b1298a7303a22b207e5d3ce1c318eefdaf605332
         </div>
       </div>
     );
@@ -488,7 +445,6 @@ export default function AdminPage() {
                 const evidenceObj = sub.evidence as Record<string, unknown> | undefined;
                 const txHash = sub.tx_hash || (evidenceObj?.tx_hash as string);
                 const textProof = (evidenceObj?.text as string) || (evidenceObj?.url as string);
-
                 return (
                   <div
                     key={sub.id}
@@ -502,16 +458,15 @@ export default function AdminPage() {
                         <span className="text-ink-4">•</span>
                         <span className="text-ink-2 truncate font-mono text-[11px]">{sub.wallet}</span>
                       </div>
-
                       <div className="bg-page p-3 rounded-lg border border-ink/[0.06] space-y-1.5 text-xs font-sans">
                         {txHash && (
                           <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs">
-                            <span className="text-ink-4 font-sans">Botchain Tx:</span>
+                            <span className="text-ink-4 font-sans">Tx:</span>
                             <a
                               href={getExplorerUrl(txHash, "tx")}
                               target="_blank"
                               rel="noreferrer"
-                              className="underline hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 truncate font-mono"
+                              className="underline hover:text-emerald-300 flex items-center gap-1 truncate font-mono"
                             >
                               <span>{txHash}</span>
                               <ExternalLink className="h-3 w-3 shrink-0" />
@@ -520,7 +475,7 @@ export default function AdminPage() {
                         )}
                         {textProof && (
                           <div className="text-ink-2 break-words">
-                            <span className="text-ink-4 mr-1.5">Submitted Proof:</span>
+                            <span className="text-ink-4 mr-1.5">Proof:</span>
                             {textProof}
                           </div>
                         )}
@@ -529,17 +484,19 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
-
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => handleReview(sub.id, true)}
                         disabled={reviewingId === sub.id}
                         className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-4 py-2 text-xs transition cursor-pointer disabled:opacity-50"
                       >
-                        {reviewingId === sub.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                        {reviewingId === sub.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        )}
                         <span>APPROVE</span>
                       </button>
-
                       <button
                         onClick={() => handleReview(sub.id, false)}
                         disabled={reviewingId === sub.id}
@@ -584,11 +541,10 @@ export default function AdminPage() {
                     required
                     value={newTask.title}
                     onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    placeholder="e.g. Deploy Counter Contract on Botchain Testnet"
+                    placeholder="e.g. Deploy Counter Contract on Testnet"
                     className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
-
                 <div>
                   <label className="block text-[11px] text-ink-3 uppercase mb-1">Description &amp; Criteria</label>
                   <textarea
@@ -596,26 +552,28 @@ export default function AdminPage() {
                     required
                     value={newTask.description}
                     onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    placeholder="Instructions, contract parameters, or GitHub requirements for completion..."
+                    placeholder="Instructions, contract parameters, or GitHub requirements..."
                     className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Quest Cover Image URL</label>
+                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Cover Image URL</label>
                   <input
                     type="text"
                     value={newTask.image_url}
                     onChange={(e) => setNewTask({ ...newTask, image_url: e.target.value })}
-                    placeholder="https://… or /quests/my-cover.svg (blank = category default)"
+                    placeholder="https://… or /quests/cover.svg (blank = category default)"
                     className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                   {newTask.image_url.trim() && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={newTask.image_url.trim()} alt="Cover preview" className="mt-2 h-24 w-full rounded-lg object-cover border border-ink/[0.08]" />
+                    <img
+                      src={newTask.image_url.trim()}
+                      alt="Cover preview"
+                      className="mt-2 h-24 w-full rounded-lg object-cover border border-ink/[0.08]"
+                    />
                   )}
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] text-ink-3 uppercase mb-1">Points Value</label>
@@ -629,21 +587,21 @@ export default function AdminPage() {
                       className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                     />
                   </div>
-
                   <div>
                     <label className="block text-[11px] text-ink-3 uppercase mb-1">Verification Method</label>
                     <select
                       value={newTask.verification_type}
-                      onChange={(e) => setNewTask({ ...newTask, verification_type: e.target.value as Task["verification_type"] })}
+                      onChange={(e) =>
+                        setNewTask({ ...newTask, verification_type: e.target.value as Task["verification_type"] })
+                      }
                       className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none"
                     >
-                      <option value="onchain_tx">On-Chain Botchain Tx Hash</option>
-                      <option value="nft_ownership">NFT Pass Ownership</option>
-                      <option value="manual">Manual Evidence Link (GitHub / PR)</option>
+                      <option value="onchain_tx">On-Chain Tx Hash</option>
+                      <option value="nft_ownership">NFT Ownership</option>
+                      <option value="manual">Manual Evidence (GitHub / PR)</option>
                     </select>
                   </div>
                 </div>
-
                 <div className="flex justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                   <button
                     type="button"
@@ -664,18 +622,26 @@ export default function AdminPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tasks.map((task) => (
-              <div key={task.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-ink-3 uppercase font-mono">#{task.id} • {task.verification_type}</span>
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 num-mono">+{task.points} PTS</span>
+          {loadingTasks ? (
+            <div className="py-12 text-center text-ink-4">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tasks.map((task) => (
+                <div key={task.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-ink-3 uppercase font-mono">
+                      #{task.id} • {task.verification_type}
+                    </span>
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">+{task.points} PTS</span>
+                  </div>
+                  <h4 className="text-sm font-bold font-heading text-ink">{task.title}</h4>
+                  <p className="text-xs text-ink-3 line-clamp-2">{task.description}</p>
                 </div>
-                <h4 className="text-sm font-bold font-heading text-ink">{task.title}</h4>
-                <p className="text-xs text-ink-3 line-clamp-2">{task.description}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -696,7 +662,6 @@ export default function AdminPage() {
               />
               <Search className="h-3.5 w-3.5 text-ink-4 absolute left-3 top-2.5" />
             </div>
-
             <button
               onClick={() => loadUsers()}
               className="text-brand hover:text-brand-hi font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0"
@@ -709,7 +674,6 @@ export default function AdminPage() {
           {loadingUsers ? (
             <div className="py-12 text-center text-ink-4">
               <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
-              <span>Loading registered builders...</span>
             </div>
           ) : adminUsers.length === 0 ? (
             <div className="py-12 text-center text-ink-4">No matching user accounts found.</div>
@@ -723,7 +687,7 @@ export default function AdminPage() {
                     <th className="py-3 px-4">Level</th>
                     <th className="py-3 px-4">Points</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Moderation Actions</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/[0.04]">
@@ -736,7 +700,7 @@ export default function AdminPage() {
                         {u.username ? `@${u.username}` : "—"}
                       </td>
                       <td className="py-3 px-4 font-semibold text-ink-2">LVL {u.level}</td>
-                      <td className="py-3 px-4 font-bold text-emerald-700 dark:text-emerald-400 num-mono">
+                      <td className="py-3 px-4 font-bold text-emerald-700 dark:text-emerald-400">
                         {u.total_points.toLocaleString()} PTS
                       </td>
                       <td className="py-3 px-4">
@@ -754,7 +718,6 @@ export default function AdminPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => setAdjustPointsModal({ userId: u.id, wallet: u.wallet_address })}
-                            title="Adjust points manually"
                             className="text-brand hover:underline font-bold text-[11px] cursor-pointer"
                           >
                             Points +/-
@@ -762,7 +725,6 @@ export default function AdminPage() {
                           <span className="text-ink-5">|</span>
                           <button
                             onClick={() => handleToggleAdminRole(u)}
-                            title={u.is_admin ? "Revoke admin role" : "Grant admin role"}
                             className="text-purple-700 dark:text-purple-400 hover:underline font-bold text-[11px] cursor-pointer"
                           >
                             {u.is_admin ? "Revoke Admin" : "Make Admin"}
@@ -785,7 +747,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── TAB 4: MILESTONES REGISTRY ── */}
+      {/* ── TAB 4: MILESTONES ── */}
       {activeTab === "milestones" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3 text-xs">
@@ -813,7 +775,6 @@ export default function AdminPage() {
           {loadingMilestones ? (
             <div className="py-12 text-center text-ink-4">
               <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
-              <span>Fetching milestones...</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -827,7 +788,7 @@ export default function AdminPage() {
                       onClick={() => setAwardMilestoneModal(m)}
                       className="text-xs text-brand hover:underline font-bold cursor-pointer"
                     >
-                      Award to Wallet &rarr;
+                      Award to Wallet →
                     </button>
                   </div>
                   <h4 className="text-sm font-bold font-heading text-ink">{m.name}</h4>
@@ -839,7 +800,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── TAB 5: BADGE DELIVERIES / MINTS ── */}
+      {/* ── TAB 5: BADGE DELIVERIES ── */}
       {activeTab === "mints" && (
         <div className="surface-card rounded-2xl overflow-hidden text-xs border border-ink/[0.08]">
           <div className="p-4 border-b border-ink/[0.06] flex items-center justify-between">
@@ -856,10 +817,9 @@ export default function AdminPage() {
           {loadingMints ? (
             <div className="py-12 text-center text-ink-4">
               <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
-              <span>Checking badge queue...</span>
             </div>
           ) : mints.length === 0 ? (
-            <div className="py-12 text-center text-ink-4">No badge delivery jobs recorded in queue.</div>
+            <div className="py-12 text-center text-ink-4">No badge delivery jobs recorded.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -946,7 +906,6 @@ export default function AdminPage() {
           {loadingAudit ? (
             <div className="py-12 text-center text-ink-4">
               <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-brand" />
-              <span>Fetching audit entries...</span>
             </div>
           ) : auditLogs.length === 0 ? (
             <div className="py-12 text-center text-ink-4">No activity logs recorded.</div>
@@ -977,7 +936,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Adjust Points Modal */}
+      {/* ── ADJUST POINTS MODAL ── */}
       {adjustPointsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="w-full max-w-sm rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
@@ -987,13 +946,11 @@ export default function AdminPage() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-
             <form onSubmit={handleAdjustPointsSubmit} className="space-y-3 text-xs font-sans">
               <div>
                 <span className="text-[11px] text-ink-4 block mb-1">Target Wallet</span>
                 <span className="font-mono text-ink-2 block truncate">{adjustPointsModal.wallet}</span>
               </div>
-
               <div>
                 <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">Points Delta (+ or -)</label>
                 <input
@@ -1005,7 +962,6 @@ export default function AdminPage() {
                   className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
-
               <div>
                 <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">Audit Reason</label>
                 <input
@@ -1017,7 +973,6 @@ export default function AdminPage() {
                   className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
-
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                 <button type="button" onClick={() => setAdjustPointsModal(null)} className="px-3.5 py-1.5 text-ink-3 hover:text-ink">
                   Cancel
@@ -1027,8 +982,8 @@ export default function AdminPage() {
                   disabled={isAdjustingPoints}
                   className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition disabled:opacity-50"
                 >
-                  {isAdjustingPoints ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
-                  <span>Apply Delta</span>
+                  {isAdjustingPoints && <Loader2 className="h-3 w-3 animate-spin inline mr-1" />}
+                  Apply Delta
                 </button>
               </div>
             </form>
@@ -1036,7 +991,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Create Milestone Modal */}
+      {/* ── CREATE MILESTONE MODAL ── */}
       {showCreateMilestoneModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="w-full max-w-md rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
@@ -1046,14 +1001,15 @@ export default function AdminPage() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-
             <form onSubmit={handleCreateMilestone} className="space-y-3 text-xs font-sans">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] text-ink-3 uppercase mb-1">Type</label>
                   <select
                     value={newMilestone.milestone_type}
-                    onChange={(e) => setNewMilestone({ ...newMilestone, milestone_type: e.target.value as any })}
+                    onChange={(e) =>
+                      setNewMilestone({ ...newMilestone, milestone_type: e.target.value as "level" | "task" | "streak" | "community" })
+                    }
                     className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                   >
                     <option value="task">Task Milestone</option>
@@ -1074,7 +1030,6 @@ export default function AdminPage() {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-[11px] text-ink-3 uppercase mb-1">Milestone Name</label>
                 <input
@@ -1086,7 +1041,6 @@ export default function AdminPage() {
                   className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                 />
               </div>
-
               <div>
                 <label className="block text-[11px] text-ink-3 uppercase mb-1">Description</label>
                 <textarea
@@ -1097,7 +1051,6 @@ export default function AdminPage() {
                   className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none"
                 />
               </div>
-
               <div>
                 <label className="block text-[11px] text-ink-3 uppercase mb-1">Metadata URI (IPFS / Arweave)</label>
                 <input
@@ -1108,7 +1061,6 @@ export default function AdminPage() {
                   className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none font-mono"
                 />
               </div>
-
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                 <button type="button" onClick={() => setShowCreateMilestoneModal(false)} className="px-3.5 py-1.5 text-ink-3 hover:text-ink">
                   Cancel
@@ -1118,8 +1070,8 @@ export default function AdminPage() {
                   disabled={isCreatingMilestone}
                   className="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition disabled:opacity-50"
                 >
-                  {isCreatingMilestone ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
-                  <span>Create Milestone</span>
+                  {isCreatingMilestone && <Loader2 className="h-3 w-3 animate-spin inline mr-1" />}
+                  Create Milestone
                 </button>
               </div>
             </form>
@@ -1127,7 +1079,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Award Milestone Modal */}
+      {/* ── AWARD MILESTONE MODAL ── */}
       {awardMilestoneModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="w-full max-w-sm rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
@@ -1137,15 +1089,15 @@ export default function AdminPage() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-
             <form onSubmit={handleAwardMilestoneSubmit} className="space-y-3 text-xs font-sans">
               <div>
                 <span className="text-[11px] text-ink-4 block mb-1">Badge Token ID</span>
-                <span className="font-mono text-emerald-700 dark:text-emerald-400 block font-bold">#{awardMilestoneModal.token_id}</span>
+                <span className="font-mono text-emerald-700 dark:text-emerald-400 block font-bold">
+                  #{awardMilestoneModal.token_id}
+                </span>
               </div>
-
               <div>
-                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">Recipient Wallet Address</label>
+                <label className="block text-[11px] text-ink-3 uppercase font-medium mb-1">Recipient Wallet</label>
                 <input
                   type="text"
                   required
@@ -1155,7 +1107,6 @@ export default function AdminPage() {
                   className="w-full bg-page border border-ink/[0.1] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none font-mono"
                 />
               </div>
-
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                 <button type="button" onClick={() => setAwardMilestoneModal(null)} className="px-3.5 py-1.5 text-ink-3 hover:text-ink">
                   Cancel
@@ -1165,8 +1116,8 @@ export default function AdminPage() {
                   disabled={isAwardingMilestone}
                   className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold transition disabled:opacity-50"
                 >
-                  {isAwardingMilestone ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
-                  <span>Confirm Award</span>
+                  {isAwardingMilestone && <Loader2 className="h-3 w-3 animate-spin inline mr-1" />}
+                  Confirm Award
                 </button>
               </div>
             </form>
