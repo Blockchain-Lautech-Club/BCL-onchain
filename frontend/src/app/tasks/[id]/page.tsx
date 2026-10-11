@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -185,27 +187,27 @@ export default function QuestDetailPage() {
               heightClass="h-44"
             />
             <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] text-blue-300 font-semibold">Developer Guild</span>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-[10px] text-amber-300 font-semibold">Hackathon Major Event</span>
-              <span className="flex items-center gap-1 text-[10px] text-red-400 font-semibold">
-                <Clock className="w-3 h-3" /> {quest.timeLeft}
-              </span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold font-heading text-ink">{quest.title}</h1>
-              <p className="text-sm text-ink-4 mt-2">{quest.desc}</p>
-            </div>
-            {/* Progress */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-5">Checkpoint Synchronization</span>
-                <span className="text-accent-fg font-semibold">{completedCheckpoints} of {totalCheckpoints} Tasks Completed ({progressPct}%)</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] text-blue-300 font-semibold">Developer Guild</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-[10px] text-amber-300 font-semibold">Hackathon Major Event</span>
+                <span className="flex items-center gap-1 text-[10px] text-red-400 font-semibold">
+                  <Clock className="w-3 h-3" /> {quest.timeLeft}
+                </span>
               </div>
-              <div className="h-2 rounded-full bg-white/8 overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all" style={{ width: `${progressPct}%` }} />
+              <div>
+                <h1 className="text-2xl font-extrabold font-heading text-ink">{quest.title}</h1>
+                <p className="text-sm text-ink-4 mt-2">{quest.desc}</p>
               </div>
-            </div>
+              {/* Progress */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-ink-5">Checkpoint Synchronization</span>
+                  <span className="text-accent-fg font-semibold">{completedCheckpoints} of {totalCheckpoints} Tasks Completed ({progressPct}%)</span>
+                </div>
+                <div className="h-2 rounded-full bg-white/8 overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all" style={{ width: `${progressPct}%` }} />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -259,7 +261,9 @@ export default function QuestDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="flex items-center gap-1 text-xs font-semibold text-yellow-400"><Zap className="w-3 h-3" />+{cp.xp} XP</span>
+                      <span className="flex items-center gap-1 text-xs font-semibold text-yellow-400">
+                        <Zap className="w-3 h-3" />+{cp.xp} XP
+                      </span>
                       {effectiveStatus === "verified" && (
                         <span className="px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/25 text-[10px] text-green-400 font-semibold">Validated</span>
                       )}
@@ -345,7 +349,10 @@ export default function QuestDetailPage() {
               disabled={!allDone}
               className="btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {allDone ? <><Zap className="w-4 h-4" /> Submit for Final Audit</> : <><Lock className="w-4 h-4" /> Submit Quest for Final Audit</>}
+              {allDone
+                ? <><Zap className="w-4 h-4" /> Submit for Final Audit</>
+                : <><Lock className="w-4 h-4" /> Submit Quest for Final Audit</>
+              }
             </button>
           </div>
           {!allDone && (
