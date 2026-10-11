@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { api, NFTMintRecord, TaskSubmission, PointsLedgerItem, ProfileData } from "@/lib/api";
@@ -9,12 +9,67 @@ import {
   Loader2, CheckCircle2, Award, Flame, Edit3, ExternalLink,
   Shield, Save, X, Zap, Globe2, Copy, Trophy, ListChecks,
   History, Share2, Download, Rocket, Fingerprint, AtSign,
-  Link2, MapPin, Briefcase
+  Link2, MapPin, Briefcase, Upload, Camera, Trash2, Image as ImageIcon
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const AVATAR_OPTIONS = ["🧑‍💻","👾","🦊","🐉","🤖","⚡","🔮","🛸","🧬","🌐","🏴‍☠️","🎭","🦁","🐺","🦅","🧙","🥷","👨‍🚀","🦸","🎯"];
 const ROLE_OPTIONS   = ["builder","developer","designer","researcher","investor","community","founder","student","auditor","advocate"];
+
+const isImageUrl = (val?: string | null): boolean => {
+  if (!val) return false;
+  return val.startsWith("data:image/") || val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/");
+};
+
+const processImageFile = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Please upload a valid image file (PNG, JPG, WebP)"));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      reject(new Error("Image size should be smaller than 8MB"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image file"));
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Failed to parse image file"));
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas context is unavailable"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        resolve(dataUrl);
+      };
+      img.src = readerEvent.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function ProfilePage() {
   const { walletAddress, user, stats, connectWallet, refreshUserData } = useAuth();
@@ -34,14 +89,18 @@ export default function ProfilePage() {
   // Edit form fields
   const [usernameInput, setUsernameInput] = useState("");
   const [bioInput,      setBioInput]      = useState("");
-  const [avatarEmoji,   setAvatarEmoji]   = useState("🧑‍💻");
-  const [roleInput,     setRoleInput]     = useState("builder");
-  const [locationInput, setLocationInput] = useState("");
-  const [twitterInput,  setTwitterInput]  = useState("");
-  const [githubInput,   setGithubInput]   = useState("");
-  const [websiteInput,  setWebsiteInput]  = useState("");
-  const [skillsInput,   setSkillsInput]   = useState<string[]>([]);
-  const [skillDraft,    setSkillDraft]    = useState("");
+  const [avatarEmoji,      setAvatarEmoji]      = useState("🧑‍💻");
+  const [avatarTab,        setAvatarTab]        = useState<"emoji" | "upload">("emoji");
+  const [customUrlInput,   setCustomUrlInput]   = useState("");
+  const [isProcessingImg,  setIsProcessingImg]  = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [roleInput,        setRoleInput]        = useState("builder");
+  const [locationInput,    setLocationInput]    = useState("");
+  const [twitterInput,     setTwitterInput]     = useState("");
+  const [githubInput,      setGithubInput]      = useState("");
+  const [websiteInput,     setWebsiteInput]     = useState("");
+  const [skillsInput,      setSkillsInput]      = useState<string[]>([]);
+  const [skillDraft,       setSkillDraft]       = useState("");
 
   useEffect(() => {
     if (!walletAddress) { setLoading(false); return; }
@@ -67,7 +126,16 @@ export default function ProfilePage() {
         setProfile(profData);
         setUsernameInput(profData.username    || "");
         setBioInput(     profData.bio         || "");
-        setAvatarEmoji(  profData.avatar_url  || profData.avatar_emoji || "🧑‍💻");
+        const loadedAvatar = profData.avatar_url || profData.avatar_emoji || "🧑‍💻";
+        setAvatarEmoji(loadedAvatar);
+        if (isImageUrl(loadedAvatar)) {
+          setAvatarTab("upload");
+          if (loadedAvatar.startsWith("http")) {
+            setCustomUrlInput(loadedAvatar);
+          }
+        } else {
+          setAvatarTab("emoji");
+        }
         setRoleInput(    profData.role         || "builder");
         setLocationInput(profData.location    || "");
         setTwitterInput( profData.twitter     || "");
@@ -88,6 +156,42 @@ export default function ProfilePage() {
       setPointsHistory(ptsData || []);
     }).finally(() => setLoading(false));
   }, [walletAddress]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsProcessingImg(true);
+      const dataUrl = await processImageFile(file);
+      setAvatarEmoji(dataUrl);
+      setAvatarTab("upload");
+      toast.success("Profile photo uploaded!");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setIsProcessingImg(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    try {
+      setIsProcessingImg(true);
+      const dataUrl = await processImageFile(file);
+      setAvatarEmoji(dataUrl);
+      setAvatarTab("upload");
+      toast.success("Profile photo uploaded!");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to process image");
+    } finally {
+      setIsProcessingImg(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,7 +352,11 @@ export default function ProfilePage() {
             <div className="relative shrink-0">
               <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-2xl p-1 bg-gradient-to-tr from-accent via-purple-500 to-amber-500 shadow-[0_0_24px_rgba(0,245,160,0.2)]">
                 <div className="w-full h-full rounded-xl bg-surface flex items-center justify-center overflow-hidden">
-                  <span className="text-6xl">{displayAvatar}</span>
+                  {isImageUrl(displayAvatar) ? (
+                    <img src={displayAvatar} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-6xl select-none leading-none">{displayAvatar}</span>
+                  )}
                 </div>
               </div>
               <div className="absolute -bottom-3 -right-3 flex items-center justify-center w-10 h-10 rounded-full bg-surface border border-ink/10 text-accent-fg shadow-md">
@@ -628,19 +736,160 @@ export default function ProfilePage() {
 
             <form onSubmit={handleSaveProfile} className="space-y-6">
 
-              {/* Avatar Picker */}
-              <div>
-                <label className="block font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider mb-3">Avatar Emoji</label>
-                <div className="flex flex-wrap gap-2">
-                  {AVATAR_OPTIONS.map(e => (
-                    <button key={e} type="button" onClick={() => setAvatarEmoji(e)}
-                      className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
-                        avatarEmoji === e
-                          ? "bg-accent/20 border-2 border-accent/60 scale-110"
-                          : "bg-ink/5 border border-ink/10 hover:bg-ink/10"
+              {/* Avatar Picker & Uploader */}
+              <div className="rounded-2xl border border-ink/10 bg-ink/[0.02] p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div>
+                    <label className="block font-mono text-[11px] text-ink uppercase font-bold tracking-wider">
+                      Profile Avatar
+                    </label>
+                    <p className="text-[11px] text-ink-4 mt-0.5">Select a web3 icon or upload your custom profile photo</p>
+                  </div>
+
+                  {/* Mode switcher tabs */}
+                  <div className="inline-flex items-center gap-1 bg-surface p-1 rounded-xl border border-ink/10 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setAvatarTab("emoji")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wide transition-all ${
+                        avatarTab === "emoji"
+                          ? "bg-accent/20 text-accent-fg border border-accent/40 shadow-xs"
+                          : "text-ink-4 hover:text-ink"
                       }`}
-                    >{e}</button>
-                  ))}
+                    >
+                      Preset Icons
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvatarTab("upload")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wide transition-all ${
+                        avatarTab === "upload"
+                          ? "bg-accent/20 text-accent-fg border border-accent/40 shadow-xs"
+                          : "text-ink-4 hover:text-ink"
+                      }`}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Upload Photo
+                    </button>
+                  </div>
+                </div>
+
+                {/* Avatar Preview + Controls */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                  {/* Live Avatar Preview circle */}
+                  <div className="relative shrink-0">
+                    <div className="w-20 h-20 rounded-2xl p-1 bg-gradient-to-tr from-accent via-purple-500 to-amber-500 shadow-md">
+                      <div className="w-full h-full rounded-xl bg-surface flex items-center justify-center overflow-hidden">
+                        {isImageUrl(avatarEmoji) ? (
+                          <img src={avatarEmoji} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-4xl select-none leading-none">{avatarEmoji}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 w-full min-w-0">
+                    {avatarTab === "emoji" ? (
+                      <div>
+                        <div className="flex flex-wrap gap-2">
+                          {AVATAR_OPTIONS.map(e => (
+                            <button
+                              key={e}
+                              type="button"
+                              onClick={() => setAvatarEmoji(e)}
+                              className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                                avatarEmoji === e
+                                  ? "bg-accent/20 border-2 border-accent/60 scale-110 shadow-sm"
+                                  : "bg-surface border border-ink/10 hover:bg-ink/10"
+                              }`}
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                          className="hidden"
+                        />
+
+                        {/* Drag and Drop Zone / Upload Button */}
+                        <div
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={handleDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full border-2 border-dashed border-ink/15 hover:border-accent/60 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer bg-surface/50 hover:bg-accent/[0.03] transition-all group"
+                        >
+                          {isProcessingImg ? (
+                            <div className="flex items-center gap-2 text-ink py-2">
+                              <Loader2 className="w-5 h-5 animate-spin text-accent-fg" />
+                              <span className="text-xs font-mono">Optimizing image...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="w-9 h-9 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent-fg group-hover:scale-110 transition-transform">
+                                <Camera className="w-4 h-4" />
+                              </div>
+                              <div className="text-center">
+                                <span className="text-xs font-bold text-ink hover:underline">
+                                  Click to upload
+                                </span>
+                                <span className="text-xs text-ink-4"> or drag and drop image here</span>
+                              </div>
+                              <span className="text-[10px] font-mono text-ink-4">PNG, JPG, or WEBP (up to 8MB)</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* URL fallback & Reset */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                          <input
+                            type="url"
+                            placeholder="Or paste image URL (https://...)"
+                            value={customUrlInput}
+                            onChange={(e) => setCustomUrlInput(e.target.value)}
+                            className="flex-1 px-3 py-2 text-xs rounded-xl bg-surface border border-ink/10 focus:border-accent focus:outline-none text-ink font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const trimmed = customUrlInput.trim();
+                              if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                                setAvatarEmoji(trimmed);
+                                toast.success("Photo URL applied!");
+                              } else {
+                                toast.error("Please enter a valid https:// image link");
+                              }
+                            }}
+                            className="px-3 py-2 rounded-xl bg-accent/15 text-accent-fg hover:bg-accent/25 border border-accent/30 text-xs font-mono font-bold transition-all shrink-0"
+                          >
+                            Apply Link
+                          </button>
+                          {isImageUrl(avatarEmoji) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAvatarEmoji("🧑‍💻");
+                                setAvatarTab("emoji");
+                                setCustomUrlInput("");
+                                toast("Reset to default icon", { icon: "ℹ️" });
+                              }}
+                              className="flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-mono text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

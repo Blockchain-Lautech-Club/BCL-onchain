@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from web3 import AsyncWeb3
 from web3.contract import AsyncContract
 

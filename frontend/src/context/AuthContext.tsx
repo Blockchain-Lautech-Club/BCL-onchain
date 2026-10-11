@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { api, User, UserStats, ProfileData, DomainRecord } from "@/lib/api";
+import { getOnchainUserDomains } from "@/lib/contracts";
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
 import { useDisconnect, useSignMessage } from "wagmi";
 import toast from "react-hot-toast";
@@ -89,6 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         domains = await api.getUserDomains(activeAddress).catch(() => []);
       }
 
+      if (!domains || domains.length === 0) {
+        domains = await getOnchainUserDomains(activeAddress).catch(() => []);
+      }
+
       const activeDomain = domains.find(d => d.status === "active")?.normalized_name;
 
       const envAdminWallets = (process.env.NEXT_PUBLIC_ADMIN_WALLETS || "0x825aab493a07fe7dbe29c4de1431deba84bf14eb")
@@ -105,17 +110,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? {
             id:             prof.id,
             wallet_address: prof.wallet_address || activeAddress,
-            username:       prof.username ?? undefined,
+            username:       activeDomain || prof.username || `${activeAddress.slice(0, 6)}…${activeAddress.slice(-4)}`,
             avatar_url:     prof.avatar_url || prof.avatar_emoji || "🧑‍💻",
             level:          prof.level,
             total_points:   prof.total_points,
             status:         "active",
             is_admin:       isUserAdmin,
-            bcl_domain:     activeDomain,
+            bcl_domain:     activeDomain || (prof as unknown as { bcl_domain?: string })?.bcl_domain,
           }
         : {
             id:             me?.id || 0,
             wallet_address: activeAddress,
+            username:       activeDomain || `${activeAddress.slice(0, 6)}…${activeAddress.slice(-4)}`,
             level:          0,
             total_points:   0,
             status:         "active",

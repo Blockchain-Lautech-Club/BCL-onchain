@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """DB table for name registration/transfer jobs the relayer processes."""
 from datetime import datetime
 

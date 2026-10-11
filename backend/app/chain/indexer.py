@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Event indexer + reconciler for BCLRewards (ERC-1155) and BCLRegistry.
 
 Only blocks at least REQUIRED_CONFIRMATIONS deep are indexed.

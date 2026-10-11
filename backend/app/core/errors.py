@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 class AppError(Exception):
     """Domain error rendered as {"error": {"code", "message"}} by the exception handler."""
 

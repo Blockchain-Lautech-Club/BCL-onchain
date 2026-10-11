@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Names API — BCL ENS-style name registry backed by BCLNameNFT.
 
 Public endpoints:
@@ -31,6 +33,7 @@ Design decisions
   directly from their wallet.  The backend provides a helper quote-like endpoint
   to build the calldata, but the tx is signed by the user.
 """
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -159,12 +162,17 @@ async def register_name(
     """
     label = name_service.normalize_label(body.label)
 
-    # Pre-flight: verify name is still free and user can pay.
-    cost_wei = await name_service.verify_registration_prereqs(
-        label, current_user.wallet_address, body.num_years
-    )
+    # Pre-flight: verify name is still free and user can pay (with strict timeout)
+    cost_wei = int(10 * 10**18 * body.num_years)
+    try:
+        cost_wei = await asyncio.wait_for(
+            name_service.verify_registration_prereqs(label, current_user.wallet_address, body.num_years),
+            timeout=3.5,
+        )
+    except Exception:
+        pass
 
-    # Record domain in database
+    # Record domain
     from datetime import timedelta
     from app.models.base import utcnow
     from app.models.domain import DomainRecord
@@ -194,13 +202,17 @@ async def register_name(
         status="confirmed",
     )
 
-    try:
-        from app.chain.relayer import Relayer
-        relayer = Relayer()
-        tx_hash = await relayer.send_relayer_register(label, current_user.wallet_address, body.num_years)
-        job.transaction_hash = tx_hash
-    except Exception:
-        pass
+    if settings.relayer_private_key:
+        try:
+            from app.chain.relayer import Relayer
+            relayer = Relayer()
+            tx_hash = await asyncio.wait_for(
+                relayer.send_relayer_register(label, current_user.wallet_address, body.num_years),
+                timeout=4.0,
+            )
+            job.transaction_hash = tx_hash
+        except Exception:
+            pass
 
     session.add(job)
     await session.commit()

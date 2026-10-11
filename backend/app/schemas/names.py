@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Pydantic schemas for the /names API."""
 from datetime import datetime
 from typing import Annotated

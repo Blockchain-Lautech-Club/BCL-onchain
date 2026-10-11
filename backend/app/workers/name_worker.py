@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Name registration worker.
 
 Picks up queued NameJob rows and submits them to the chain via the relayer.

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from app.models.base import Base
 from app.models.chain import AuditLog, ChainEvent, IndexerState
 from app.models.domain import DomainRecord

@@ -186,8 +186,16 @@ export function NavbarClient() {
                   onClick={() => setProfileOpen(prev => !prev)}
                   className="flex items-center gap-2 bg-ink/[0.04] border border-ink/[0.06] pl-1 pr-2.5 py-1 rounded-full hover:bg-ink/[0.08] transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center">
-                    <User className="w-4 h-4 text-surface" />
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-ink/10 shrink-0">
+                    {user?.avatar_url ? (
+                      user.avatar_url.startsWith("http") || user.avatar_url.startsWith("/") || user.avatar_url.startsWith("data:") ? (
+                        <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-base select-none leading-none">{user.avatar_url}</span>
+                      )
+                    ) : (
+                      <User className="w-4 h-4 text-surface" />
+                    )}
                   </div>
                   <span className="hidden sm:block text-[13px] font-medium text-ink">
                     {displayName}
@@ -203,8 +211,16 @@ export function NavbarClient() {
                     {/* Header */}
                     <div className="px-4 py-4 border-b border-ink/5 bg-ink/[0.02]">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center shrink-0">
-                          <User className="w-5 h-5 text-surface" />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center shrink-0 overflow-hidden border border-ink/10">
+                          {user?.avatar_url ? (
+                            user.avatar_url.startsWith("http") || user.avatar_url.startsWith("/") || user.avatar_url.startsWith("data:") ? (
+                              <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-lg select-none leading-none">{user.avatar_url}</span>
+                            )
+                          ) : (
+                            <User className="w-5 h-5 text-surface" />
+                          )}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">

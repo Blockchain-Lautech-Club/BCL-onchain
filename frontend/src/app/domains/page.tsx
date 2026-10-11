@@ -3,9 +3,9 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, DomainRecord } from "@/lib/api";
-import { checkOnchainNameAvailability, getOnchainBclBalance, CONTRACT_ADDRESSES } from "@/lib/contracts";
+import { checkOnchainNameAvailability, getOnchainBclBalance, getOnchainUserDomains, CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { useAuth } from "@/context/AuthContext";
-import { useWriteContract } from "wagmi";
+import { useWriteContract, useAccount, useSwitchChain } from "wagmi";
 import { parseAbi, maxUint256 } from "viem";
 import toast from "react-hot-toast";
 import {
@@ -29,7 +29,7 @@ function DomainsContent() {
   const searchParams = useSearchParams();
   const initialName = searchParams.get("name") || "";
 
-  const { walletAddress, connectWallet, user } = useAuth();
+  const { walletAddress, connectWallet, user, refreshUserData } = useAuth();
   const [searchQuery, setSearchQuery] = useState(initialName);
   const [years, setYears] = useState(1);
   const [isSearching, setIsSearching] = useState(false);
@@ -52,6 +52,8 @@ function DomainsContent() {
 
   // Registration flow state
   const { writeContractAsync } = useWriteContract();
+  const { address: wagmiAddress, isConnected: isWagmiConnected, chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const [isApproving, setIsApproving] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [regResult, setRegResult] = useState<{ success: boolean; message: string; txHash?: string } | null>(null);
@@ -90,7 +92,10 @@ function DomainsContent() {
       }
       if (bal) setBclBalance(bal);
 
-      const names = await api.getMyNames().catch(() => []);
+      let names = await api.getMyNames().catch(() => []);
+      if (!names || names.length === 0) {
+        names = await getOnchainUserDomains(address).catch(() => []);
+      }
       setMyDomains(names || []);
     } catch {
       // ignore
@@ -111,9 +116,9 @@ function DomainsContent() {
 
       let res;
       try {
-        res = await api.checkNameAvailability(clean);
-      } catch {
         res = await checkOnchainNameAvailability(clean);
+      } catch {
+        res = await api.checkNameAvailability(clean);
       }
       setSearchResult(res);
     } catch (err: unknown) {
@@ -135,45 +140,107 @@ function DomainsContent() {
       setIsApproving(true);
       toast("Please confirm BCL token approval in your wallet...", { icon: "✍️" });
 
-      try {
-        await writeContractAsync({
-          address: CONTRACT_ADDRESSES.BCL_TOKEN,
-          abi: parseAbi([
-            "function approve(address spender, uint256 amount) external returns (bool)",
-          ]),
-          functionName: "approve",
-          args: [CONTRACT_ADDRESSES.NAME_NFT, maxUint256],
-        });
-      } catch (wagmiErr) {
-        const eth = (
-          window as unknown as {
-            ethereum?: { request: (args: { method: string; params: unknown[] }) => Promise<string> };
+      let approved = false;
+
+      // 1. Try Wagmi writeContractAsync if Wagmi is connected
+      if (isWagmiConnected && writeContractAsync) {
+        try {
+          if (chainId !== 968 && switchChainAsync) {
+            await switchChainAsync({ chainId: 968 }).catch(() => {});
           }
-        ).ethereum;
-        if (eth) {
-          const spenderPadded = CONTRACT_ADDRESSES.NAME_NFT.toLowerCase().replace("0x", "").padStart(64, "0");
-          const amountPadded = "f".repeat(64);
-          const data = `0x095ea7b3${spenderPadded}${amountPadded}`;
-          await eth.request({
-            method: "eth_sendTransaction",
-            params: [{
-              from: walletAddress,
-              to: CONTRACT_ADDRESSES.BCL_TOKEN,
-              data,
-            }],
+          await writeContractAsync({
+            address: CONTRACT_ADDRESSES.BCL_TOKEN,
+            abi: parseAbi([
+              "function approve(address spender, uint256 amount) external returns (bool)",
+            ]),
+            functionName: "approve",
+            args: [CONTRACT_ADDRESSES.NAME_NFT, maxUint256],
+            chainId: 968,
           });
-        } else {
-          throw wagmiErr;
+          approved = true;
+        } catch (wagmiErr) {
+          console.warn("Wagmi approve failed, trying direct provider fallback:", wagmiErr);
         }
       }
 
-      toast.success("BCL token approved! You can now confirm & claim your domain.");
-      await loadWalletData(walletAddress);
+      // 2. Direct Provider fallback (resolves extension session & eliminates "Wallet is not initialized" -32000)
+      if (!approved) {
+        let provider: any = (typeof window !== "undefined" && (window as any).ethereum) || null;
+        if (provider?.providers?.length) {
+          provider = provider.providers.find((p: any) => p.isMetaMask) || provider.providers[0];
+        }
+
+        if (!provider) {
+          await connectWallet();
+          throw new Error("Please connect your wallet to approve BCL tokens.");
+        }
+
+        // CRITICAL: Request accounts to initialize extension session and prevent -32000 "Wallet is not initialized"
+        const accounts: string[] = await provider.request({ method: "eth_requestAccounts" });
+        const activeSender = accounts?.[0] || walletAddress;
+
+        // Ensure wallet is switched to Botchain Testnet (Chain ID 968 / 0x3c8)
+        try {
+          await provider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x3c8" }],
+          });
+        } catch (switchErr: any) {
+          if (switchErr?.code === 4902 || String(switchErr?.message || switchErr).includes("4902")) {
+            await provider.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: "0x3c8",
+                chainName: "Botchain Testnet",
+                rpcUrls: ["https://rpc.bohr.life"],
+                nativeCurrency: { name: "BOT", symbol: "BOT", decimals: 18 },
+                blockExplorerUrls: ["https://scan.bohr.life"],
+              }],
+            });
+          }
+        }
+
+        const spenderPadded = CONTRACT_ADDRESSES.NAME_NFT.toLowerCase().replace("0x", "").padStart(64, "0");
+        const amountPadded = "f".repeat(64);
+        const data = `0x095ea7b3${spenderPadded}${amountPadded}`;
+
+        await provider.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from: activeSender,
+            to: CONTRACT_ADDRESSES.BCL_TOKEN,
+            data,
+          }],
+        });
+        approved = true;
+      }
+
+      toast.success("BCL token approval confirmed! Updating allowance...");
+
+      // Poll allowance for a few seconds so the UI automatically updates to Step 2
+      let attempts = 0;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        if (walletAddress) {
+          const fresh = await getOnchainBclBalance(walletAddress).catch(() => null);
+          if (fresh && BigInt(fresh.allowance_wei) > BigInt(0)) {
+            setBclBalance(fresh);
+            clearInterval(pollInterval);
+            toast.success("Ready to claim! Click Confirm & Claim below.");
+            return;
+          }
+        }
+        if (attempts >= 6) {
+          clearInterval(pollInterval);
+          if (walletAddress) loadWalletData(walletAddress);
+        }
+      }, 2500);
+
     } catch (err: unknown) {
       console.error("Approval error:", err);
-      const msg = err instanceof Error ? err.message : "Approval failed";
-      if (!msg.includes("User rejected") && !msg.includes("rejected")) {
-        toast.error(msg);
+      const rawMsg = (err as { message?: string })?.message || (err instanceof Error ? err.message : String(err));
+      if (!rawMsg.includes("User rejected") && !rawMsg.includes("rejected")) {
+        toast.error(rawMsg.length > 80 ? rawMsg.slice(0, 80) + "…" : rawMsg);
       }
     } finally {
       setIsApproving(false);
@@ -190,51 +257,82 @@ function DomainsContent() {
       return;
     }
 
-    if (!user) {
-      toast("Please sign the message in your wallet to authenticate", { icon: "✍️" });
-      try {
-        await connectWallet();
-      } catch {
-        return;
-      }
-      return;
-    }
-
-    if (!user.username) {
-      toast("Please create your profile first before claiming a domain", { icon: "👤" });
-      if (typeof window !== "undefined") {
-        window.location.href = "/profile?create=true";
-      }
-      return;
-    }
-
     try {
       setIsRegistering(true);
       setRegResult(null);
 
-      const res = await api.registerName(clean, years);
-      const txHash = res.tx_hash || res.transaction_hash;
+      let txHash = "";
+
+      // 1. Send registration transaction onchain via user's connected wallet
+      try {
+        toast("Please confirm registration in your wallet...", { icon: "✍️" });
+        if (isWagmiConnected && writeContractAsync) {
+          if (chainId !== 968 && switchChainAsync) {
+            await switchChainAsync({ chainId: 968 }).catch(() => {});
+          }
+          const hash = await writeContractAsync({
+            address: CONTRACT_ADDRESSES.NAME_NFT,
+            abi: parseAbi([
+              "function register(string calldata label, uint256 numYears) external",
+            ]),
+            functionName: "register",
+            args: [clean, BigInt(years)],
+            chainId: 968,
+          });
+          txHash = hash;
+        } else {
+          let provider: any = (typeof window !== "undefined" && (window as any).ethereum) || null;
+          if (provider?.providers?.length) {
+            provider = provider.providers.find((p: any) => p.isMetaMask) || provider.providers[0];
+          }
+          if (provider) {
+            await provider.request({ method: "eth_requestAccounts" });
+            try {
+              await provider.request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: "0x3c8" }],
+              });
+            } catch {}
+          }
+        }
+      } catch (onchainErr: unknown) {
+        console.warn("Direct wallet registration call fallback to relayer:", onchainErr);
+      }
+
+      // 2. Call backend registrar endpoint to save active domain record & sync
+      const res = await api.registerName(clean, years).catch((backendErr) => {
+        console.warn("Backend API register response:", backendErr);
+        if (txHash) {
+          return { status: "confirmed", tx_hash: txHash, transaction_hash: txHash, message: `Successfully registered ${searchResult.name} onchain!` };
+        }
+        throw backendErr;
+      });
+
+      const finalTxHash = txHash || res?.tx_hash || res?.transaction_hash;
       setRegResult({
         success: true,
-        message: res.message || `Successfully registered ${searchResult.name}!`,
-        txHash,
+        message: res?.message || `Successfully registered ${searchResult.name}!`,
+        txHash: finalTxHash,
       });
-      toast.success(`${searchResult.name} registered!`);
+      toast.success(`${searchResult.name} registered successfully!`);
 
       if (walletAddress) {
-        loadWalletData(walletAddress);
+        await loadWalletData(walletAddress);
+        await refreshUserData();
+        await handleSearch(clean);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Registration failed";
+      console.error("Registration error:", err);
+      const rawMsg = (err as { message?: string })?.message || (err instanceof Error ? err.message : String(err));
       setRegResult({
         success: false,
-        message: msg,
+        message: rawMsg,
       });
-      if (msg.includes("approve") || msg.includes("allowance")) {
+      if (rawMsg.includes("approve") || rawMsg.includes("allowance")) {
         toast.error("Please approve BCL tokens in your wallet first (Step 1)");
         if (walletAddress) loadWalletData(walletAddress);
       } else {
-        toast.error(msg);
+        toast.error(rawMsg.length > 80 ? rawMsg.slice(0, 80) + "…" : rawMsg);
       }
     } finally {
       setIsRegistering(false);
@@ -382,6 +480,11 @@ function DomainsContent() {
                     <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-xs">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       AVAILABLE
+                    </span>
+                  ) : myDomains.some(d => d.label.toLowerCase() === searchResult.name.replace(".bcl", "").toLowerCase()) ? (
+                    <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      CLAIMED (OWNED BY YOU)
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-red-700 dark:text-red-400 font-semibold text-xs">

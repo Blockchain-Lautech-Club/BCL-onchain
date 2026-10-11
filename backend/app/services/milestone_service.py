@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Milestone service — create, look up, and queue mints for each milestone type.
 
 This is the single place that translates a "something happened to this user"

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """python -m app.workers.indexer_worker"""
 import asyncio
 import logging

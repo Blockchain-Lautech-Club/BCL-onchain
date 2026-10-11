@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Hand-written ABIs — keep in sync with contracts/src/*.sol."""
 
 

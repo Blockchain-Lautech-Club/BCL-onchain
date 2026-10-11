@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Milestone — one row per distinct achievement NFT type.
 
 Each milestone maps to exactly one ERC-1155 token ID in BCLRewards.sol.

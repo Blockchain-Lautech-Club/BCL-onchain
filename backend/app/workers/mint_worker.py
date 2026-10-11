@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """NFT mint worker — processes queued mint jobs for the ERC-1155 BCLRewards contract.
 
 Job lifecycle

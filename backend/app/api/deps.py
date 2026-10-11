@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import jwt
 from fastapi import Depends, Request
 from sqlalchemy import select

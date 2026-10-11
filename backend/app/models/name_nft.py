@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """DB projection of BCLNameNFT on-chain state.
 
 Written by the indexer; read by the names API.

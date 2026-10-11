@@ -16,7 +16,7 @@ function renderAvatar(
   fallbackGradient = "from-purple-600 to-blue-700"
 ) {
   if (avatar) {
-    if (avatar.startsWith("http") || avatar.startsWith("/")) {
+    if (avatar.startsWith("http") || avatar.startsWith("/") || avatar.startsWith("data:")) {
       return (
         <img
           src={avatar}
@@ -38,6 +38,17 @@ function renderAvatar(
   );
 }
 
+function getDisplayName(
+  entry: LeaderboardEntry,
+  isMe?: boolean,
+  currentUserDomain?: string | null
+) {
+  if (isMe && currentUserDomain) return currentUserDomain;
+  if (entry.bcl_domain) return entry.bcl_domain;
+  if (entry.username && entry.username.endsWith(".bcl")) return entry.username;
+  return entry.username || `${entry.wallet_address.slice(0, 6)}…${entry.wallet_address.slice(-4)}`;
+}
+
 export default function LeaderboardPage() {
   const { walletAddress, user, stats } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -52,12 +63,15 @@ export default function LeaderboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const myDomain = user?.bcl_domain || (user?.username?.endsWith(".bcl") ? user.username : null);
+
   // Filtering
-  const filtered = entries.filter((e) => 
-    searchQ === "" || 
-    e.username?.toLowerCase().includes(searchQ.toLowerCase()) || 
-    e.wallet_address.toLowerCase().includes(searchQ.toLowerCase())
-  );
+  const filtered = entries.filter((e) => {
+    const isMe = walletAddress ? e.wallet_address.toLowerCase() === walletAddress.toLowerCase() : false;
+    const dName = getDisplayName(e, isMe, myDomain).toLowerCase();
+    const q = searchQ.toLowerCase();
+    return searchQ === "" || dName.includes(q) || e.wallet_address.toLowerCase().includes(q);
+  });
 
   const top3 = filtered.slice(0, 3);
   const rest = filtered.slice(3);
@@ -66,24 +80,37 @@ export default function LeaderboardPage() {
   const silver = top3[1];
   const bronze = top3[2];
 
+  const goldIsMe = Boolean(walletAddress && gold?.wallet_address.toLowerCase() === walletAddress.toLowerCase());
+  const goldDisplayName = gold ? getDisplayName(gold, goldIsMe, myDomain) : "";
+
+  const silverIsMe = Boolean(walletAddress && silver?.wallet_address.toLowerCase() === walletAddress.toLowerCase());
+  const silverDisplayName = silver ? getDisplayName(silver, silverIsMe, myDomain) : "";
+
+  const bronzeIsMe = Boolean(walletAddress && bronze?.wallet_address.toLowerCase() === walletAddress.toLowerCase());
+  const bronzeDisplayName = bronze ? getDisplayName(bronze, bronzeIsMe, myDomain) : "";
+
   const userPts = Math.max(stats?.total_points ?? 0, user?.total_points ?? 0);
   const userLvl = Math.max(stats?.level ?? 0, user?.level ?? 0, 1);
   const myEntry = walletAddress
     ? (() => {
         const found = entries.find((e) => e.wallet_address.toLowerCase() === walletAddress.toLowerCase());
         if (found) {
+          const dom = myDomain || found.bcl_domain;
           return {
             ...found,
+            bcl_domain: dom,
+            username: dom || found.username || user?.username,
             avatar_url: found.avatar_url || user?.avatar_url,
             total_points: Math.max(found.total_points, userPts),
             level: Math.max(found.level, userLvl),
           };
         }
-        if (userPts > 0 || user?.username) {
+        if (userPts > 0 || user?.username || myDomain) {
           return {
             rank: entries.length + 1,
             wallet_address: walletAddress,
-            username: user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`,
+            bcl_domain: myDomain,
+            username: myDomain || user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`,
             avatar_url: user?.avatar_url,
             level: userLvl,
             total_points: userPts,
@@ -147,8 +174,11 @@ export default function LeaderboardPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg font-heading font-bold text-ink">{myEntry.username || `${myEntry.wallet_address.slice(0, 6)}…${myEntry.wallet_address.slice(-4)}`}</span>
+                    <span className="text-lg font-heading font-bold text-ink">{myDomain || myEntry.bcl_domain || myEntry.username || `${myEntry.wallet_address.slice(0, 6)}…${myEntry.wallet_address.slice(-4)}`}</span>
                     <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                    {(myDomain || myEntry.bcl_domain || myEntry.username?.endsWith(".bcl")) && (
+                      <span className="px-2 py-0.5 rounded-full bg-accent/15 text-accent-fg font-mono text-[10px] font-bold border border-accent/25">.bcl</span>
+                    )}
                     <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent-fg font-mono text-[10px] font-bold">You</span>
                   </div>
                   <p className="text-xs text-ink-4">Level {myEntry.level} Pioneer • Ecosystem Contributor</p>
@@ -208,8 +238,11 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="mt-3">
                   <div className="flex items-center justify-center gap-1.5">
-                    <span className="text-lg font-heading text-ink font-bold">{silver.username || `${silver.wallet_address.slice(0, 6)}…`}</span>
+                    <span className="text-lg font-heading text-ink font-bold">{silverDisplayName}</span>
                     <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                    {silverDisplayName.endsWith(".bcl") && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25">.bcl</span>
+                    )}
                   </div>
                 </div>
                 <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
@@ -244,8 +277,11 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="mt-4">
                   <div className="flex items-center justify-center gap-1.5">
-                    <span className="text-2xl font-heading text-ink font-bold tracking-tight">{gold.username || `${gold.wallet_address.slice(0, 6)}…`}</span>
+                    <span className="text-2xl font-heading text-ink font-bold tracking-tight">{goldDisplayName}</span>
                     <CheckCircle2 className="w-5 h-5 text-amber-500" />
+                    {goldDisplayName.endsWith(".bcl") && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">.bcl</span>
+                    )}
                   </div>
                   <span className="inline-block mt-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase tracking-wider">Apex Contributor</span>
                 </div>
@@ -279,8 +315,11 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="mt-3">
                   <div className="flex items-center justify-center gap-1.5">
-                    <span className="text-lg font-heading text-ink font-bold">{bronze.username || `${bronze.wallet_address.slice(0, 6)}…`}</span>
+                    <span className="text-lg font-heading text-ink font-bold">{bronzeDisplayName}</span>
                     <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                    {bronzeDisplayName.endsWith(".bcl") && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25">.bcl</span>
+                    )}
                   </div>
                 </div>
                 <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
@@ -359,7 +398,8 @@ export default function LeaderboardPage() {
               <div className="py-12 text-center text-sm text-ink-5">No entries found matching your criteria.</div>
             )}
             {rest.map((entry) => {
-              const isMe = walletAddress && entry.wallet_address.toLowerCase() === walletAddress.toLowerCase();
+              const isMe = Boolean(walletAddress && entry.wallet_address.toLowerCase() === walletAddress.toLowerCase());
+              const displayName = getDisplayName(entry, isMe, myDomain);
               return (
                 <div key={entry.rank} className={`grid grid-cols-1 lg:grid-cols-12 gap-4 items-center px-6 lg:px-8 py-5 hover:bg-ink/[0.02] transition-colors relative ${isMe ? "bg-accent/[0.03]" : ""}`}>
                   {isMe && <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-fg" />}
@@ -373,14 +413,19 @@ export default function LeaderboardPage() {
                   <div className="lg:col-span-5 flex items-center gap-4">
                     {renderAvatar(
                       entry.avatar_url || (isMe ? user?.avatar_url : null),
-                      entry.username || entry.wallet_address,
+                      displayName,
                       "w-10 h-10 text-lg",
                       "from-slate-600 to-slate-800"
                     )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-base font-heading font-bold text-ink truncate">{entry.username || `${entry.wallet_address.slice(0, 6)}…`}</span>
+                        <span className="text-base font-heading font-bold text-ink truncate">{displayName}</span>
                         <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg shrink-0" />
+                        {displayName.endsWith(".bcl") && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25">
+                            .bcl
+                          </span>
+                        )}
                         {isMe && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-accent/10 text-accent-fg ml-1">You</span>}
                       </div>
                       <span className="font-mono text-[10px] text-ink-4 block truncate">{entry.wallet_address.slice(0, 10)}...{entry.wallet_address.slice(-4)}</span>

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Level calculation.  Actual mint queuing is delegated to milestone_service."""
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

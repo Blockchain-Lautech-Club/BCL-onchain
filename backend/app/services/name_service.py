@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Business logic for BCL Name NFT operations.
 
 Flow for a user-initiated registration:

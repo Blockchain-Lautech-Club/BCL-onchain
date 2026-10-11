@@ -71,11 +71,11 @@ export interface DomainRecord {
   id: number;
   label: string;
   normalized_name: string;
-  token_id: string;
+  token_id?: string;
   owner_wallet: string;
   expires_at: string;
-  resolver_data: string;
-  cost_bcl_wei: string;
+  resolver_data?: string;
+  cost_bcl_wei?: string;
   registration_tx?: string;
   status: string;
 }

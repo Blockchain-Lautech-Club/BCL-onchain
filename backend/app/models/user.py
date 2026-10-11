@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
@@ -14,7 +16,7 @@ class User(Base):
     wallet_address: Mapped[str] = mapped_column(String(42), unique=True, index=True)  # lowercase 0x...
     username: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
-    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default=UserStatus.ACTIVE)
     # Projections of the append-only ledger (updated only under a row lock in points_service).
     total_points: Mapped[int] = mapped_column(BigInteger, default=0, index=True)

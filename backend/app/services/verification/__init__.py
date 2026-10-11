@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from app.core.errors import AppError
 from app.models.enums import VerificationType
 from app.services.verification.base import VerificationResult, Verifier

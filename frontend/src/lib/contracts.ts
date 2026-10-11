@@ -114,3 +114,64 @@ export async function getOnchainBclBalance(wallet: string): Promise<{
     };
   }
 }
+
+export async function getOnchainUserDomains(wallet: string): Promise<Array<{
+  id: number;
+  normalized_name: string;
+  label: string;
+  owner_wallet: string;
+  status: string;
+  expires_at: string;
+  resolver_data?: string;
+}>> {
+  try {
+    const bal = await botchainPublicClient.readContract({
+      address: CONTRACT_ADDRESSES.NAME_NFT,
+      abi: parseAbi(["function balanceOf(address) view returns (uint256)"]),
+      functionName: "balanceOf",
+      args: [wallet as `0x${string}`],
+    });
+
+    const domains = [];
+    for (let i = BigInt(0); i < bal; i += BigInt(1)) {
+      try {
+        const tid = await botchainPublicClient.readContract({
+          address: CONTRACT_ADDRESSES.NAME_NFT,
+          abi: parseAbi(["function tokenOfOwnerByIndex(address, uint256) view returns (uint256)"]),
+          functionName: "tokenOfOwnerByIndex",
+          args: [wallet as `0x${string}`, i],
+        });
+        const label = await botchainPublicClient.readContract({
+          address: CONTRACT_ADDRESSES.NAME_NFT,
+          abi: parseAbi(["function labelOf(uint256) view returns (string)"]),
+          functionName: "labelOf",
+          args: [tid],
+        });
+        const rec = await botchainPublicClient.readContract({
+          address: CONTRACT_ADDRESSES.NAME_NFT,
+          abi: parseAbi(["function recordOf(string) view returns (address, uint64, string)"]),
+          functionName: "recordOf",
+          args: [label],
+        });
+
+        const expiresAtIso = new Date(Number(rec[1]) * 1000).toISOString();
+        domains.push({
+          id: Number(tid % BigInt(1000000)),
+          normalized_name: `${label}.bcl`,
+          label,
+          owner_wallet: wallet.toLowerCase(),
+          status: "active",
+          expires_at: expiresAtIso,
+          resolver_data: rec[2] || "",
+        });
+      } catch (err) {
+        console.error("Error reading onchain domain token:", err);
+      }
+    }
+    return domains;
+  } catch (err) {
+    console.error("Error in getOnchainUserDomains:", err);
+    return [];
+  }
+}
+

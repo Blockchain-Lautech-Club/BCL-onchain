@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -6,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ProfileUpdate(BaseModel):
     username: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9_.-]{3,32}$")
     bio: str | None = Field(default=None, max_length=500)
-    avatar_url: str | None = Field(default=None, max_length=500)
+    avatar_url: str | None = Field(default=None, max_length=250000)
 
 
 class ProfileOut(BaseModel):
@@ -29,6 +31,7 @@ class LeaderboardEntry(BaseModel):
     rank: int
     wallet_address: str
     username: str | None
+    bcl_domain: str | None = None
     avatar_url: str | None = None
     total_points: int
     level: int

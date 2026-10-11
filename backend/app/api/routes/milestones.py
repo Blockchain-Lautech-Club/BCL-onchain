@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Admin milestone management + public milestone listing.
 
 GET  /milestones                  — list all milestones (public)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Relayer — server-side key that interacts with on-chain contracts on behalf of the platform.
 
 Rewards strategies (per-job via MintJob.strategy):

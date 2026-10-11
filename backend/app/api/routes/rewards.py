@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Rewards API — mint job status and claim endpoints.
 
 GET  /rewards/my              — user's mint jobs (all statuses)
