@@ -8,6 +8,7 @@ import {
   ChevronDown, Trophy, Medal, Shield, Star, Flame
 } from "lucide-react";
 import Link from "next/link";
+import { getOnchainUserDomains } from "@/lib/contracts";
 
 function renderAvatar(
   avatar: string | null | undefined,
@@ -57,10 +58,49 @@ export default function LeaderboardPage() {
   const [category, setCategory] = useState("all");
 
   useEffect(() => {
+    let cancelled = false;
     api.getLeaderboard(50)
-      .then((d) => setEntries(d || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then(async (d) => {
+        if (cancelled) return;
+        const initial = d || [];
+        setEntries(initial);
+        setLoading(false);
+
+        // Resolve onchain .bcl domains for all leaderboard members
+        try {
+          const enriched = await Promise.all(
+            initial.map(async (entry) => {
+              if (entry.bcl_domain) return entry;
+              try {
+                const domains = await getOnchainUserDomains(entry.wallet_address);
+                if (domains && domains.length > 0) {
+                  const dom = domains[0].normalized_name;
+                  return {
+                    ...entry,
+                    bcl_domain: dom,
+                    username: dom,
+                  };
+                }
+              } catch (err) {
+                console.error("Domain lookup error for", entry.wallet_address, err);
+              }
+              return entry;
+            })
+          );
+          if (!cancelled) {
+            setEntries(enriched);
+          }
+        } catch (err) {
+          console.error("Batch domain lookup error:", err);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const myDomain = user?.bcl_domain || (user?.username?.endsWith(".bcl") ? user.username : null);
