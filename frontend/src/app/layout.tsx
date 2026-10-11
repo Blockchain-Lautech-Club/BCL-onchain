@@ -26,6 +26,17 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "BCL Onchain | Blockchain LAUTECH Club",
   description: "The official Web3 identity, task verification, and achievement platform for Blockchain Club LAUTECH.",
+  icons: {
+    icon: [
+      { url: "/icon.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/logo-transparent.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/icon.png",
+  },
 };
 
 export default function RootLayout({
