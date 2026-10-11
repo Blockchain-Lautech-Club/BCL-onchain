@@ -71,14 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         api.getMyStats(),
       ]);
 
-      const bonus = typeof window !== "undefined"
-        ? parseInt(localStorage.getItem(`bcl_bonus_xp_${activeAddress}`) || "0", 10)
-        : 0;
-
-      const streakDaysSaved = typeof window !== "undefined"
-        ? parseInt(localStorage.getItem(`bcl_streak_days_${activeAddress}`) || "0", 10)
-        : 0;
-
       const newUser: User =
         profileResult.status === "fulfilled"
           ? {
@@ -93,8 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           : {
               id:             me?.id || 0,
               wallet_address: activeAddress,
-              level:          bonus >= 100 ? 1 : 0,
-              total_points:   bonus,
+              level:          0,
+              total_points:   0,
               status:         "active",
               is_admin:       me?.is_admin || false,
             };
@@ -104,12 +96,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? statsResult.value
           : {
               level: newUser.level || 0,
-              total_points: newUser.total_points || bonus,
-              points_to_next_level: Math.max(0, 100 - (newUser.total_points || bonus)),
+              total_points: newUser.total_points || 0,
+              points_to_next_level: Math.max(0, 100 - (newUser.total_points || 0)),
               next_level_threshold: 100,
               completed_tasks_count: 0,
               active_names_count: 0,
-              streak_days: streakDaysSaved,
+              streak_days: 0,
             };
 
       // Set all state together before clearing isLoading
@@ -183,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Re-fetch full profile + stats after login
       await checkSession();
 
-      // If user profile is not yet completed (no username), redirect directly to /profile
+      // If user profile is not yet completed in database (no username), redirect directly to /profile
       const prof = await api.getProfile().catch(() => null);
       if (!prof?.username) {
         toast("Welcome! Please choose a username to complete your profile.", { icon: "👤" });
@@ -202,70 +194,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const awardClaimedXp = useCallback((points: number, reason: string = "Daily Streak Bonus") => {
-    const rawAddr = walletAddress || appKitAddress || (typeof window !== "undefined" ? localStorage.getItem("bcl_wallet_address") : null);
-    if (!rawAddr) return;
-    const addr = rawAddr.toLowerCase();
-
-    let newTotalBonus = points;
-    let newStreak = 1;
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("bcl_wallet_address", addr);
-      const key = `bcl_bonus_xp_${addr}`;
-      const curr = parseInt(localStorage.getItem(key) || "0", 10);
-      newTotalBonus = curr + points;
-      localStorage.setItem(key, String(newTotalBonus));
-
-      const streakKey = `bcl_streak_days_${addr}`;
-      const currStreak = parseInt(localStorage.getItem(streakKey) || "0", 10);
-      newStreak = currStreak + 1;
-      localStorage.setItem(streakKey, String(newStreak));
-
-      const ledgerKey = `bcl_bonus_ledger_${addr}`;
-      const existingRaw = localStorage.getItem(ledgerKey);
-      let existing: Array<{ id: number; points_delta: number; reason: string; created_at: string }> = [];
-      try { existing = existingRaw ? JSON.parse(existingRaw) : []; } catch {}
-      existing.unshift({
-        id: Date.now(),
-        points_delta: points,
-        reason,
-        created_at: new Date().toISOString(),
-      });
-      localStorage.setItem(ledgerKey, JSON.stringify(existing));
-
-      // Dispatch custom window event so all tabs/listeners update immediately
-      window.dispatchEvent(new CustomEvent("bcl_xp_awarded", { detail: { points, addr } }));
-    }
-
+  const awardClaimedXp = useCallback((points: number) => {
     setUser(prev => {
-      const currentPts = (prev?.total_points ?? 0) + points;
-      return prev
-        ? { ...prev, total_points: currentPts }
-        : {
-            id: 0,
-            wallet_address: addr,
-            total_points: currentPts,
-            level: currentPts >= 100 ? 1 : 0,
-            status: "active",
-          };
+      if (!prev) return null;
+      const currentPts = (prev.total_points ?? 0) + points;
+      return {
+        ...prev,
+        total_points: currentPts,
+        level: currentPts >= 100 ? 1 : 0,
+      };
     });
 
     setStats(prev => {
-      const currentPts = (prev?.total_points ?? 0) + points;
-      const nextThreshold = prev?.next_level_threshold || 100;
+      if (!prev) return null;
+      const currentPts = (prev.total_points ?? 0) + points;
+      const nextThreshold = prev.next_level_threshold || 100;
       const pointsToNext = Math.max(0, nextThreshold - currentPts);
       return {
-        level: prev?.level || (currentPts >= 100 ? 1 : 0),
+        ...prev,
+        level: prev.level || (currentPts >= 100 ? 1 : 0),
         total_points: currentPts,
         points_to_next_level: pointsToNext,
         next_level_threshold: nextThreshold,
-        completed_tasks_count: prev?.completed_tasks_count ?? 0,
-        active_names_count: prev?.active_names_count ?? 0,
-        streak_days: Math.max(newStreak, (prev?.streak_days ?? 0) + 1),
       };
     });
-  }, [walletAddress, appKitAddress]);
+  }, []);
 
   const disconnectWallet = async () => {
     try { await api.logout(); } catch { /* ignore */ }

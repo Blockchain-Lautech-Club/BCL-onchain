@@ -44,6 +44,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!walletAddress) { setLoading(false); return; }
+
     Promise.all([
       api.getProfile().catch(() => null),
       api.getMyNFTs().catch(() => [] as NFTMintRecord[]),
@@ -54,7 +55,7 @@ export default function ProfilePage() {
         setProfile(profData);
         setUsernameInput(profData.username    || "");
         setBioInput(     profData.bio         || "");
-        setAvatarEmoji(  profData.avatar_emoji || "🧑‍💻");
+        setAvatarEmoji(  profData.avatar_url  || profData.avatar_emoji || "🧑‍💻");
         setRoleInput(    profData.role         || "builder");
         setLocationInput(profData.location    || "");
         setTwitterInput( profData.twitter     || "");
@@ -62,7 +63,6 @@ export default function ProfilePage() {
         setWebsiteInput( profData.website     || "");
         setSkillsInput(  profData.skills      || []);
 
-        // Automatically open create profile modal if user has no username or arrived from create flow
         if (!profData.username || (typeof window !== "undefined" && window.location.search.includes("create=true"))) {
           setIsEditing(true);
         }
@@ -79,27 +79,55 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!usernameInput.trim()) {
+    const rawUsername = usernameInput.trim();
+    if (!rawUsername) {
       toast.error("Please enter a username (3-32 characters)");
       return;
     }
+    const cleanUsername = rawUsername.replace(/\.bcl$/i, "");
+    if (cleanUsername.length < 3 || cleanUsername.length > 32) {
+      toast.error("Username must be between 3 and 32 characters");
+      return;
+    }
+
     try {
       setSavingProfile(true);
-      const updated = await api.updateProfile({
-        username:     usernameInput.trim() || undefined,
-        bio:          bioInput.trim()      || undefined,
-        avatar_emoji: avatarEmoji,
-        role:         roleInput,
-        location:     locationInput.trim() || undefined,
-        twitter:      twitterInput.trim()  || undefined,
-        github:       githubInput.trim()   || undefined,
-        website:      websiteInput.trim()  || undefined,
-        skills:       skillsInput,
-      });
+
+      // Check if user has backend session token; if not, prompt wallet to sign in
+      let token = typeof window !== "undefined" ? localStorage.getItem("bcl_auth_token") : null;
+      if (!token) {
+        toast("Please sign the message with your wallet to authenticate...", { icon: "✍️" });
+        await connectWallet();
+        token = typeof window !== "undefined" ? localStorage.getItem("bcl_auth_token") : null;
+      }
+
+      // Update backend database
+      let updated: ProfileData;
+      try {
+        updated = await api.updateProfile({
+          username: cleanUsername,
+          bio: bioInput.trim() || undefined,
+          avatar_url: avatarEmoji,
+        });
+      } catch (patchErr: unknown) {
+        const msg = patchErr instanceof Error ? patchErr.message : "";
+        if (msg.includes("unauthenticated") || msg.includes("Sign in")) {
+          toast("Signing authentication message...", { icon: "✍️" });
+          await connectWallet();
+          updated = await api.updateProfile({
+            username: cleanUsername,
+            bio: bioInput.trim() || undefined,
+            avatar_url: avatarEmoji,
+          });
+        } else {
+          throw patchErr;
+        }
+      }
+
       setProfile(updated);
       setIsEditing(false);
       await refreshUserData();
-      toast.success("Profile saved successfully!");
+      toast.success("Profile saved to database successfully!");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
@@ -147,9 +175,9 @@ export default function ProfilePage() {
   const displayName     = profile?.username || user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
   const shortAddr       = `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
   const confirmedNfts   = nfts.filter(n => n.status === "confirmed");
-  const streakDays      = Math.max(stats?.streak_days ?? 0, typeof window !== "undefined" && walletAddress ? parseInt(localStorage.getItem(`bcl_streak_days_${walletAddress.toLowerCase()}`) || "0", 10) : 0);
+  const streakDays      = stats?.streak_days ?? 0;
   const completedTasks  = submissions.filter(s => s.status === "verified").length;
-  const displayAvatar   = profile?.avatar_emoji || "🧑‍💻";
+  const displayAvatar   = profile?.avatar_url || profile?.avatar_emoji || "🧑‍💻";
 
   // SVG Reputation Dial
   const radius           = 30;

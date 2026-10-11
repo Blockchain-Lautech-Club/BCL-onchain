@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProfileUpdate(BaseModel):
-    username: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9_]{3,32}$")
+    username: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9_.-]{3,32}$")
     bio: str | None = Field(default=None, max_length=500)
     avatar_url: str | None = Field(default=None, max_length=500)
 

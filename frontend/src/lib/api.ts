@@ -171,7 +171,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const errorMsg = data?.error?.message || data?.detail || `Request failed with status ${res.status}`;
+    let errorMsg = data?.error?.message || data?.message;
+    if (!errorMsg && data?.detail) {
+      if (Array.isArray(data.detail)) {
+        errorMsg = data.detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ");
+      } else if (typeof data.detail === "string") {
+        errorMsg = data.detail;
+      }
+    }
+    if (!errorMsg) {
+      errorMsg = `Request failed with status ${res.status}`;
+    }
     const error = new Error(errorMsg) as Error & { code?: string; status?: number };
     error.code = data?.error?.code;
     error.status = res.status;
@@ -228,57 +238,11 @@ export const api = {
 
   // ── User Stats & Dashboard ──
   async getMyStats(): Promise<UserStats> {
-    const stats = await request<UserStats>("/me/stats");
-    if (typeof window !== "undefined" && stats) {
-      const addr = localStorage.getItem("bcl_wallet_address");
-      let bonus = 0;
-      let streak = 0;
-      if (addr) {
-        bonus = parseInt(localStorage.getItem(`bcl_bonus_xp_${addr.toLowerCase()}`) || "0", 10);
-        streak = parseInt(localStorage.getItem(`bcl_streak_days_${addr.toLowerCase()}`) || "0", 10);
-      }
-      if (!bonus) {
-        const bKeys = Object.keys(localStorage).filter(k => k.startsWith("bcl_bonus_xp_"));
-        if (bKeys.length > 0) bonus = parseInt(localStorage.getItem(bKeys[0]) || "0", 10);
-      }
-      if (!streak) {
-        const sKeys = Object.keys(localStorage).filter(k => k.startsWith("bcl_streak_days_"));
-        if (sKeys.length > 0) streak = parseInt(localStorage.getItem(sKeys[0]) || "0", 10);
-      }
-      if (bonus > 0) {
-        stats.total_points = (stats.total_points || 0) + bonus;
-        stats.points_to_next_level = Math.max(0, (stats.points_to_next_level || 100) - bonus);
-      }
-      if (streak > 0) {
-        stats.streak_days = Math.max(stats.streak_days || 0, streak);
-      }
-    }
-    return stats;
+    return request<UserStats>("/me/stats");
   },
 
   async getProfile(): Promise<ProfileData> {
-    const prof = await request<ProfileData>("/me");
-    if (prof && typeof window !== "undefined") {
-      if (prof.wallet_address) {
-        localStorage.setItem("bcl_wallet_address", prof.wallet_address.toLowerCase());
-      }
-      const addr = prof.wallet_address?.toLowerCase() || localStorage.getItem("bcl_wallet_address");
-      let bonus = 0;
-      if (addr) {
-        bonus = parseInt(localStorage.getItem(`bcl_bonus_xp_${addr.toLowerCase()}`) || "0", 10);
-      }
-      if (!bonus) {
-        const bKeys = Object.keys(localStorage).filter(k => k.startsWith("bcl_bonus_xp_"));
-        if (bKeys.length > 0) bonus = parseInt(localStorage.getItem(bKeys[0]) || "0", 10);
-      }
-      if (bonus > 0) {
-        prof.total_points = (prof.total_points || 0) + bonus;
-        if (prof.points_to_next !== undefined && prof.points_to_next !== null) {
-          prof.points_to_next = Math.max(0, prof.points_to_next - bonus);
-        }
-      }
-    }
-    return prof;
+    return request<ProfileData>("/me");
   },
 
   async updateProfile(body: UpdateProfilePayload): Promise<ProfileData> {
@@ -289,24 +253,7 @@ export const api = {
   },
 
   async getMyPoints(): Promise<PointsLedgerItem[]> {
-    const serverItems = await request<PointsLedgerItem[]>("/me/points").catch(() => []);
-    if (typeof window !== "undefined") {
-      const addr = localStorage.getItem("bcl_wallet_address");
-      const ledgerKey = addr ? `bcl_bonus_ledger_${addr.toLowerCase()}` : null;
-      let local: PointsLedgerItem[] = [];
-      if (ledgerKey && localStorage.getItem(ledgerKey)) {
-        try { local = JSON.parse(localStorage.getItem(ledgerKey) || "[]"); } catch {}
-      } else {
-        const keys = Object.keys(localStorage).filter(k => k.startsWith("bcl_bonus_ledger_"));
-        if (keys.length > 0) {
-          try { local = JSON.parse(localStorage.getItem(keys[0]) || "[]"); } catch {}
-        }
-      }
-      if (local && local.length > 0) {
-        return [...local, ...serverItems];
-      }
-    }
-    return serverItems;
+    return request<PointsLedgerItem[]>("/me/points");
   },
 
   async getNotifications(): Promise<NotificationItem[]> {

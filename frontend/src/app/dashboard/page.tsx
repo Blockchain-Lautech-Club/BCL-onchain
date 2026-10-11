@@ -44,17 +44,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!activeAddr) return;
     const todayStr = new Date().toISOString().slice(0, 10);
-    const k = `bcl_daily_${activeAddr}_${todayStr}`;
-    if (typeof window !== "undefined" && localStorage.getItem(k)) {
-      setClaimedDaily(true);
-    }
-    const qk = `bcl_quiz_${activeAddr}_${todayStr}`;
-    if (typeof window !== "undefined" && localStorage.getItem(qk)) {
-      setQuizCompleted(true);
-    }
+
+    api.getMyPoints().then(p => {
+      setRecentPoints(p.slice(0, 5));
+      const hasDaily = p.some(item => item.reason?.includes("Daily streak") && item.created_at?.startsWith(todayStr));
+      if (hasDaily) setClaimedDaily(true);
+      const hasQuiz = p.some(item => item.reason?.includes("Micro-Quiz") && item.created_at?.startsWith(todayStr));
+      if (hasQuiz) setQuizCompleted(true);
+    }).catch(() => {});
 
     api.getMySubmissions().then(s => setRecentSubmissions(s.slice(0, 3))).catch(() => {});
-    api.getMyPoints().then(p => setRecentPoints(p.slice(0, 5))).catch(() => {});
     api.getMyNames().then(d => setMyDomains(d || [])).catch(() => {});
   }, [activeAddr]);
 
@@ -65,16 +64,12 @@ export default function DashboardPage() {
       await refreshUserData();
       const points = await api.getMyPoints().catch(() => []);
       setRecentPoints(points.slice(0, 5));
-      toast.success("Daily streak recorded in database! +20 XP added to your reputation 🔥");
+      toast.success("Daily streak recorded in database! +20 XP added 🔥");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Claim failed";
       if (msg.includes("already") || (err as { status?: number }).status === 409) {
         setClaimedDaily(true);
         toast("Daily streak already claimed today!", { icon: "ℹ️" });
-      } else if ((err as { status?: number }).status === 404) {
-        awardClaimedXp(20, "Daily Streak Bonus (+20 XP)");
-        setClaimedDaily(true);
-        toast.success("Daily streak recorded! +20 XP added to your reputation 🔥");
       } else {
         toast.error(msg);
       }
@@ -97,11 +92,6 @@ export default function DashboardPage() {
           setQuizCompleted(true);
           toast("Quiz already completed today!", { icon: "ℹ️" });
           setShowQuizModal(false);
-        } else if ((err as { status?: number }).status === 404) {
-          awardClaimedXp(50, "Daily Web3 Micro-Quiz (+50 XP)");
-          setQuizCompleted(true);
-          toast.success("Correct! +50 XP bonus awarded 🎉");
-          setTimeout(() => setShowQuizModal(false), 800);
         } else {
           toast.error(msg);
         }
