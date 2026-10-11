@@ -9,7 +9,7 @@ from app.api.deps import is_admin
 from app.api.routes.me import mint_out
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import DomainRecord, NFTMint, PointsLedger, TaskSubmission, User
+from app.models import DailyQuiz, DomainRecord, NFTMint, PointsLedger, TaskSubmission, User
 from app.models.base import as_utc, utcnow
 from app.schemas.profile import DomainOut, LeaderboardEntry, LedgerOut, MintOut, ProfileOut
 from app.services import auth_service, domain_service, level_service
@@ -18,6 +18,7 @@ router = APIRouter(tags=["public"])
 
 
 async def compute_user_stats(session: AsyncSession, user: User) -> dict:
+    from datetime import datetime, timezone, timedelta
     thresholds = await level_service.get_thresholds(session)
     info = level_service.next_level_info(user.total_points, thresholds)
 
@@ -33,6 +34,15 @@ async def compute_user_stats(session: AsyncSession, user: User) -> dict:
     )
     active_names_count = (await session.execute(active_names_q)).scalar() or 0
 
+    today_utc = datetime.now(timezone.utc).date()
+    today_str = today_utc.isoformat()
+
+    daily_key = f"daily:{user.id}:{today_str}"
+    quiz_key = f"quiz:{user.id}:{today_str}"
+
+    daily_claimed = bool(await session.scalar(select(PointsLedger.id).where(PointsLedger.idempotency_key == daily_key)))
+    quiz_claimed = bool(await session.scalar(select(PointsLedger.id).where(PointsLedger.idempotency_key == quiz_key)))
+
     dates_q = (
         select(cast(PointsLedger.created_at, SADate).label("day"))
         .where(PointsLedger.user_id == user.id)
@@ -41,8 +51,10 @@ async def compute_user_stats(session: AsyncSession, user: User) -> dict:
         .limit(365)
     )
     rows = (await session.execute(dates_q)).scalars().all()
+    active_dates = [d.isoformat() for d in rows[:30]]
+
     streak_days = 0
-    expected = date.today()
+    expected = today_utc
     for d in rows:
         if d == expected or d == expected - timedelta(days=1):
             streak_days += 1
@@ -58,6 +70,10 @@ async def compute_user_stats(session: AsyncSession, user: User) -> dict:
         "completed_tasks_count": completed_tasks_count,
         "active_names_count": active_names_count,
         "streak_days": streak_days,
+        "daily_claimed": daily_claimed,
+        "quiz_claimed": quiz_claimed,
+        "today": today_str,
+        "active_dates": active_dates,
     }
 
 
@@ -71,6 +87,85 @@ async def health():
         return {"status": "ok", "db": "connected"}
     except Exception as e:
         return {"status": "error", "message": str(e), "type": type(e).__name__}
+
+
+@router.get("/daily-quiz")
+async def get_daily_quiz(session: AsyncSession = Depends(get_session)):
+    """Fetch today's active daily quiz set by admin. Falls back to latest active quiz or seeds default."""
+    from datetime import datetime, timezone
+    today_str = datetime.now(timezone.utc).date().isoformat()
+
+    try:
+        # 1. Check if table exists / query active quiz for today
+        stmt = (
+            select(DailyQuiz)
+            .where(DailyQuiz.quiz_date == today_str, DailyQuiz.is_active.is_(True))
+            .order_by(DailyQuiz.id.desc())
+            .limit(1)
+        )
+        quiz = (await session.execute(stmt)).scalar_one_or_none()
+
+        # 2. If not found for today, query most recent active quiz set by admin
+        if not quiz:
+            stmt = (
+                select(DailyQuiz)
+                .where(DailyQuiz.is_active.is_(True))
+                .order_by(DailyQuiz.id.desc())
+                .limit(1)
+            )
+            quiz = (await session.execute(stmt)).scalar_one_or_none()
+
+        # 3. If none exists, seed initial quiz
+        if not quiz:
+            quiz = DailyQuiz(
+                quiz_date=today_str,
+                title="Smart Contract Reentrancy Basics: Detection & Prevention",
+                topic="Smart Contract Security",
+                description="Test your understanding of Checks-Effects-Interactions pattern, mutex guards, and fallback vulnerability surfaces.",
+                question="Which design pattern or guard is considered the canonical standard in Solidity to safely prevent recursive external reentrancy exploits?",
+                options=[
+                    {"id": 0, "text": "Checks-Effects-Interactions (CEI) pattern + OpenZeppelin ReentrancyGuard"},
+                    {"id": 1, "text": "Using tx.origin == msg.sender verification"},
+                    {"id": 2, "text": "Transferring ETH before deducting user internal balance"},
+                    {"id": 3, "text": "Using call() with unlimited gas forwarded to arbitrary addresses"},
+                ],
+                correct_index=0,
+                explanation="The Checks-Effects-Interactions (CEI) pattern ensures internal state variables are updated before invoking external untrusted contracts, eliminating recursive reentrancy attacks.",
+                points=50,
+                is_active=True,
+            )
+            session.add(quiz)
+            await session.commit()
+
+        return {
+            "id": quiz.id,
+            "quiz_date": quiz.quiz_date,
+            "title": quiz.title,
+            "topic": quiz.topic,
+            "description": quiz.description,
+            "question": quiz.question,
+            "options": quiz.options,
+            "points": quiz.points,
+            "is_active": quiz.is_active,
+        }
+    except Exception:
+        # Fallback in case of database table synchronization
+        return {
+            "id": 1,
+            "quiz_date": today_str,
+            "title": "Smart Contract Reentrancy Basics: Detection & Prevention",
+            "topic": "Smart Contract Security",
+            "description": "Test your understanding of Checks-Effects-Interactions pattern, mutex guards, and fallback vulnerability surfaces.",
+            "question": "Which design pattern or guard is considered the canonical standard in Solidity to safely prevent recursive external reentrancy exploits?",
+            "options": [
+                {"id": 0, "text": "Checks-Effects-Interactions (CEI) pattern + OpenZeppelin ReentrancyGuard"},
+                {"id": 1, "text": "Using tx.origin == msg.sender verification"},
+                {"id": 2, "text": "Transferring ETH before deducting user internal balance"},
+                {"id": 3, "text": "Using call() with unlimited gas forwarded to arbitrary addresses"},
+            ],
+            "points": 50,
+            "is_active": True,
+        }
 
 
 @router.get("/leaderboard", response_model=list[LeaderboardEntry])

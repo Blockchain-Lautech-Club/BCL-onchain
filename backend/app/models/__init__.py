@@ -8,12 +8,13 @@ from app.models.name_job import NameJob
 from app.models.name_nft import NameNFTRecord
 from app.models.nft import NFTMint
 from app.models.points import LevelConfig, LevelHistory, PointsLedger
+from app.models.quiz import DailyQuiz
 from app.models.task import Task, TaskSubmission
 from app.models.user import AuthNonce, LinkedSocialAccount, Notification, Role, User
 
 __all__ = [
     "Base", "AuditLog", "ChainEvent", "IndexerState", "DomainRecord", "Milestone",
     "NameJob", "NameNFTRecord", "NFTMint",
-    "LevelConfig", "LevelHistory", "PointsLedger", "Task", "TaskSubmission", "AuthNonce",
+    "LevelConfig", "LevelHistory", "PointsLedger", "DailyQuiz", "Task", "TaskSubmission", "AuthNonce",
     "LinkedSocialAccount", "Notification", "Role", "User",
 ]

@@ -7,9 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import AuditLog, LevelConfig, NFTMint, Role, Task, TaskSubmission, User
+from app.models import AuditLog, DailyQuiz, LevelConfig, NFTMint, Role, Task, TaskSubmission, User
 from app.models.enums import MintStatus, RoleName, SubmissionStatus, TaskStatus
 from app.schemas.admin import LevelConfigIn, PointsAdjustment, RoleChange
+from app.schemas.quiz import DailyQuizCreate, DailyQuizOut, DailyQuizUpdate
 from app.schemas.task import ReviewRequest, SubmissionOut, TaskCreate, TaskOut, TaskUpdate
 from app.services import level_service, points_service, submission_service, task_service
 from app.services.audit import log_action
@@ -195,3 +196,58 @@ async def audit_logs(limit: int = Query(100, le=500), session: AsyncSession = De
     rows = (await session.execute(select(AuditLog).order_by(AuditLog.id.desc()).limit(limit))).scalars().all()
     return [{"id": r.id, "actor": r.actor_wallet, "action": r.action, "target": f"{r.target_type}:{r.target_id}",
              "meta": r.meta, "created_at": r.created_at} for r in rows]
+
+
+# ---- daily quizzes
+@router.get("/quizzes", response_model=list[DailyQuizOut])
+async def list_quizzes(limit: int = Query(50, le=200), session: AsyncSession = Depends(get_session)):
+    stmt = select(DailyQuiz).order_by(DailyQuiz.id.desc()).limit(limit)
+    return (await session.execute(stmt)).scalars().all()
+
+
+@router.post("/quizzes", response_model=DailyQuizOut, status_code=201)
+async def create_quiz(body: DailyQuizCreate, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    quiz = DailyQuiz(
+        quiz_date=body.quiz_date,
+        title=body.title,
+        topic=body.topic,
+        description=body.description,
+        question=body.question,
+        options=[opt.model_dump() for opt in body.options],
+        correct_index=body.correct_index,
+        explanation=body.explanation,
+        points=body.points,
+        is_active=body.is_active,
+    )
+    session.add(quiz)
+    await session.flush()
+    await log_action(session, admin, "quiz.create", "daily_quiz", quiz.id, {"title": quiz.title, "date": quiz.quiz_date})
+    await session.commit()
+    return quiz
+
+
+@router.patch("/quizzes/{quiz_id}", response_model=DailyQuizOut)
+async def update_quiz(quiz_id: int, body: DailyQuizUpdate, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    quiz = await session.get(DailyQuiz, quiz_id)
+    if quiz is None:
+        raise AppError(404, "quiz_not_found", "Quiz not found")
+    data = body.model_dump(exclude_unset=True)
+    if "options" in data and data["options"] is not None:
+        data["options"] = [opt.model_dump() if hasattr(opt, "model_dump") else opt for opt in data["options"]]
+    for k, v in data.items():
+        setattr(quiz, k, v)
+    await log_action(session, admin, "quiz.update", "daily_quiz", quiz_id, data)
+    await session.commit()
+    return quiz
+
+
+@router.delete("/quizzes/{quiz_id}")
+async def delete_quiz(quiz_id: int, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    quiz = await session.get(DailyQuiz, quiz_id)
+    if quiz is None:
+        raise AppError(404, "quiz_not_found", "Quiz not found")
+    await session.delete(quiz)
+    await log_action(session, admin, "quiz.delete", "daily_quiz", quiz_id)
+    await session.commit()
+    return {"ok": True, "deleted": quiz_id}
+

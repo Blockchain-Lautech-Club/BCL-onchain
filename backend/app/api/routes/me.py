@@ -9,8 +9,9 @@ from app.api.deps import get_current_user, is_admin
 from app.core.config import settings
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import DomainRecord, NFTMint, Notification, PointsLedger, TaskSubmission, User
+from app.models import DailyQuiz, DomainRecord, NFTMint, Notification, PointsLedger, TaskSubmission, User
 from app.schemas.profile import (DomainOut, LedgerOut, MintOut, NotificationOut, ProfileOut, ProfileUpdate)
+from app.schemas.quiz import QuizSubmitRequest
 from app.schemas.task import SubmissionOut
 from app.services import level_service
 from app.services.notifications import notify
@@ -68,8 +69,18 @@ async def my_stats(user: User = Depends(get_current_user), session: AsyncSession
     active_names_count = (await session.execute(active_names_q)).scalar() or 0
 
     # Streak: count consecutive days with at least one verified submission or points reward, going back from today.
-    from datetime import date, timedelta
+    from datetime import datetime, timezone, timedelta
     from sqlalchemy import cast, Date as SADate
+
+    today_utc = datetime.now(timezone.utc).date()
+    today_str = today_utc.isoformat()
+
+    daily_key = f"daily:{user.id}:{today_str}"
+    quiz_key = f"quiz:{user.id}:{today_str}"
+
+    daily_claimed = bool(await session.scalar(select(PointsLedger.id).where(PointsLedger.idempotency_key == daily_key)))
+    quiz_claimed = bool(await session.scalar(select(PointsLedger.id).where(PointsLedger.idempotency_key == quiz_key)))
+
     dates_q = (
         select(cast(PointsLedger.created_at, SADate).label("day"))
         .where(PointsLedger.user_id == user.id)
@@ -78,8 +89,10 @@ async def my_stats(user: User = Depends(get_current_user), session: AsyncSession
         .limit(365)
     )
     rows = (await session.execute(dates_q)).scalars().all()
+    active_dates = [d.isoformat() for d in rows[:30]]
+
     streak_days = 0
-    expected = date.today()
+    expected = today_utc
     for d in rows:
         if d == expected or d == expected - timedelta(days=1):
             streak_days += 1
@@ -95,14 +108,18 @@ async def my_stats(user: User = Depends(get_current_user), session: AsyncSession
         "completed_tasks_count": completed_tasks_count,
         "active_names_count": active_names_count,
         "streak_days": streak_days,
+        "daily_claimed": daily_claimed,
+        "quiz_claimed": quiz_claimed,
+        "today": today_str,
+        "active_dates": active_dates,
     }
 
 
 @router.post("/claim-daily")
 async def claim_daily(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     """Claim daily streak 20 XP bonus. Enforced once per day via database idempotency key."""
-    from datetime import date
-    today_str = date.today().isoformat()
+    from datetime import datetime, timezone
+    today_str = datetime.now(timezone.utc).date().isoformat()
     key = f"daily:{user.id}:{today_str}"
     already = await session.scalar(select(PointsLedger.id).where(PointsLedger.idempotency_key == key))
     if already:
@@ -131,14 +148,48 @@ async def claim_daily(user: User = Depends(get_current_user), session: AsyncSess
 
 
 @router.post("/daily-quiz")
-async def claim_quiz(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    """Claim daily web3 micro-quiz 50 XP bonus. Enforced once per day via database idempotency key."""
-    from datetime import date
-    today_str = date.today().isoformat()
+async def claim_quiz(
+    body: QuizSubmitRequest | None = None,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """Claim daily web3 micro-quiz bonus. Enforced once per day via database idempotency key."""
+    from datetime import datetime, timezone
+    today_str = datetime.now(timezone.utc).date().isoformat()
     key = f"quiz:{user.id}:{today_str}"
     already = await session.scalar(select(PointsLedger.id).where(PointsLedger.idempotency_key == key))
     if already:
         raise AppError(409, "already_claimed", "Daily micro-quiz bonus already claimed today")
+
+    # Fetch active quiz set by admin
+    quiz: DailyQuiz | None = None
+    if body and body.quiz_id:
+        quiz = await session.get(DailyQuiz, body.quiz_id)
+    if not quiz:
+        stmt = (
+            select(DailyQuiz)
+            .where(DailyQuiz.quiz_date == today_str, DailyQuiz.is_active.is_(True))
+            .order_by(DailyQuiz.id.desc())
+            .limit(1)
+        )
+        quiz = (await session.execute(stmt)).scalar_one_or_none()
+    if not quiz:
+        stmt = (
+            select(DailyQuiz)
+            .where(DailyQuiz.is_active.is_(True))
+            .order_by(DailyQuiz.id.desc())
+            .limit(1)
+        )
+        quiz = (await session.execute(stmt)).scalar_one_or_none()
+
+    # Validate answer if user submitted an answer index
+    if body is not None and quiz is not None:
+        if body.answer_index != quiz.correct_index:
+            hint = f" Hint: {quiz.explanation}" if quiz.explanation else ""
+            raise AppError(400, "incorrect_answer", f"Incorrect answer.{hint}")
+
+    points_delta = quiz.points if quiz else 50
+    quiz_name = quiz.title if quiz else "Daily Web3 Micro-Quiz"
 
     try:
         async with session.begin_nested():
@@ -146,20 +197,20 @@ async def claim_quiz(user: User = Depends(get_current_user), session: AsyncSessi
                 PointsLedger(
                     user_id=user.id,
                     wallet=user.wallet_address,
-                    points_delta=50,
-                    reason="Daily Web3 Micro-Quiz (+50 XP)",
+                    points_delta=points_delta,
+                    reason=f"Daily Micro-Quiz: {quiz_name} (+{points_delta} XP)",
                     idempotency_key=key,
                 )
             )
-            user.total_points += 50
+            user.total_points += points_delta
             await session.flush()
     except IntegrityError:
         raise AppError(409, "already_claimed", "Daily micro-quiz bonus already claimed today")
 
     await level_service.sync_user_level(session, user)
-    await notify(session, user.id, "points_awarded", "+50 XP: Daily Web3 Micro-Quiz", {"points": 50})
+    await notify(session, user.id, "points_awarded", f"+{points_delta} XP: {quiz_name}", {"points": points_delta})
     await session.commit()
-    return {"ok": True, "points_delta": 50, "total_points": user.total_points, "level": user.level}
+    return {"ok": True, "points_delta": points_delta, "total_points": user.total_points, "level": user.level}
 
 
 @router.get("/submissions", response_model=list[SubmissionOut])

@@ -98,6 +98,43 @@ export interface UserStats {
   completed_tasks_count: number;
   active_names_count: number;
   streak_days: number;
+  daily_claimed?: boolean;
+  quiz_claimed?: boolean;
+  today?: string;
+  active_dates?: string[];
+}
+
+export interface QuizOption {
+  id: number;
+  text: string;
+}
+
+export interface DailyQuiz {
+  id: number;
+  quiz_date: string;
+  title: string;
+  topic: string;
+  description: string;
+  question: string;
+  options: QuizOption[];
+  points: number;
+  is_active: boolean;
+  correct_index?: number;
+  explanation?: string;
+  created_at?: string;
+}
+
+export interface DailyQuizCreate {
+  quiz_date: string;
+  title: string;
+  topic: string;
+  description: string;
+  question: string;
+  options: QuizOption[];
+  correct_index: number;
+  explanation: string;
+  points: number;
+  is_active: boolean;
 }
 
 export interface NotificationItem {
@@ -234,8 +271,15 @@ export const api = {
     return request("/me/claim-daily", { method: "POST" });
   },
 
-  async claimDailyQuiz(): Promise<{ ok: boolean; points_delta: number; total_points: number; level: number }> {
-    return request("/me/daily-quiz", { method: "POST" });
+  async getDailyQuiz(): Promise<DailyQuiz> {
+    return request<DailyQuiz>("/daily-quiz");
+  },
+
+  async claimDailyQuiz(answerIndex?: number, quizId?: number): Promise<{ ok: boolean; points_delta: number; total_points: number; level: number }> {
+    return request("/me/daily-quiz", {
+      method: "POST",
+      body: JSON.stringify({ answer_index: answerIndex, quiz_id: quizId }),
+    });
   },
 
   // ── User Stats & Dashboard ──
@@ -569,6 +613,30 @@ export const api = {
     return request(`/milestones/${tokenId}/award`, {
       method: "POST",
       body: JSON.stringify({ wallet }),
+    });
+  },
+
+  async getAdminQuizzes(): Promise<DailyQuiz[]> {
+    return request<DailyQuiz[]>("/admin/quizzes");
+  },
+
+  async createAdminQuiz(quiz: DailyQuizCreate): Promise<DailyQuiz> {
+    return request<DailyQuiz>("/admin/quizzes", {
+      method: "POST",
+      body: JSON.stringify(quiz),
+    });
+  },
+
+  async updateAdminQuiz(quizId: number, quiz: Partial<DailyQuizCreate>): Promise<DailyQuiz> {
+    return request<DailyQuiz>(`/admin/quizzes/${quizId}`, {
+      method: "PATCH",
+      body: JSON.stringify(quiz),
+    });
+  },
+
+  async deleteAdminQuiz(quizId: number): Promise<{ ok: boolean; deleted: number }> {
+    return request<{ ok: boolean; deleted: number }>(`/admin/quizzes/${quizId}`, {
+      method: "DELETE",
     });
   },
 };

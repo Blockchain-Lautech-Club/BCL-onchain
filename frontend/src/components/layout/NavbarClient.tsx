@@ -105,7 +105,7 @@ export function NavbarClient() {
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="BCL Onchain Logo" width={32} height={32} className="object-contain" />
-            <span className="font-heading text-lg font-semibold text-ink tracking-tight">BCL Onchain</span>
+            <span className="font-heading text-base sm:text-lg font-semibold text-ink tracking-tight">BCL Onchain</span>
           </Link>
           <span className="hidden xl:flex items-center gap-1.5 text-[10px] font-semibold text-accent-fg bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse shadow-[0_0_6px_rgba(0,245,160,0.8)]" />
@@ -326,10 +326,11 @@ export function NavbarClient() {
             /* ── Not connected ─ */
             <button
               onClick={connectWallet}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-accent text-surface text-[13px] font-bold hover:shadow-[0_0_20px_rgba(0,245,160,0.4)] transition-all"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-accent text-surface text-xs sm:text-[13px] font-bold hover:shadow-[0_0_20px_rgba(0,245,160,0.4)] transition-all shrink-0"
             >
-              <Wallet className="w-3.5 h-3.5" />
-              Connect Wallet
+              <Wallet className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Connect Wallet</span>
+              <span className="sm:hidden">Connect</span>
             </button>
           )}
 

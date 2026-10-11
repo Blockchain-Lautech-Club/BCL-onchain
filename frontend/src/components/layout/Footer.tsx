@@ -15,7 +15,7 @@ export function Footer() {
           </span>
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 sm:gap-x-5 gap-y-2">
           {["Ecosystem Guilds", "Leaderboard", "Smart Contracts", "Governance"].map((item) => (
             <Link
               key={item}

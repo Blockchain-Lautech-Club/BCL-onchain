@@ -9,6 +9,8 @@ import {
   NFTMintRecord,
   User as UserType,
   Milestone,
+  DailyQuiz,
+  DailyQuizCreate,
 } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 import {
@@ -27,10 +29,15 @@ import {
   Search,
   Lock,
   X,
+  Terminal,
+  Trash2,
+  Edit3,
+  Calendar,
+  Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-type TabType = "submissions" | "manage_tasks" | "users" | "milestones" | "mints" | "audit";
+type TabType = "submissions" | "manage_tasks" | "daily_quiz" | "users" | "milestones" | "mints" | "audit";
 
 interface AuditLog {
   id: number;
@@ -94,9 +101,42 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
 
+  // Daily Quiz state
+  const [quizzes, setQuizzes] = useState<DailyQuiz[]>([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [editingQuizId, setEditingQuizId] = useState<number | null>(null);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const [quizForm, setQuizForm] = useState<DailyQuizCreate>({
+    quiz_date: "",
+    title: "",
+    topic: "Smart Contract Security",
+    description: "",
+    question: "",
+    options: [
+      { id: 0, text: "" },
+      { id: 1, text: "" },
+      { id: 2, text: "" },
+      { id: 3, text: "" },
+    ],
+    correct_index: 0,
+    explanation: "",
+    points: 50,
+    is_active: true,
+  });
+
+  useEffect(() => {
+    // Set date client-side
+    setQuizForm((prev) => ({
+      ...prev,
+      quiz_date: prev.quiz_date || new Date().toISOString().slice(0, 10),
+    }));
+  }, []);
+
   useEffect(() => {
     if (activeTab === "submissions") loadSubmissions();
     if (activeTab === "manage_tasks") loadTasks();
+    if (activeTab === "daily_quiz") loadQuizzes();
     if (activeTab === "users") loadUsers();
     if (activeTab === "milestones") loadMilestones();
     if (activeTab === "mints") loadMints();
@@ -128,6 +168,189 @@ export default function AdminPage() {
       setLoadingTasks(false);
     }
   }
+
+  async function loadQuizzes() {
+    try {
+      setLoadingQuizzes(true);
+      const data = await api.getAdminQuizzes();
+      setQuizzes(data || []);
+    } catch (err) {
+      console.error("Failed to load quizzes:", err);
+      toast.error("Failed to load daily quizzes");
+      setQuizzes([]);
+    } finally {
+      setLoadingQuizzes(false);
+    }
+  }
+
+  function openCreateQuiz() {
+    setEditingQuizId(null);
+    setQuizForm({
+      quiz_date: new Date().toISOString().slice(0, 10),
+      title: "",
+      topic: "Smart Contract Security",
+      description: "",
+      question: "",
+      options: [
+        { id: 0, text: "" },
+        { id: 1, text: "" },
+        { id: 2, text: "" },
+        { id: 3, text: "" },
+      ],
+      correct_index: 0,
+      explanation: "",
+      points: 50,
+      is_active: true,
+    });
+    setShowQuizModal(true);
+  }
+
+  function openEditQuiz(q: DailyQuiz) {
+    setEditingQuizId(q.id);
+    setQuizForm({
+      quiz_date: q.quiz_date,
+      title: q.title,
+      topic: q.topic || "Web3 Security",
+      description: q.description || "",
+      question: q.question,
+      options: q.options && q.options.length === 4 ? q.options : [
+        { id: 0, text: "" },
+        { id: 1, text: "" },
+        { id: 2, text: "" },
+        { id: 3, text: "" },
+      ],
+      correct_index: q.correct_index ?? 0,
+      explanation: q.explanation || "",
+      points: q.points || 50,
+      is_active: q.is_active,
+    });
+    setShowQuizModal(true);
+  }
+
+  function loadSampleQuiz(sampleType: "security" | "gas" | "eip712" | "l2") {
+    const samples = {
+      security: {
+        title: "Smart Contract Reentrancy Basics: Detection & Prevention",
+        topic: "Smart Contract Security",
+        description: "Test your understanding of Checks-Effects-Interactions pattern, mutex guards, and fallback vulnerability surfaces.",
+        question: "Which design pattern or guard is considered the canonical standard in Solidity to safely prevent recursive external reentrancy exploits?",
+        options: [
+          { id: 0, text: "Checks-Effects-Interactions (CEI) pattern + OpenZeppelin ReentrancyGuard" },
+          { id: 1, text: "Using tx.origin == msg.sender verification" },
+          { id: 2, text: "Transferring ETH before deducting user internal balance" },
+          { id: 3, text: "Using call() with unlimited gas forwarded to arbitrary addresses" },
+        ],
+        correct_index: 0,
+        explanation: "The CEI pattern ensures state variables are updated prior to any external contract call, eliminating reentrancy.",
+      },
+      gas: {
+        title: "EVM Gas Optimization: Storage vs Memory vs Calldata",
+        topic: "EVM Optimization",
+        description: "Master gas reduction techniques for high-performance Solidity smart contracts.",
+        question: "When passing an unmodifiable dynamic array into an external function, which data location provides the lowest gas consumption?",
+        options: [
+          { id: 0, text: "calldata — read-only directly from transaction input data without copying" },
+          { id: 1, text: "memory — allocates temporary RAM space in EVM execution" },
+          { id: 2, text: "storage — persists the array in contract state slots" },
+          { id: 3, text: "stack — stores the entire array in the 1024-deep EVM stack" },
+        ],
+        correct_index: 0,
+        explanation: "calldata avoids EVM memory allocation and copying overhead by reading function arguments directly from the immutable transaction payload.",
+      },
+      eip712: {
+        title: "EIP-712 Typed Structured Data Signing & Gasless Permits",
+        topic: "Signatures & Cryptography",
+        description: "Explore cryptographic message signing, domain separators, and off-chain authorization workflows.",
+        question: "Why was EIP-712 introduced as a replacement for raw eth_sign hex strings in modern Web3 dApps?",
+        options: [
+          { id: 0, text: "To present human-readable structured data in wallet prompts and prevent blind signing attacks" },
+          { id: 1, text: "To reduce transaction fees on Ethereum Mainnet" },
+          { id: 2, text: "To replace ECDSA signatures with RSA encryption" },
+          { id: 3, text: "To allow smart contracts to sign transactions without private keys" },
+        ],
+        correct_index: 0,
+        explanation: "EIP-712 standardizes typed structured hashing, allowing users to verify all fields and domain parameters before signing.",
+      },
+      l2: {
+        title: "Layer 2 Scaling: Optimistic Rollups vs ZK-Rollups",
+        topic: "Layer 2 Architecture",
+        description: "Compare fraud proofs, validity proofs, finality guarantees, and data availability on Base & Ethereum.",
+        question: "What is the primary difference in finality between an Optimistic Rollup (like Base) and a Zero-Knowledge Rollup?",
+        options: [
+          { id: 0, text: "Optimistic rollups require a 7-day challenge window for fraud proofs, while ZK rollups achieve mathematical finality upon validity proof verification" },
+          { id: 1, text: "Optimistic rollups are always cheaper than ZK rollups for every transaction type" },
+          { id: 2, text: "ZK rollups do not post any data back to Ethereum L1" },
+          { id: 3, text: "Optimistic rollups cannot execute Solidity smart contracts" },
+        ],
+        correct_index: 0,
+        explanation: "Optimistic rollups rely on dispute periods while ZK rollups verify validity proofs on Ethereum L1 directly.",
+      },
+    };
+
+    const s = samples[sampleType];
+    setQuizForm((prev) => ({
+      ...prev,
+      title: s.title,
+      topic: s.topic,
+      description: s.description,
+      question: s.question,
+      options: s.options,
+      correct_index: s.correct_index,
+      explanation: s.explanation,
+    }));
+    toast.success(`Loaded ${s.topic} template!`);
+  }
+
+  async function handleSaveQuiz() {
+    if (!quizForm.title.trim() || !quizForm.question.trim()) {
+      toast.error("Title and question are required");
+      return;
+    }
+    if (quizForm.options.some((o) => !o.text.trim())) {
+      toast.error("All 4 options (A, B, C, D) must have text");
+      return;
+    }
+    setIsSubmittingQuiz(true);
+    try {
+      if (editingQuizId) {
+        await api.updateAdminQuiz(editingQuizId, quizForm);
+        toast.success("Daily Quiz updated successfully! ✨");
+      } else {
+        await api.createAdminQuiz(quizForm);
+        toast.success("Daily Quiz published successfully! 🎉");
+      }
+      setShowQuizModal(false);
+      setEditingQuizId(null);
+      await loadQuizzes();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to save quiz";
+      toast.error(msg);
+    } finally {
+      setIsSubmittingQuiz(false);
+    }
+  }
+
+  async function handleDeleteQuiz(id: number) {
+    if (!confirm("Are you sure you want to delete this quiz?")) return;
+    try {
+      await api.deleteAdminQuiz(id);
+      toast.success("Quiz deleted");
+      await loadQuizzes();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
+    }
+  }
+
+  async function handleToggleQuizActive(quiz: DailyQuiz) {
+    try {
+      await api.updateAdminQuiz(quiz.id, { is_active: !quiz.is_active });
+      toast.success(quiz.is_active ? "Quiz deactivated" : "Quiz set to active!");
+      await loadQuizzes();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Update failed");
+    }
+  }
+
 
   async function loadUsers(q?: string) {
     try {
@@ -387,6 +610,7 @@ export default function AdminPage() {
           {[
             { id: "submissions", label: "Review Queue", icon: ListOrdered },
             { id: "manage_tasks", label: "Quests", icon: PlusCircle },
+            { id: "daily_quiz", label: "Daily Quiz", icon: Terminal },
             { id: "users", label: "Users & Moderation", icon: Users },
             { id: "milestones", label: "Milestones", icon: Award },
             { id: "mints", label: "Badge Deliveries", icon: Zap },
@@ -638,6 +862,369 @@ export default function AdminPage() {
                   </div>
                   <h4 className="text-sm font-bold font-heading text-ink">{task.title}</h4>
                   <p className="text-xs text-ink-3 line-clamp-2">{task.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: DAILY QUIZ ── */}
+      {activeTab === "daily_quiz" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink/[0.06] pb-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-ink">Admin Daily Web3 Micro-Quizzes</span>
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-500">
+                {quizzes.length} Quizzes Configured
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadQuizzes}
+                disabled={loadingQuizzes}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink/[0.08] hover:bg-ink/[0.04] text-ink-3 hover:text-ink cursor-pointer"
+              >
+                <RefreshCw className={`h-3 w-3 ${loadingQuizzes ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={openCreateQuiz}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-white font-bold cursor-pointer shadow-md shadow-amber-500/20"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span>Create / Set Daily Quiz</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Create / Edit Quiz Modal */}
+          {showQuizModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+              <div className="relative w-full max-w-2xl rounded-2xl bg-surface border border-ink/10 p-6 md:p-8 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start justify-between border-b border-ink/[0.08] pb-4">
+                  <div className="space-y-1">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase">
+                      Admin Quiz Management
+                    </span>
+                    <h3 className="text-xl font-heading font-bold text-ink">
+                      {editingQuizId ? "Edit Daily Micro-Quiz" : "Create & Schedule Daily Quiz"}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setShowQuizModal(false)}
+                    className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 flex items-center justify-center text-ink-4 hover:text-ink"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Quick Templates Bar */}
+                <div className="bg-ink/[0.02] border border-ink/[0.08] rounded-xl p-3 space-y-2">
+                  <span className="text-[10px] uppercase font-mono font-bold text-ink-4 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" /> Quick Templates (One-Click Prefill)
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => loadSampleQuiz("security")}
+                      className="px-2.5 py-1 rounded-lg bg-surface border border-ink/10 hover:border-amber-500/40 text-[11px] font-semibold text-ink"
+                    >
+                      🛡️ Reentrancy Security
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadSampleQuiz("gas")}
+                      className="px-2.5 py-1 rounded-lg bg-surface border border-ink/10 hover:border-amber-500/40 text-[11px] font-semibold text-ink"
+                    >
+                      ⚡ EVM Gas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadSampleQuiz("eip712")}
+                      className="px-2.5 py-1 rounded-lg bg-surface border border-ink/10 hover:border-amber-500/40 text-[11px] font-semibold text-ink"
+                    >
+                      ✍️ EIP-712 Signatures
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadSampleQuiz("l2")}
+                      className="px-2.5 py-1 rounded-lg bg-surface border border-ink/10 hover:border-amber-500/40 text-[11px] font-semibold text-ink"
+                    >
+                      ⛓️ L2 Rollups
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono uppercase font-bold text-ink-4 block mb-1">
+                      Active Date (YYYY-MM-DD)
+                    </label>
+                    <input
+                      type="date"
+                      value={quizForm.quiz_date}
+                      onChange={(e) => setQuizForm({ ...quizForm, quiz_date: e.target.value })}
+                      className="w-full text-xs p-2.5 rounded-lg border border-ink/10 bg-surface text-ink"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase font-bold text-ink-4 block mb-1">
+                      Category / Topic
+                    </label>
+                    <input
+                      type="text"
+                      value={quizForm.topic}
+                      onChange={(e) => setQuizForm({ ...quizForm, topic: e.target.value })}
+                      placeholder="e.g. Smart Contract Security"
+                      className="w-full text-xs p-2.5 rounded-lg border border-ink/10 bg-surface text-ink"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase font-bold text-ink-4 block mb-1">
+                      Reward Points (XP)
+                    </label>
+                    <input
+                      type="number"
+                      value={quizForm.points}
+                      onChange={(e) => setQuizForm({ ...quizForm, points: Number(e.target.value) || 50 })}
+                      className="w-full text-xs p-2.5 rounded-lg border border-ink/10 bg-surface text-ink"
+                      min={10}
+                      max={500}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase font-bold text-ink-4 block mb-1">
+                    Quiz Title
+                  </label>
+                  <input
+                    type="text"
+                    value={quizForm.title}
+                    onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })}
+                    placeholder="e.g. Smart Contract Reentrancy Basics: Detection & Prevention"
+                    className="w-full text-xs p-2.5 rounded-lg border border-ink/10 bg-surface text-ink font-semibold"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase font-bold text-ink-4 block mb-1">
+                    Description / Banner Subtitle
+                  </label>
+                  <input
+                    type="text"
+                    value={quizForm.description}
+                    onChange={(e) => setQuizForm({ ...quizForm, description: e.target.value })}
+                    placeholder="Brief 1-line overview of the challenge"
+                    className="w-full text-xs p-2.5 rounded-lg border border-ink/10 bg-surface text-ink"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase font-bold text-ink-4 block mb-1">
+                    Full Question Prompt
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={quizForm.question}
+                    onChange={(e) => setQuizForm({ ...quizForm, question: e.target.value })}
+                    placeholder="Enter the question to test developers and community citizens..."
+                    className="w-full text-xs p-2.5 rounded-lg border border-ink/10 bg-surface text-ink"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-mono uppercase font-bold text-ink-4">
+                      4 Options & Select Correct Answer
+                    </label>
+                    <span className="text-[10px] text-amber-500 font-bold">
+                      Click letter to mark as correct answer
+                    </span>
+                  </div>
+                  {quizForm.options.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQuizForm({ ...quizForm, correct_index: idx })}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition ${
+                          quizForm.correct_index === idx
+                            ? "bg-accent text-surface font-extrabold shadow-sm"
+                            : "bg-ink/5 text-ink-4 hover:bg-ink/10"
+                        }`}
+                        title="Mark as correct answer"
+                      >
+                        {String.fromCharCode(65 + idx)}
+                      </button>
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => {
+                          const updated = [...quizForm.options];
+                          updated[idx] = { ...updated[idx], text: e.target.value };
+                          setQuizForm({ ...quizForm, options: updated });
+                        }}
+                        placeholder={`Option ${String.fromCharCode(65 + idx)} text`}
+                        className={`flex-1 text-xs p-2.5 rounded-lg border bg-surface text-ink ${
+                          quizForm.correct_index === idx ? "border-accent ring-1 ring-accent" : "border-ink/10"
+                        }`}
+                        required
+                      />
+                      {quizForm.correct_index === idx && (
+                        <span className="text-[10px] font-bold text-accent-fg bg-accent/10 px-2 py-1 rounded shrink-0">
+                          Correct ✓
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase font-bold text-ink-4 block mb-1">
+                    Explanation / Learning Feedback
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={quizForm.explanation}
+                    onChange={(e) => setQuizForm({ ...quizForm, explanation: e.target.value })}
+                    placeholder="Explanation shown when users answer the quiz..."
+                    className="w-full text-xs p-2.5 rounded-lg border border-ink/10 bg-surface text-ink"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-ink/[0.08]">
+                  <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={quizForm.is_active}
+                      onChange={(e) => setQuizForm({ ...quizForm, is_active: e.target.checked })}
+                      className="rounded accent-amber-500"
+                    />
+                    <span className="font-semibold">Publish as Active Quiz</span>
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuizModal(false)}
+                      className="px-4 py-2 rounded-lg border border-ink/10 text-xs font-bold text-ink-3 hover:text-ink cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveQuiz}
+                      disabled={isSubmittingQuiz}
+                      className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSubmittingQuiz ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      )}
+                      <span>{editingQuizId ? "Save Changes" : "Publish Daily Quiz"}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* List of quizzes */}
+          {loadingQuizzes ? (
+            <div className="py-12 text-center text-ink-4">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-amber-500" />
+            </div>
+          ) : quizzes.length === 0 ? (
+            <div className="surface-card rounded-2xl p-10 border border-ink/[0.06] text-center space-y-3">
+              <Terminal className="h-8 w-8 text-amber-500 mx-auto" />
+              <h3 className="font-heading font-bold text-ink">No Quizzes Configured Yet</h3>
+              <p className="text-xs text-ink-3 max-w-sm mx-auto">
+                Set today's Web3 daily micro-quiz with custom questions, options, and XP rewards.
+              </p>
+              <button
+                onClick={openCreateQuiz}
+                className="btn-green px-5 py-2 rounded-full text-xs font-bold mt-2"
+              >
+                Create First Daily Quiz
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {quizzes.map((q) => (
+                <div key={q.id} className="surface-card rounded-2xl p-5 border border-ink/[0.06] flex flex-col justify-between space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold text-ink-4 uppercase">
+                          {q.quiz_date}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-ink/5 text-ink-3">
+                          {q.topic}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                          q.is_active ? "bg-accent/20 text-accent-fg" : "bg-ink/5 text-ink-4"
+                        }`}>
+                          {q.is_active ? "ACTIVE" : "INACTIVE"}
+                        </span>
+                        <span className="text-xs font-bold text-amber-500">+{q.points} XP</span>
+                      </div>
+                    </div>
+
+                    <h4 className="text-base font-bold font-heading text-ink">{q.title}</h4>
+                    <p className="text-xs text-ink-3 line-clamp-2">{q.question}</p>
+
+                    <div className="space-y-1 pt-1">
+                      {q.options?.map((opt, i) => (
+                        <div
+                          key={i}
+                          className={`text-[11px] p-2 rounded-lg border ${
+                            q.correct_index === i
+                              ? "border-accent/40 bg-accent/5 font-semibold text-ink"
+                              : "border-ink/5 text-ink-4"
+                          }`}
+                        >
+                          <span className="font-mono mr-1.5 text-ink-4">{String.fromCharCode(65 + i)}.</span>
+                          {opt.text}
+                          {q.correct_index === i && (
+                            <span className="ml-1.5 text-accent-fg font-bold">✓ (Correct)</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-ink/[0.06] pt-3 text-xs">
+                    <button
+                      onClick={() => handleToggleQuizActive(q)}
+                      className="text-xs font-semibold text-ink-3 hover:text-ink cursor-pointer"
+                    >
+                      {q.is_active ? "Deactivate" : "Set Active"}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditQuiz(q)}
+                        className="p-1.5 rounded-lg border border-ink/10 hover:bg-ink/5 text-ink cursor-pointer"
+                        title="Edit Quiz"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteQuiz(q.id)}
+                        className="p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-500 cursor-pointer"
+                        title="Delete Quiz"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

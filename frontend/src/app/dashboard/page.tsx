@@ -9,7 +9,14 @@ import {
   Globe
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { api, TaskSubmission, PointsLedgerItem, DomainRecord, LeaderboardEntry } from "@/lib/api";
+import {
+  api,
+  TaskSubmission,
+  PointsLedgerItem,
+  DomainRecord,
+  LeaderboardEntry,
+  DailyQuiz,
+} from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 import toast from "react-hot-toast";
 
@@ -20,6 +27,35 @@ function levelTitle(level: number): string {
   if (level >= 5) return "Explorer";
   return "Newcomer";
 }
+
+interface WeekDayItem {
+  initial: string;
+  label: string;
+  dayNum: number;
+  dateStr: string;
+  isToday: boolean;
+  isPast: boolean;
+  isFuture: boolean;
+  isActive: boolean;
+}
+
+const DEFAULT_QUIZ: DailyQuiz = {
+  id: 0,
+  quiz_date: "",
+  title: "Smart Contract Reentrancy Basics: Detection & Prevention",
+  topic: "Smart Contract Security",
+  description: "Test your understanding of Checks-Effects-Interactions pattern, mutex guards, and fallback vulnerability surfaces.",
+  question: "Which design pattern or guard is considered the canonical standard in Solidity to safely prevent recursive external reentrancy exploits?",
+  options: [
+    { id: 0, text: "Checks-Effects-Interactions (CEI) pattern + OpenZeppelin ReentrancyGuard" },
+    { id: 1, text: "Using tx.origin == msg.sender verification" },
+    { id: 2, text: "Transferring ETH before deducting user internal balance" },
+    { id: 3, text: "Using call() with unlimited gas forwarded to arbitrary addresses" },
+  ],
+  points: 50,
+  is_active: true,
+  explanation: "Checks-Effects-Interactions (CEI) pattern ensures internal state variables are updated before invoking external untrusted contracts, eliminating recursive reentrancy.",
+};
 
 export default function DashboardPage() {
   const { user, stats, walletAddress, connectWallet, isLoading, awardClaimedXp, refreshUserData } = useAuth();
@@ -32,8 +68,99 @@ export default function DashboardPage() {
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
+  const [timeUntilReset, setTimeUntilReset] = useState("");
+  const [currentQuiz, setCurrentQuiz] = useState<DailyQuiz>(DEFAULT_QUIZ);
+  const [realTimeWeekDays, setRealTimeWeekDays] = useState<WeekDayItem[]>([]);
 
   const activeAddr = (walletAddress || user?.wallet_address)?.toLowerCase();
+
+  // Fetch admin-configured daily quiz from backend
+  useEffect(() => {
+    api.getDailyQuiz()
+      .then((q) => {
+        if (q && q.title) {
+          setCurrentQuiz(q);
+        }
+      })
+      .catch((err) => {
+        console.error("Could not fetch admin daily quiz:", err);
+      });
+  }, []);
+
+  // Compute real-time week days client-side to prevent SSR prerender date divergence
+  useEffect(() => {
+    const now = new Date();
+    const currentDayOfWeek = now.getUTCDay(); // 0 = Sun, 1 = Mon ...
+    const distToMonday = (currentDayOfWeek + 6) % 7;
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - distToMonday));
+    const todayStr = now.toISOString().slice(0, 10);
+
+    const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const dayInitials = ["M", "T", "W", "T", "F", "S", "S"];
+
+    const days: WeekDayItem[] = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(monday.getUTCDate() + i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const isToday = dateStr === todayStr;
+      const isPast = dateStr < todayStr;
+      const isFuture = dateStr > todayStr;
+      const hasPoints = (stats?.active_dates?.includes(dateStr) ?? false) || (isToday && (claimedDaily || quizCompleted));
+
+      return {
+        initial: dayInitials[i],
+        label: dayLabels[i],
+        dayNum: d.getUTCDate(),
+        dateStr,
+        isToday,
+        isPast,
+        isFuture,
+        isActive: hasPoints,
+      };
+    });
+
+    setRealTimeWeekDays(days);
+  }, [stats?.active_dates, claimedDaily, quizCompleted]);
+
+  // Live ticking countdown to next daily reset at 00:00:00 UTC
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const nextUtcMidnight = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0, 0, 0, 0
+      ));
+      const diffMs = nextUtcMidnight.getTime() - now.getTime();
+      if (diffMs <= 0) {
+        refreshUserData();
+        setClaimedDaily(false);
+        setQuizCompleted(false);
+        return;
+      }
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+      setTimeUntilReset(
+        `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`
+      );
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [refreshUserData]);
+
+  // Sync claim statuses from stats
+  useEffect(() => {
+    if (stats?.daily_claimed !== undefined) {
+      setClaimedDaily(stats.daily_claimed);
+    }
+    if (stats?.quiz_claimed !== undefined) {
+      setQuizCompleted(stats.quiz_claimed);
+    }
+  }, [stats?.daily_claimed, stats?.quiz_claimed]);
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -88,27 +215,29 @@ export default function DashboardPage() {
   };
 
   const handleCompleteQuiz = async () => {
-    if (quizAnswer === 0) {
-      try {
-        await api.claimDailyQuiz();
+    if (quizAnswer === null) return;
+    try {
+      const res = await api.claimDailyQuiz(quizAnswer, currentQuiz.id > 0 ? currentQuiz.id : undefined);
+      setQuizCompleted(true);
+      await refreshUserData();
+      const points = await api.getMyPoints().catch(() => []);
+      setRecentPoints(points.slice(0, 5));
+      toast.success(
+        `Correct! +${res.points_delta || currentQuiz.points} XP bonus earned 🎉${currentQuiz.explanation ? `\n${currentQuiz.explanation}` : ""}`,
+        { duration: 5000 }
+      );
+      setTimeout(() => setShowQuizModal(false), 900);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Quiz claim failed";
+      if (msg.includes("already") || (err as { status?: number }).status === 409) {
         setQuizCompleted(true);
-        await refreshUserData();
-        const points = await api.getMyPoints().catch(() => []);
-        setRecentPoints(points.slice(0, 5));
-        toast.success("Correct! +50 XP bonus earned 🎉");
-        setTimeout(() => setShowQuizModal(false), 800);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Quiz claim failed";
-        if (msg.includes("already") || (err as { status?: number }).status === 409) {
-          setQuizCompleted(true);
-          toast("Quiz already completed today!", { icon: "ℹ️" });
-          setShowQuizModal(false);
-        } else {
-          toast.error(msg);
-        }
+        toast("Quiz already completed today!", { icon: "ℹ️" });
+        setShowQuizModal(false);
+      } else if (msg.includes("Incorrect") || (err as { status?: number }).status === 400) {
+        toast.error(msg);
+      } else {
+        toast.error(msg);
       }
-    } else {
-      toast.error("Incorrect. Remember: checks & effects must precede external calls!");
     }
   };
 
@@ -154,8 +283,6 @@ export default function DashboardPage() {
   const levelProgressPct = nextThreshold > 0 && pointsToNext > 0
     ? Math.min(100, Math.round(((nextThreshold - pointsToNext) / nextThreshold) * 100))
     : 0;
-
-  const streakDays7 = ["M", "T", "W", "T", "F", "S", "S"];
 
   return (
     <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -213,12 +340,25 @@ export default function DashboardPage() {
             <button
               onClick={handleClaimDaily}
               disabled={claimedDaily}
-              className={`px-5 py-2.5 rounded-full transition-all text-sm font-bold flex items-center gap-2 ${claimedDaily ? "bg-accent/20 text-accent-fg" : "bg-ink/5 text-ink hover:bg-ink/10 shadow-sm"}`}
+              className={`px-5 py-2.5 rounded-full transition-all text-sm font-bold flex items-center gap-2 ${
+                claimedDaily
+                  ? "bg-accent/20 text-accent-fg cursor-default"
+                  : "bg-amber-500 hover:bg-amber-400 text-white shadow-lg hover:shadow-amber-500/25"
+              }`}
             >
               {claimedDaily ? (
-                <><CheckCircle2 className="w-4 h-4" /> Claimed (+20 XP)</>
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Claimed (+20 XP)</span>
+                  {timeUntilReset && (
+                    <span className="text-[11px] font-mono opacity-80 ml-1">• Next in {timeUntilReset}</span>
+                  )}
+                </>
               ) : (
-                <><Flame className="w-4 h-4 text-amber-500" /> Claim Daily 20 XP</>
+                <>
+                  <Flame className="w-4 h-4" />
+                  <span>Claim Daily 20 XP</span>
+                </>
               )}
             </button>
             <Link href="/domains" className="px-5 py-2.5 rounded-full border border-ink/10 text-ink text-sm font-bold flex items-center gap-2 hover:bg-ink/5 transition-colors">
@@ -264,14 +404,25 @@ export default function DashboardPage() {
         <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col justify-between hover:bg-ink/[0.02] transition-colors group">
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] text-ink-4 uppercase tracking-wider font-bold">Cadence</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-ink-4 uppercase tracking-wider font-bold">Cadence</span>
+                {timeUntilReset && (
+                  <span className="text-[9px] font-mono text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5" /> {timeUntilReset}
+                  </span>
+                )}
+              </div>
               <div className="flex items-baseline gap-2 mt-2">
                 <span className="text-3xl font-heading font-bold text-ink leading-none">{streakDays}</span>
                 <span className="text-sm font-heading font-bold text-amber-500">Days Streak</span>
               </div>
-              {streakDays >= 7 && (
+              {streakDays >= 7 ? (
                 <span className="text-[10px] text-amber-500 mt-1.5 flex items-center gap-1 font-bold">
                   <Zap className="w-3 h-3" /> 1.25x Multiplier Active
+                </span>
+              ) : (
+                <span className="text-[10px] text-ink-4 mt-1.5 font-medium">
+                  {streakDays === 0 ? "Claim today to start streak" : `${7 - (streakDays % 7)}d until 1.25x multiplier`}
                 </span>
               )}
             </div>
@@ -279,25 +430,34 @@ export default function DashboardPage() {
               <Flame className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-6 flex items-center justify-between gap-1">
-            {streakDays7.map((d, i) => {
-              const isActive = i < Math.min(streakDays, 7);
-              const isToday = i === Math.min(streakDays - 1, 6);
-              return (
-                <div key={i} className="flex flex-col items-center gap-1.5">
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
-                    isToday ? "bg-amber-500/20 text-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]" :
-                    isActive ? "bg-ink/10 text-ink" : "bg-ink/5 text-ink-4"
-                  }`}>
-                    {d}
-                  </span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    isToday ? "bg-amber-500 animate-pulse" :
-                    isActive ? "bg-ink/20" : "bg-transparent"
-                  }`} />
+          <div className="mt-5 flex items-center justify-between gap-1">
+            {realTimeWeekDays.map((d) => (
+              <div key={d.dateStr} className="flex flex-col items-center gap-1">
+                <span className={`text-[9px] font-mono uppercase font-semibold ${
+                  d.isToday ? "text-amber-500 font-bold" : "text-ink-4"
+                }`}>
+                  {d.label}
+                </span>
+                <div
+                  title={`${d.label} (${d.dateStr})${d.isToday ? " • TODAY" : ""}${d.isActive ? " • Active" : ""}`}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all relative ${
+                    d.isToday
+                      ? "ring-2 ring-amber-500 ring-offset-2 ring-offset-surface bg-amber-500/20 text-amber-500 font-extrabold shadow-[0_0_10px_rgba(245,158,11,0.4)]"
+                      : d.isActive
+                      ? "bg-accent/20 text-accent-fg border border-accent/40 font-extrabold"
+                      : d.isPast
+                      ? "bg-ink/5 text-ink-4 opacity-60"
+                      : "bg-ink/[0.03] text-ink-4 border border-dashed border-ink/15"
+                  }`}
+                >
+                  <span>{d.dayNum}</span>
                 </div>
-              );
-            })}
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  d.isToday ? "bg-amber-500 animate-pulse" :
+                  d.isActive ? "bg-accent" : "bg-transparent"
+                }`} />
+              </div>
+            ))}
           </div>
         </div>
 
@@ -371,33 +531,35 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase tracking-wider">
-                  Daily Web3 Micro-Quiz
+                  Daily Web3 Micro-Quiz • {currentQuiz.topic}
                 </span>
-                <span className="text-[10px] text-ink-4 flex items-center gap-1 font-medium">
-                  <Clock className="w-3 h-3" /> 2 min quiz
+                <span className="text-[10px] text-ink-4 flex items-center gap-1 font-mono">
+                  <Clock className="w-3 h-3 text-amber-500" /> 2 min quiz
+                  {timeUntilReset && <span className="text-ink-4 ml-1">• Resets in {timeUntilReset}</span>}
                 </span>
                 <span className="text-[10px] text-accent-fg font-bold bg-ink/5 border border-ink/5 px-2.5 py-1 rounded-full">
-                  +50 XP BONUS
+                  +{currentQuiz.points} XP BONUS
                 </span>
               </div>
-              <h2 className="text-xl font-heading font-bold text-ink">Smart Contract Reentrancy Basics: Detection & Prevention</h2>
+              <h2 className="text-xl font-heading font-bold text-ink">{currentQuiz.title}</h2>
               <p className="text-sm text-ink-4 max-w-2xl leading-relaxed">
-                Test your understanding of Checks-Effects-Interactions pattern, mutex guards, and fallback vulnerability surfaces before today's epoch concludes.
+                {currentQuiz.description}
               </p>
             </div>
           </div>
           <button
             onClick={() => {
               if (quizCompleted) {
-                toast("You've already claimed today's quiz bonus!", { icon: "✅" });
+                toast("You've already completed today's quiz! Resets at 00:00 UTC", { icon: "✅" });
               } else {
+                setQuizAnswer(null);
                 setShowQuizModal(true);
               }
             }}
             className={`w-full lg:w-auto px-6 py-3 rounded-full font-bold transition-all flex items-center justify-center gap-2 shrink-0 ${
               quizCompleted
                 ? "bg-accent/20 text-accent-fg cursor-default"
-                : "bg-amber-500 text-white hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                : "bg-amber-500 hover:bg-amber-400 text-white shadow-lg hover:shadow-amber-500/25"
             }`}
           >
             {quizCompleted ? (
@@ -748,11 +910,18 @@ export default function DashboardPage() {
           <div className="relative w-full max-w-lg rounded-2xl bg-surface border border-ink/10 p-6 md:p-8 shadow-2xl space-y-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase">
-                  Daily Challenge • +50 XP
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase">
+                    Daily Challenge • +{currentQuiz.points} XP
+                  </span>
+                  {timeUntilReset && (
+                    <span className="text-[10px] font-mono text-ink-4 flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5 text-amber-500" /> Resets in {timeUntilReset}
+                    </span>
+                  )}
+                </div>
                 <h3 className="text-lg font-heading font-bold text-ink">
-                  Smart Contract Reentrancy Prevention
+                  {currentQuiz.title}
                 </h3>
               </div>
               <button
@@ -764,16 +933,11 @@ export default function DashboardPage() {
             </div>
 
             <p className="text-sm text-ink-3 leading-relaxed">
-              Which design pattern or guard is considered the canonical standard in Solidity to safely prevent recursive external reentrancy exploits?
+              {currentQuiz.question}
             </p>
 
             <div className="space-y-2.5">
-              {[
-                { id: 0, text: "Checks-Effects-Interactions (CEI) pattern + ReentrancyGuard" },
-                { id: 1, text: "Using tx.origin == msg.sender verification" },
-                { id: 2, text: "Transferring ETH before deducting user internal balance" },
-                { id: 3, text: "Using call() with unlimited gas forwarded to arbitrary addresses" },
-              ].map((opt) => (
+              {currentQuiz.options.map((opt) => (
                 <button
                   key={opt.id}
                   onClick={() => setQuizAnswer(opt.id)}
@@ -805,7 +969,7 @@ export default function DashboardPage() {
                     : "bg-ink/10 text-ink-4 cursor-not-allowed"
                 }`}
               >
-                Submit Answer (+50 XP)
+                Submit Answer (+{currentQuiz.points} XP)
               </button>
             </div>
           </div>
