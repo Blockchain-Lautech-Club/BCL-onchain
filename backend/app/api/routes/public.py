@@ -80,20 +80,26 @@ async def leaderboard(limit: int = Query(50, ge=1, le=200), offset: int = Query(
          .order_by(User.total_points.desc(), User.id).limit(limit).offset(offset))
     users = (await session.execute(q)).scalars().all()
 
-    # Query active domains for these users
-    wallets = [u.wallet_address.lower() for u in users]
-    domains_q = select(DomainRecord).where(DomainRecord.owner_wallet.in_(wallets), DomainRecord.status == "active")
-    domain_rows = (await session.execute(domains_q)).scalars().all()
-    domain_map: dict[str, str] = {d.owner_wallet.lower(): d.normalized_name for d in domain_rows}
+    domain_map: dict[str, str] = {}
+    if users:
+        wallets = [u.wallet_address.lower() for u in users]
+        try:
+            domains_q = select(DomainRecord).where(DomainRecord.owner_wallet.in_(wallets), DomainRecord.status == "active")
+            domain_rows = (await session.execute(domains_q)).scalars().all()
+            domain_map = {d.owner_wallet.lower(): d.normalized_name for d in domain_rows}
+        except Exception:
+            await session.rollback()
 
-    # Also fallback to on-chain NameNFTRecord if indexed
-    from app.models.name_nft import NameNFTRecord
-    nft_q = select(NameNFTRecord).where(NameNFTRecord.owner_wallet.in_(wallets))
-    nft_rows = (await session.execute(nft_q)).scalars().all()
-    for n in nft_rows:
-        w = n.owner_wallet.lower()
-        if w not in domain_map:
-            domain_map[w] = f"{n.label}.bcl"
+        try:
+            from app.models.name_nft import NameNFTRecord
+            nft_q = select(NameNFTRecord).where(NameNFTRecord.owner_wallet.in_(wallets))
+            nft_rows = (await session.execute(nft_q)).scalars().all()
+            for n in nft_rows:
+                w = n.owner_wallet.lower()
+                if w not in domain_map:
+                    domain_map[w] = f"{n.label}.bcl"
+        except Exception:
+            await session.rollback()
 
     return [LeaderboardEntry(
         rank=offset + i + 1,

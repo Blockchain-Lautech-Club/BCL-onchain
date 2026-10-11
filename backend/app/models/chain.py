@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from typing import Optional
+
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,8 +40,8 @@ class AuditLog(Base):
     __table_args__ = (Index("ix_audit_created", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    actor_wallet: Mapped[str | None] = mapped_column(String(42), nullable=True)
+    actor_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    actor_wallet: Mapped[Optional[str]] = mapped_column(String(42), nullable=True)
     action: Mapped[str] = mapped_column(String(64))
     target_type: Mapped[str] = mapped_column(String(32))
     target_id: Mapped[str] = mapped_column(String(64))

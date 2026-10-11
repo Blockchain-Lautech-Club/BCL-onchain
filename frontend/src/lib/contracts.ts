@@ -1,14 +1,39 @@
-import { createPublicClient, http, parseAbi } from "viem";
+import { createPublicClient, http, parseAbi, isAddress, getAddress } from "viem";
+
+function resolveValidAddress(
+  envVal: string | undefined,
+  fallback: `0x${string}`
+): `0x${string}` {
+  if (envVal) {
+    const trimmed = envVal.trim();
+    if (isAddress(trimmed)) {
+      return getAddress(trimmed);
+    }
+    // Handle truncated address where trailing character was omitted in env setup (e.g. 41 chars)
+    if (trimmed.length === 41 && fallback.toLowerCase().startsWith(trimmed.toLowerCase())) {
+      return fallback;
+    }
+  }
+  return fallback;
+}
 
 export const CONTRACT_ADDRESSES = {
-  REWARDS: (process.env.NEXT_PUBLIC_REWARDS_CONTRACT ||
-    "0xDdF69D1b3CD83B8bF9FfEf2ED407be9F9cAb6Cab") as `0x${string}`,
-  REGISTRY: (process.env.NEXT_PUBLIC_REGISTRY_CONTRACT ||
-    "0xb6BaA98648a8D3B5e24f5b029e12d5Cd700398fd") as `0x${string}`,
-  BCL_TOKEN: (process.env.NEXT_PUBLIC_TOKEN_CONTRACT ||
-    "0x13AD24fDF0843c9b3Cc9adbE7C2EC55A48707086") as `0x${string}`,
-  NAME_NFT: (process.env.NEXT_PUBLIC_NAME_NFT_CONTRACT ||
-    "0xa21b4e2d910a106f8783dD8628D8C5Ba3E4b7A96") as `0x${string}`,
+  REWARDS: resolveValidAddress(
+    process.env.NEXT_PUBLIC_REWARDS_CONTRACT,
+    "0xDdF69D1b3CD83B8bF9FfEf2ED407be9F9cAb6Cab"
+  ),
+  REGISTRY: resolveValidAddress(
+    process.env.NEXT_PUBLIC_REGISTRY_CONTRACT,
+    "0xb6BaA98648a8D3B5e24f5b029e12d5Cd700398fd"
+  ),
+  BCL_TOKEN: resolveValidAddress(
+    process.env.NEXT_PUBLIC_TOKEN_CONTRACT,
+    "0x13AD24fDF0843c9b3Cc9adbE7C2EC55A48707086"
+  ),
+  NAME_NFT: resolveValidAddress(
+    process.env.NEXT_PUBLIC_NAME_NFT_CONTRACT,
+    "0xa21b4e2d910a106f8783dD8628D8C5Ba3E4b7A96"
+  ),
 };
 
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.bohr.life";
@@ -83,19 +108,29 @@ export async function getOnchainBclBalance(wallet: string): Promise<{
   allowance_wei: string;
   name_nft_address: string;
 }> {
+  if (!wallet || !isAddress(wallet.trim())) {
+    return {
+      wallet,
+      balance_wei: "0",
+      allowance_wei: "0",
+      name_nft_address: CONTRACT_ADDRESSES.NAME_NFT,
+    };
+  }
+  const cleanWallet = getAddress(wallet.trim());
+
   try {
     const bal = await botchainPublicClient.readContract({
       address: CONTRACT_ADDRESSES.BCL_TOKEN,
       abi: BCL_TOKEN_ABI,
       functionName: "balanceOf",
-      args: [wallet as `0x${string}`],
+      args: [cleanWallet],
     });
 
     const allow = await botchainPublicClient.readContract({
       address: CONTRACT_ADDRESSES.BCL_TOKEN,
       abi: BCL_TOKEN_ABI,
       functionName: "allowance",
-      args: [wallet as `0x${string}`, CONTRACT_ADDRESSES.NAME_NFT],
+      args: [cleanWallet, CONTRACT_ADDRESSES.NAME_NFT],
     });
 
     return {
@@ -124,12 +159,17 @@ export async function getOnchainUserDomains(wallet: string): Promise<Array<{
   expires_at: string;
   resolver_data?: string;
 }>> {
+  if (!wallet || !isAddress(wallet.trim())) {
+    return [];
+  }
+  const cleanWallet = getAddress(wallet.trim());
+
   try {
     const bal = await botchainPublicClient.readContract({
       address: CONTRACT_ADDRESSES.NAME_NFT,
       abi: parseAbi(["function balanceOf(address) view returns (uint256)"]),
       functionName: "balanceOf",
-      args: [wallet as `0x${string}`],
+      args: [cleanWallet],
     });
 
     const domains = [];
@@ -139,7 +179,7 @@ export async function getOnchainUserDomains(wallet: string): Promise<Array<{
           address: CONTRACT_ADDRESSES.NAME_NFT,
           abi: parseAbi(["function tokenOfOwnerByIndex(address, uint256) view returns (uint256)"]),
           functionName: "tokenOfOwnerByIndex",
-          args: [wallet as `0x${string}`, i],
+          args: [cleanWallet, i],
         });
         const label = await botchainPublicClient.readContract({
           address: CONTRACT_ADDRESSES.NAME_NFT,
