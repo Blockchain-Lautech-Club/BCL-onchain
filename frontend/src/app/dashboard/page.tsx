@@ -9,7 +9,7 @@ import {
   Globe
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { api, TaskSubmission, PointsLedgerItem, DomainRecord } from "@/lib/api";
+import { api, TaskSubmission, PointsLedgerItem, DomainRecord, LeaderboardEntry } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 import toast from "react-hot-toast";
 
@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [recentSubmissions, setRecentSubmissions] = useState<TaskSubmission[]>([]);
   const [recentPoints, setRecentPoints] = useState<PointsLedgerItem[]>([]);
   const [myDomains, setMyDomains] = useState<DomainRecord[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [claimedDaily, setClaimedDaily] = useState(false);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -42,6 +43,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    api.getLeaderboard(100).then(l => setLeaderboard(l || [])).catch(() => {});
+
     if (!activeAddr) return;
     const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -133,6 +136,12 @@ export default function DashboardPage() {
   const streakDays = stats?.streak_days ?? 0;
   const completedTasks = stats?.completed_tasks_count ?? 0;
   const activeNames = stats?.active_names_count ?? 0;
+
+  const userRankIndex = leaderboard.findIndex(
+    e => e.wallet_address.toLowerCase() === activeAddr
+  );
+  const myRank = userRankIndex >= 0 ? userRankIndex + 1 : (totalPoints > 0 ? (leaderboard.length > 0 ? leaderboard.length : 1) : null);
+  const totalDevs = Math.max(leaderboard.length, totalPoints > 0 ? 1 : 0);
 
   const levelProgressPct = nextThreshold > 0 && pointsToNext > 0
     ? Math.min(100, Math.round(((nextThreshold - pointsToNext) / nextThreshold) * 100))
@@ -293,7 +302,9 @@ export default function DashboardPage() {
                 <span className="text-3xl font-heading font-bold text-ink leading-none">{completedTasks}</span>
                 <span className="text-sm font-heading font-bold text-ink-4">Quests</span>
               </div>
-              <span className="text-[10px] text-accent-fg mt-1.5 font-bold">Top 4% of BCL Peers</span>
+              <span className="text-[10px] text-accent-fg mt-1.5 font-bold">
+                {completedTasks > 0 ? `${completedTasks} verified submissions` : "Active Contributor"}
+              </span>
             </div>
             <div className="w-10 h-10 rounded-full bg-ink/5 flex items-center justify-center text-accent-fg group-hover:scale-110 transition-transform">
               <Shield className="w-5 h-5" />
@@ -304,22 +315,26 @@ export default function DashboardPage() {
               <path d="M2 28L14 20L26 24L38 12L50 16L62 4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
             </svg>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-ink">Active Contributor</span>
+              <span className="text-xs font-bold text-ink">{user?.bcl_domain || (activeNames > 0 ? `${activeNames} domain` : "BCL Pioneer")}</span>
               <span className="text-[10px] text-ink-4 mt-0.5">{activeNames} registered domains</span>
             </div>
           </div>
         </div>
 
         {/* Global Standing Card */}
-        <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col justify-between hover:bg-ink/[0.02] transition-colors group">
+        <Link href="/leaderboard" className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col justify-between hover:bg-ink/[0.02] transition-colors group">
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
               <span className="text-[10px] text-ink-4 uppercase tracking-wider font-bold">Global Standing</span>
               <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-3xl font-heading font-bold text-purple-500 leading-none">#27</span>
+                <span className="text-3xl font-heading font-bold text-purple-500 leading-none">
+                  {myRank ? `#${myRank}` : "—"}
+                </span>
                 <span className="text-sm font-mono text-ink-4 font-semibold">Overall</span>
               </div>
-              <span className="text-[10px] text-ink-4 mt-1.5 font-medium">Among 1,420 Active Devs</span>
+              <span className="text-[10px] text-ink-4 mt-1.5 font-medium">
+                {myRank ? `Rank #${myRank} of ${totalDevs} on Leaderboard` : `Among ${totalDevs} active citizens`}
+              </span>
             </div>
             <div className="w-10 h-10 rounded-full bg-ink/5 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
               <TrendingUp className="w-5 h-5" />
@@ -330,9 +345,11 @@ export default function DashboardPage() {
               <Star className="w-4 h-4 text-purple-500" />
               <span className="text-[11px] font-mono font-bold text-ink">{totalPoints.toLocaleString()} XP</span>
             </div>
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-500 font-bold uppercase tracking-wider">Master Rank</span>
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-500 font-bold uppercase tracking-wider">
+              {myRank === 1 ? "Rank #1 Gold" : myRank && myRank <= 3 ? "Podium" : levelTitle(level)}
+            </span>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* 3. Featured Daily Challenge Banner */}
