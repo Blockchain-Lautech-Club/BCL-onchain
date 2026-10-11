@@ -50,7 +50,18 @@ export default function ProfilePage() {
       api.getMyNFTs().catch(() => [] as NFTMintRecord[]),
       api.getMySubmissions().catch(() => [] as TaskSubmission[]),
       api.getMyPoints().catch(() => [] as PointsLedgerItem[]),
-    ]).then(([profData, nftData, subData, ptsData]) => {
+    ]).then(async ([profData, nftData, subData, ptsData]) => {
+      // Fallback to public database record if session token is not present
+      if (!profData && walletAddress) {
+        profData = await api.getUserProfile(walletAddress).catch(() => null);
+      }
+      if ((!nftData || nftData.length === 0) && walletAddress) {
+        nftData = await api.getUserNFTs(walletAddress).catch(() => []);
+      }
+      if ((!ptsData || ptsData.length === 0) && walletAddress) {
+        ptsData = await api.getUserPoints(walletAddress).catch(() => []);
+      }
+
       if (profData) {
         setProfile(profData);
         setUsernameInput(profData.username    || "");

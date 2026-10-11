@@ -1,16 +1,62 @@
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, text
+from sqlalchemy import cast, Date as SADate, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import is_admin
 from app.api.routes.me import mint_out
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import DomainRecord, NFTMint, User
+from app.models import DomainRecord, NFTMint, PointsLedger, TaskSubmission, User
 from app.models.base import as_utc, utcnow
-from app.schemas.profile import DomainOut, LeaderboardEntry, MintOut
-from app.services import auth_service, domain_service
+from app.schemas.profile import DomainOut, LeaderboardEntry, LedgerOut, MintOut, ProfileOut
+from app.services import auth_service, domain_service, level_service
 
 router = APIRouter(tags=["public"])
+
+
+async def compute_user_stats(session: AsyncSession, user: User) -> dict:
+    thresholds = await level_service.get_thresholds(session)
+    info = level_service.next_level_info(user.total_points, thresholds)
+
+    completed_q = select(func.count()).where(
+        TaskSubmission.user_id == user.id,
+        TaskSubmission.status == "verified",
+    )
+    completed_tasks_count = (await session.execute(completed_q)).scalar() or 0
+
+    active_names_q = select(func.count()).where(
+        DomainRecord.owner_wallet == user.wallet_address,
+        DomainRecord.status == "active",
+    )
+    active_names_count = (await session.execute(active_names_q)).scalar() or 0
+
+    dates_q = (
+        select(cast(PointsLedger.created_at, SADate).label("day"))
+        .where(PointsLedger.user_id == user.id)
+        .distinct()
+        .order_by(cast(PointsLedger.created_at, SADate).desc())
+        .limit(365)
+    )
+    rows = (await session.execute(dates_q)).scalars().all()
+    streak_days = 0
+    expected = date.today()
+    for d in rows:
+        if d == expected or d == expected - timedelta(days=1):
+            streak_days += 1
+            expected = d - timedelta(days=1)
+        else:
+            break
+
+    return {
+        "level": user.level,
+        "total_points": user.total_points,
+        "points_to_next_level": info["points_to_next"] or 0,
+        "next_level_threshold": info["next_level_threshold"] or 0,
+        "completed_tasks_count": completed_tasks_count,
+        "active_names_count": active_names_count,
+        "streak_days": streak_days,
+    }
 
 
 @router.get("/health")
@@ -40,6 +86,44 @@ async def user_nfts(wallet: str, session: AsyncSession = Depends(get_session)):
     wallet = auth_service.normalize_address(wallet)
     q = select(NFTMint).where(NFTMint.wallet == wallet, NFTMint.status == "confirmed").order_by(NFTMint.level)
     return [mint_out(m) for m in (await session.execute(q)).scalars().all()]
+
+
+@router.get("/users/{wallet}/profile", response_model=ProfileOut)
+async def user_profile(wallet: str, session: AsyncSession = Depends(get_session)):
+    wallet = auth_service.normalize_address(wallet)
+    user = await session.scalar(select(User).where(User.wallet_address == wallet))
+    if user is None:
+        raise AppError(404, "user_not_found", "User not found")
+    thresholds = await level_service.get_thresholds(session)
+    info = level_service.next_level_info(user.total_points, thresholds)
+    out = ProfileOut.model_validate(user)
+    out.is_admin = await is_admin(session, user)
+    out.next_level, out.next_level_threshold, out.points_to_next = (
+        info["next_level"], info["next_level_threshold"], info["points_to_next"]
+    )
+    return out
+
+
+@router.get("/users/{wallet}/stats")
+async def user_stats(wallet: str, session: AsyncSession = Depends(get_session)):
+    wallet = auth_service.normalize_address(wallet)
+    user = await session.scalar(select(User).where(User.wallet_address == wallet))
+    if user is None:
+        raise AppError(404, "user_not_found", "User not found")
+    return await compute_user_stats(session, user)
+
+
+@router.get("/users/{wallet}/points", response_model=list[LedgerOut])
+async def user_points(wallet: str, session: AsyncSession = Depends(get_session)):
+    wallet = auth_service.normalize_address(wallet)
+    user = await session.scalar(select(User).where(User.wallet_address == wallet))
+    if user is None:
+        return []
+    q = (select(PointsLedger)
+         .where(PointsLedger.user_id == user.id)
+         .order_by(PointsLedger.created_at.desc())
+         .limit(100))
+    return [LedgerOut.model_validate(r) for r in (await session.execute(q)).scalars().all()]
 
 
 @router.get("/domains/availability")

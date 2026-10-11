@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Home, Compass, Globe, Globe2, Calendar, Trophy, Gift, User,
   Flame, Bell, Zap, Menu, X, BookOpen, ShoppingBag,
-  BadgeCheck, LogOut, Copy, ExternalLink, ChevronDown, Wallet
+  BadgeCheck, LogOut, Copy, ExternalLink, ChevronDown, Wallet, Shield
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
@@ -56,7 +56,9 @@ export function NavbarClient() {
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : null;
 
-  const displayName = user?.bcl_domain || shortAddr || "philip.bcl";
+  const displayName = user?.username
+    ? (user.username.endsWith(".bcl") ? user.username : `${user.username}.bcl`)
+    : (user?.bcl_domain || shortAddr || "philip.bcl");
 
   // Resolve nav href: Home goes to /dashboard if connected, /landing if not
   const resolveHref = (href: string) => {
@@ -232,6 +234,19 @@ export function NavbarClient() {
 
                     {/* Actions */}
                     <div className="p-2">
+                      {typeof window !== "undefined" && !localStorage.getItem("bcl_auth_token") && (
+                        <button
+                          onClick={() => {
+                            setProfileOpen(false);
+                            connectWallet();
+                          }}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-accent-fg bg-accent/10 hover:bg-accent/20 transition-colors w-full text-left mb-1"
+                        >
+                          <Shield className="w-4 h-4 text-accent-fg" />
+                          Sign In Session
+                        </button>
+                      )}
+
                       <Link
                         href="/profile"
                         onClick={() => setProfileOpen(false)}

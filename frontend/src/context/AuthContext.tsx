@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api, User, UserStats } from "@/lib/api";
+import { api, User, UserStats, ProfileData } from "@/lib/api";
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
 import { useDisconnect, useSignMessage } from "wagmi";
 import toast from "react-hot-toast";
@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin,       setIsAdmin]       = useState(false);
   const [isLoading,     setIsLoading]     = useState(true);
   const [isConnecting,  setIsConnecting]  = useState(false);
+  const pendingSiweRef = React.useRef(false);
 
   const checkSession = useCallback(async () => {
     setIsLoading(true);
@@ -65,48 +66,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("bcl_wallet_address", activeAddress);
       }
 
-      // Fetch profile and stats in parallel; neither should block the other
-      const [profileResult, statsResult] = await Promise.allSettled([
-        api.getProfile(),
-        api.getMyStats(),
-      ]);
+      // Try authenticated profile/stats first, then fall back to public database record
+      let prof: ProfileData | null = null;
+      let userStats: UserStats | null = null;
 
-      const newUser: User =
-        profileResult.status === "fulfilled"
-          ? {
-              id:             profileResult.value.id,
-              wallet_address: profileResult.value.wallet_address || activeAddress,
-              username:       profileResult.value.username ?? undefined,
-              level:          profileResult.value.level,
-              total_points:   profileResult.value.total_points,
-              status:         "active",
-              is_admin:       me?.is_admin || profileResult.value.is_admin || false,
-            }
-          : {
-              id:             me?.id || 0,
-              wallet_address: activeAddress,
-              level:          0,
-              total_points:   0,
-              status:         "active",
-              is_admin:       me?.is_admin || false,
-            };
+      try {
+        prof = await api.getProfile();
+      } catch {
+        prof = await api.getUserProfile(activeAddress).catch(() => null);
+      }
 
-      const newStats: UserStats =
-        statsResult.status === "fulfilled" && statsResult.value
-          ? statsResult.value
-          : {
-              level: newUser.level || 0,
-              total_points: newUser.total_points || 0,
-              points_to_next_level: Math.max(0, 100 - (newUser.total_points || 0)),
-              next_level_threshold: 100,
-              completed_tasks_count: 0,
-              active_names_count: 0,
-              streak_days: 0,
-            };
+      try {
+        userStats = await api.getMyStats();
+      } catch {
+        userStats = await api.getUserStats(activeAddress).catch(() => null);
+      }
+
+      const envAdminWallets = (process.env.NEXT_PUBLIC_ADMIN_WALLETS || "0x825aab493a07fe7dbe29c4de1431deba84bf14eb")
+        .toLowerCase()
+        .split(",")
+        .map(w => w.trim());
+      const isUserAdmin = Boolean(
+        me?.is_admin ||
+        prof?.is_admin ||
+        envAdminWallets.includes(activeAddress)
+      );
+
+      const newUser: User = prof
+        ? {
+            id:             prof.id,
+            wallet_address: prof.wallet_address || activeAddress,
+            username:       prof.username ?? undefined,
+            level:          prof.level,
+            total_points:   prof.total_points,
+            status:         "active",
+            is_admin:       isUserAdmin,
+          }
+        : {
+            id:             me?.id || 0,
+            wallet_address: activeAddress,
+            level:          0,
+            total_points:   0,
+            status:         "active",
+            is_admin:       isUserAdmin,
+          };
+
+      const newStats: UserStats = userStats
+        ? userStats
+        : {
+            level: newUser.level || 0,
+            total_points: newUser.total_points || 0,
+            points_to_next_level: Math.max(0, 100 - (newUser.total_points || 0)),
+            next_level_threshold: 100,
+            completed_tasks_count: 0,
+            active_names_count: 0,
+            streak_days: 0,
+          };
 
       // Set all state together before clearing isLoading
       setWalletAddress(activeAddress);
-      setIsAdmin(Boolean(newUser.is_admin));
+      setIsAdmin(isUserAdmin);
       setUser(newUser);
       setStats(newStats);
     } catch {
@@ -127,22 +146,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await checkSession();
   };
 
-  const connectWallet = async () => {
+  const signInWithSiwe = useCallback(async (address: string) => {
     try {
       setIsConnecting(true);
-
-      let targetAddress = appKitAddress;
-
-      if (!isConnected || !targetAddress) {
-        await open();
-        setIsConnecting(false);
-        return;
-      }
-
-      const address = targetAddress.toLowerCase();
+      const normalizedAddress = address.toLowerCase();
 
       // 1. Get nonce + EIP-4361 message
-      const { message } = await api.getNonce(address);
+      const { message } = await api.getNonce(normalizedAddress);
 
       // 2. Sign with wagmi (fallback to window.ethereum)
       let signature = "";
@@ -157,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (eth) {
           signature = await eth.request({
             method: "personal_sign",
-            params: [message, address],
+            params: [message, normalizedAddress],
           });
         } else {
           throw signErr;
@@ -166,23 +176,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!signature) throw new Error("No signature returned");
 
-      // 3. Verify → backend sets httpOnly cookie
-      const res = await api.verifyLogin(address, signature);
+      // 3. Verify -> backend sets token
+      const res = await api.verifyLogin(normalizedAddress, signature);
       setWalletAddress(res.wallet_address);
       setIsAdmin(res.is_admin);
       toast.success("Signed in successfully!");
 
       // Re-fetch full profile + stats after login
       await checkSession();
-
-      // If user profile is not yet completed in database (no username), redirect directly to /profile
-      const prof = await api.getProfile().catch(() => null);
-      if (!prof?.username) {
-        toast("Welcome! Please choose a username to complete your profile.", { icon: "👤" });
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/profile")) {
-          window.location.href = "/profile?create=true";
-        }
+    } catch (err: unknown) {
+      console.error("SIWE signature failed:", err);
+      const msg = err instanceof Error ? err.message : "Failed to sign in";
+      if (!msg.includes("User rejected") && !msg.includes("rejected")) {
+        toast.error(msg);
       }
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [checkSession, signMessageAsync]);
+
+  useEffect(() => {
+    if (isConnected && appKitAddress && pendingSiweRef.current) {
+      pendingSiweRef.current = false;
+      signInWithSiwe(appKitAddress.toLowerCase());
+    }
+  }, [isConnected, appKitAddress, signInWithSiwe]);
+
+  const connectWallet = async () => {
+    try {
+      setIsConnecting(true);
+
+      const targetAddress = appKitAddress;
+
+      if (!isConnected || !targetAddress) {
+        pendingSiweRef.current = true;
+        await open();
+        setIsConnecting(false);
+        return;
+      }
+
+      await signInWithSiwe(targetAddress.toLowerCase());
     } catch (err: unknown) {
       console.error("Wallet connection failed:", err);
       const msg = err instanceof Error ? err.message : "Failed to connect wallet";

@@ -54,7 +54,15 @@ export default function DashboardPage() {
       if (hasDaily) setClaimedDaily(true);
       const hasQuiz = p.some(item => item.reason?.includes("Micro-Quiz") && item.created_at?.startsWith(todayStr));
       if (hasQuiz) setQuizCompleted(true);
-    }).catch(() => {});
+    }).catch(() => {
+      api.getUserPoints(activeAddr).then(p => {
+        setRecentPoints(p.slice(0, 5));
+        const hasDaily = p.some(item => item.reason?.includes("Daily streak") && item.created_at?.startsWith(todayStr));
+        if (hasDaily) setClaimedDaily(true);
+        const hasQuiz = p.some(item => item.reason?.includes("Micro-Quiz") && item.created_at?.startsWith(todayStr));
+        if (hasQuiz) setQuizCompleted(true);
+      }).catch(() => {});
+    });
 
     api.getMySubmissions().then(s => setRecentSubmissions(s.slice(0, 3))).catch(() => {});
     api.getMyNames().then(d => setMyDomains(d || [])).catch(() => {});

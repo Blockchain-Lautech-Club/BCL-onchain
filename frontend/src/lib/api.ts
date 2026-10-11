@@ -245,6 +245,60 @@ export const api = {
     return request<ProfileData>("/me");
   },
 
+  async getUserProfile(wallet: string): Promise<ProfileData> {
+    const norm = wallet.toLowerCase();
+    try {
+      return await request<ProfileData>(`/users/${norm}/profile`);
+    } catch {
+      // Fallback: check leaderboard to see if user has an existing record
+      const lb = await api.getLeaderboard(100).catch(() => []);
+      const entry = lb.find(e => e.wallet_address.toLowerCase() === norm);
+      if (entry) {
+        return {
+          id: 0,
+          wallet_address: norm,
+          username: entry.username || null,
+          bio: null,
+          avatar_url: null,
+          total_points: entry.total_points,
+          level: entry.level,
+          is_admin: false,
+          next_level: entry.level + 1,
+          next_level_threshold: 100,
+          points_to_next: Math.max(0, 100 - entry.total_points),
+        };
+      }
+      throw new Error("User profile not found");
+    }
+  },
+
+  async getUserStats(wallet: string): Promise<UserStats> {
+    const norm = wallet.toLowerCase();
+    try {
+      return await request<UserStats>(`/users/${norm}/stats`);
+    } catch {
+      const prof = await api.getUserProfile(norm).catch(() => null);
+      const points = prof?.total_points || 0;
+      return {
+        level: prof?.level || 0,
+        total_points: points,
+        points_to_next_level: Math.max(0, 100 - points),
+        next_level_threshold: 100,
+        completed_tasks_count: 0,
+        active_names_count: 0,
+        streak_days: 0,
+      };
+    }
+  },
+
+  async getUserNFTs(wallet: string): Promise<NFTMintRecord[]> {
+    return request<NFTMintRecord[]>(`/users/${wallet.toLowerCase()}/nfts`).catch(() => []);
+  },
+
+  async getUserPoints(wallet: string): Promise<PointsLedgerItem[]> {
+    return request<PointsLedgerItem[]>(`/users/${wallet.toLowerCase()}/points`).catch(() => []);
+  },
+
   async updateProfile(body: UpdateProfilePayload): Promise<ProfileData> {
     return request("/me", {
       method: "PATCH",
