@@ -13,7 +13,7 @@ export interface User {
   total_points: number;
   status: string;
   is_admin?: boolean;
-  bcl_domain?: string;   // ← add this
+  bcl_domain?: string;
 }
 
 export interface Task {
@@ -21,7 +21,6 @@ export interface Task {
   title: string;
   description: string;
   category: string;
-  /** Cover art for the quest card. https URL or /quests/... path; null -> category cover. */
   image_url?: string | null;
   points: number;
   verification_type: "onchain_tx" | "nft_ownership" | "social_api" | "manual";
@@ -29,7 +28,6 @@ export interface Task {
   repeatable: boolean;
   status: "draft" | "published" | "archived";
   deadline?: string | null;
-  /** Per-user state, returned by backend as `my_state`. */
   my_state?: "not_started" | "submitted" | "under_review" | "verified" | "rejected" | "expired" | null;
 }
 
@@ -42,7 +40,6 @@ export interface TaskSubmission {
   status: "submitted" | "under_review" | "verified" | "rejected";
   reason?: string;
   tx_hash?: string;
-  
   created_at: string;
 }
 
@@ -118,12 +115,22 @@ export interface PointsLedgerItem {
   created_at: string;
 }
 
+// ── Extended profile fields saved by the UI ──────────────────────────────────
 export interface ProfileData {
   id: number;
   wallet_address: string;
   username?: string | null;
   bio?: string | null;
   avatar_url?: string | null;
+  // Extended identity fields
+  avatar_emoji?: string | null;
+  role?: string | null;
+  location?: string | null;
+  twitter?: string | null;
+  github?: string | null;
+  website?: string | null;
+  skills?: string[] | null;
+  // Points / level
   total_points: number;
   level: number;
   is_admin: boolean;
@@ -132,11 +139,25 @@ export interface ProfileData {
   points_to_next?: number | null;
 }
 
+// Payload accepted by PATCH /me
+export interface UpdateProfilePayload {
+  username?: string;
+  bio?: string;
+  avatar_url?: string;
+  avatar_emoji?: string;
+  role?: string;
+  location?: string;
+  twitter?: string;
+  github?: string;
+  website?: string;
+  skills?: string[];
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
     ...options,
-    credentials: "include", // send httpOnly session cookie
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -189,7 +210,7 @@ export const api = {
     return request("/me");
   },
 
-  async updateProfile(body: { username?: string; bio?: string; avatar_url?: string }): Promise<ProfileData> {
+  async updateProfile(body: UpdateProfilePayload): Promise<ProfileData> {
     return request("/me", {
       method: "PATCH",
       body: JSON.stringify(body),

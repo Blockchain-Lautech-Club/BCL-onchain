@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Zap, Flame, ArrowRight, Shield, CheckCircle2, Clock,
-  Trophy, Calendar, Loader2, Terminal, Lock, Gift, 
+  Trophy, Calendar, Loader2, Terminal, Lock, Gift,
   Star, Award, TrendingUp, ChevronRight, Code, Megaphone
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -27,10 +28,19 @@ function levelTitle(level: number): string {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, stats, walletAddress, connectWallet, isLoading } = useAuth();
   const [recentSubmissions, setRecentSubmissions] = useState<TaskSubmission[]>([]);
   const [recentPoints, setRecentPoints] = useState<PointsLedgerItem[]>([]);
   const [claimedDaily, setClaimedDaily] = useState(false);
+
+  // Redirect unauthenticated users to landing/home
+  useEffect(() => {
+    if (isLoading) return;
+    if (!walletAddress) {
+      router.replace("/");
+    }
+  }, [isLoading, walletAddress, router]);
 
   useEffect(() => {
     if (!walletAddress) return;
@@ -38,6 +48,8 @@ export default function DashboardPage() {
     api.getMyPoints().then(p => setRecentPoints(p.slice(0, 5))).catch(() => {});
   }, [walletAddress]);
 
+  // Only block on isLoading — don't also gate on user, which can lag behind
+  // walletAddress and cause an infinite spinner
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -46,19 +58,9 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user || !walletAddress) {
-    return (
-      <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-20 flex flex-col items-center gap-4 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-ink/5 flex items-center justify-center mb-2">
-          <Lock className="w-8 h-8 text-ink-4" />
-        </div>
-        <h1 className="text-3xl font-extrabold font-heading text-ink tracking-tight">Access Your Dashboard</h1>
-        <p className="text-sm text-ink-4 max-w-sm">Sign in with your wallet to track your progress, verify quests, and unlock sovereign rewards.</p>
-        <button onClick={connectWallet} className="btn-green px-8 py-3 text-sm font-bold mt-4 flex items-center gap-2">
-          Connect Wallet <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-    );
+  // Auth resolved but no wallet or user — redirect is in flight, render nothing
+  if (!walletAddress || !user) {
+    return null;
   }
 
   const displayName = user.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
@@ -69,7 +71,7 @@ export default function DashboardPage() {
   const streakDays = stats?.streak_days ?? 0;
   const completedTasks = stats?.completed_tasks_count ?? 0;
   const activeNames = stats?.active_names_count ?? 0;
-  
+
   const levelProgressPct = nextThreshold > 0 && pointsToNext > 0
     ? Math.min(100, Math.round(((nextThreshold - pointsToNext) / nextThreshold) * 100))
     : 0;
@@ -78,12 +80,12 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 space-y-8">
-      
+
       {/* 1. Top Welcome & Status Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 shadow-sm">
         <div className="absolute -right-20 -top-24 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
         <div className="absolute right-40 -bottom-20 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
-        
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div className="flex flex-col gap-2 max-w-2xl">
             <div className="flex items-center gap-2 mb-1">
@@ -98,15 +100,16 @@ export default function DashboardPage() {
               {greet()}, {displayName} <span className="inline-block animate-pulse">👋</span>
             </h1>
             <p className="text-sm sm:text-base text-ink-4 mt-1">
-              You're on a <span className="text-amber-500 font-bold">{streakDays}-day streak!</span> Complete today's daily quest to reach <span className="text-accent-fg font-bold">Level {level + 1} {levelTitle(level + 1)}</span>.
+              You're on a <span className="text-amber-500 font-bold">{streakDays}-day streak!</span> Complete today's daily quest to reach{" "}
+              <span className="text-accent-fg font-bold">Level {level + 1} {levelTitle(level + 1)}</span>.
             </p>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <button 
+            <button
               onClick={() => setClaimedDaily(true)}
               disabled={claimedDaily}
-              className={`px-5 py-2.5 rounded-full transition-all text-sm font-bold flex items-center gap-2 ${claimedDaily ? 'bg-accent/20 text-accent-fg' : 'bg-ink/5 text-ink hover:bg-ink/10 shadow-sm'}`}
+              className={`px-5 py-2.5 rounded-full transition-all text-sm font-bold flex items-center gap-2 ${claimedDaily ? "bg-accent/20 text-accent-fg" : "bg-ink/5 text-ink hover:bg-ink/10 shadow-sm"}`}
             >
               {claimedDaily ? (
                 <><CheckCircle2 className="w-4 h-4" /> Claimed (+20 XP)</>
@@ -141,7 +144,10 @@ export default function DashboardPage() {
               <span className="text-ink-4">{pointsToNext.toLocaleString()} XP to L{level + 1}</span>
             </div>
             <div className="w-full bg-ink/5 h-2 rounded-full overflow-hidden">
-              <div className="bg-gradient-to-r from-accent to-green-400 h-full rounded-full shadow-[0_0_8px_rgba(0,245,160,0.5)] transition-all duration-1000" style={{ width: `${levelProgressPct}%` }} />
+              <div
+                className="bg-gradient-to-r from-accent to-green-400 h-full rounded-full shadow-[0_0_8px_rgba(0,245,160,0.5)] transition-all duration-1000"
+                style={{ width: `${levelProgressPct}%` }}
+              />
             </div>
             <span className="text-[10px] text-ink-4 text-right">{levelProgressPct}% Progress</span>
           </div>
@@ -173,14 +179,14 @@ export default function DashboardPage() {
               return (
                 <div key={i} className="flex flex-col items-center gap-1.5">
                   <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
-                    isToday ? 'bg-amber-500/20 text-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]' :
-                    isActive ? 'bg-ink/10 text-ink' : 'bg-ink/5 text-ink-4'
+                    isToday ? "bg-amber-500/20 text-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]" :
+                    isActive ? "bg-ink/10 text-ink" : "bg-ink/5 text-ink-4"
                   }`}>
                     {d}
                   </span>
                   <span className={`w-1.5 h-1.5 rounded-full ${
-                    isToday ? 'bg-amber-500 animate-pulse' :
-                    isActive ? 'bg-ink/20' : 'bg-transparent'
+                    isToday ? "bg-amber-500 animate-pulse" :
+                    isActive ? "bg-ink/20" : "bg-transparent"
                   }`} />
                 </div>
               );
@@ -205,7 +211,7 @@ export default function DashboardPage() {
           </div>
           <div className="mt-6 flex items-center gap-3">
             <svg className="w-16 h-8 text-accent-fg opacity-80" fill="none" viewBox="0 0 64 32">
-              <path d="M2 28L14 20L26 24L38 12L50 16L62 4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"></path>
+              <path d="M2 28L14 20L26 24L38 12L50 16L62 4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
             </svg>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-ink">Active Contributor</span>
@@ -273,11 +279,11 @@ export default function DashboardPage() {
 
       {/* 4. Main 2-Column Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Left / Center Primary Action Area (8 cols) */}
         <div className="lg:col-span-8 flex flex-col gap-8">
-          
-          {/* Recent Activity / Continue Journey */}
+
+          {/* Recent Activity */}
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -306,17 +312,17 @@ export default function DashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex items-start gap-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                          sub.status === 'verified' ? 'bg-accent/10 text-accent-fg' : 
-                          sub.status === 'rejected' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'
+                          sub.status === "verified" ? "bg-accent/10 text-accent-fg" :
+                          sub.status === "rejected" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
                         }`}>
-                          {sub.status === 'verified' ? <CheckCircle2 className="w-6 h-6" /> : <Code className="w-6 h-6" />}
+                          {sub.status === "verified" ? <CheckCircle2 className="w-6 h-6" /> : <Code className="w-6 h-6" />}
                         </div>
                         <div className="flex flex-col">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="px-2 py-1 rounded bg-ink/5 text-ink text-[10px] font-bold uppercase tracking-wider">Quest #{sub.task_id}</span>
                             <span className={`px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase ${
-                              sub.status === 'verified' ? 'bg-accent/10 text-accent-fg' : 
-                              sub.status === 'rejected' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'
+                              sub.status === "verified" ? "bg-accent/10 text-accent-fg" :
+                              sub.status === "rejected" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
                             }`}>
                               {sub.status}
                             </span>
@@ -326,7 +332,9 @@ export default function DashboardPage() {
                           </div>
                           <h3 className="text-lg font-heading font-bold text-ink mt-2">On-chain Quest Submission</h3>
                           <p className="text-sm text-ink-4 mt-1">
-                            {sub.tx_hash ? `Transaction Hash: ${sub.tx_hash.slice(0, 12)}...${sub.tx_hash.slice(-10)}` : "Task submitted and awaiting manual or oracle verification."}
+                            {sub.tx_hash
+                              ? `Transaction Hash: ${sub.tx_hash.slice(0, 12)}...${sub.tx_hash.slice(-10)}`
+                              : "Task submitted and awaiting manual or oracle verification."}
                           </p>
                         </div>
                       </div>
@@ -336,19 +344,18 @@ export default function DashboardPage() {
                         </a>
                       )}
                     </div>
-                    {/* Status Progress Bar */}
                     <div className="bg-ink/[0.02] rounded-lg p-4 flex flex-col gap-2 border border-ink/5">
                       <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider">
                         <span className="text-ink-4">Verification Pipeline</span>
                         <span className={
-                          sub.status === 'verified' ? 'text-accent-fg' : 
-                          sub.status === 'rejected' ? 'text-red-500' : 'text-amber-500'
-                        }>{sub.status === 'verified' ? '100%' : '50%'}</span>
+                          sub.status === "verified" ? "text-accent-fg" :
+                          sub.status === "rejected" ? "text-red-500" : "text-amber-500"
+                        }>{sub.status === "verified" ? "100%" : "50%"}</span>
                       </div>
                       <div className="w-full bg-ink/5 h-2 rounded-full overflow-hidden">
                         <div className={`h-full rounded-full transition-all duration-1000 ${
-                          sub.status === 'verified' ? 'bg-accent w-full' : 
-                          sub.status === 'rejected' ? 'bg-red-500 w-full' : 'bg-amber-500 w-1/2'
+                          sub.status === "verified" ? "bg-accent w-full" :
+                          sub.status === "rejected" ? "bg-red-500 w-full" : "bg-amber-500 w-1/2"
                         }`} />
                       </div>
                     </div>
@@ -358,7 +365,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* Recommended (Static design placeholder as per prompt) */}
+          {/* Recommended */}
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
@@ -367,7 +374,6 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Rec 1 */}
               <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm hover:border-ink/10 transition-all flex flex-col justify-between group">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
@@ -386,7 +392,6 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               </div>
-              {/* Rec 2 */}
               <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm hover:border-ink/10 transition-all flex flex-col justify-between group">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
@@ -406,7 +411,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* Activity Feed (Recent Points) */}
+          {/* Activity Feed */}
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between mt-2">
               <h2 className="text-xl font-heading font-bold text-ink tracking-tight">Recent Activity Feed</h2>
@@ -416,11 +421,11 @@ export default function DashboardPage() {
               {recentPoints.length === 0 ? (
                 <div className="py-6 text-center text-sm text-ink-4">No recent point activities found. Complete a quest to start earning!</div>
               ) : (
-                recentPoints.map((p) => (
+                recentPoints.map(p => (
                   <div key={p.id} className="p-3.5 rounded-lg bg-ink/[0.02] border border-ink/5 flex items-center justify-between gap-4 hover:bg-ink/5 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                        p.points_delta >= 0 ? 'bg-accent/10 text-accent-fg' : 'bg-red-500/10 text-red-500'
+                        p.points_delta >= 0 ? "bg-accent/10 text-accent-fg" : "bg-red-500/10 text-red-500"
                       }`}>
                         <Award className="w-5 h-5" />
                       </div>
@@ -430,7 +435,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <span className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded ${
-                      p.points_delta >= 0 ? 'bg-accent/10 text-accent-fg' : 'bg-red-500/10 text-red-500'
+                      p.points_delta >= 0 ? "bg-accent/10 text-accent-fg" : "bg-red-500/10 text-red-500"
                     }`}>
                       {p.points_delta >= 0 ? "+" : ""}{p.points_delta} XP
                     </span>
@@ -439,13 +444,12 @@ export default function DashboardPage() {
               )}
             </div>
           </section>
-
         </div>
 
-        {/* Right Side Telemetry Column (4 cols) */}
+        {/* Right Telemetry Column (4 cols) */}
         <div className="lg:col-span-4 flex flex-col gap-8">
-          
-          {/* Reward Vault Preview */}
+
+          {/* Reward Vault */}
           <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col gap-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -454,7 +458,7 @@ export default function DashboardPage() {
               </div>
               <span className="text-[10px] font-mono text-ink-4 uppercase font-bold tracking-wider">Live Balance</span>
             </div>
-            
+
             <div className="bg-ink/[0.03] border border-ink/5 p-5 rounded-xl flex flex-col gap-1">
               <span className="text-[10px] font-mono text-ink-4 font-bold uppercase tracking-wider">Spendable Experience Points</span>
               <div className="flex items-baseline justify-between mt-1">
@@ -469,7 +473,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between p-2.5 rounded-lg border border-ink/5 hover:bg-ink/5 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded bg-ink/10 flex items-center justify-center text-ink"><Star className="w-4 h-4"/></div>
+                  <div className="w-9 h-9 rounded bg-ink/10 flex items-center justify-center text-ink"><Star className="w-4 h-4" /></div>
                   <div className="flex flex-col">
                     <span className="text-xs font-heading font-bold text-ink">Exclusive BCL Hoodie</span>
                     <span className="text-[10px] font-mono text-ink-4 mt-0.5">2,500 XP required</span>
@@ -477,10 +481,10 @@ export default function DashboardPage() {
                 </div>
                 <button className="px-3.5 py-1.5 rounded-full bg-ink text-surface text-[10px] font-bold hover:bg-ink-3 transition-colors">Claim</button>
               </div>
-              
+
               <div className="flex items-center justify-between p-2.5 rounded-lg border border-ink/5 hover:bg-ink/5 transition-colors opacity-70">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded bg-ink/10 flex items-center justify-center text-ink"><Terminal className="w-4 h-4"/></div>
+                  <div className="w-9 h-9 rounded bg-ink/10 flex items-center justify-center text-ink"><Terminal className="w-4 h-4" /></div>
                   <div className="flex flex-col">
                     <span className="text-xs font-heading font-bold text-ink">1-on-1 Mentorship</span>
                     <span className="text-[10px] font-mono text-ink-4 mt-0.5">3,000 XP (Locked)</span>
@@ -489,13 +493,13 @@ export default function DashboardPage() {
                 <Lock className="w-4 h-4 text-ink-4" />
               </div>
             </div>
-            
+
             <Link href="/reward" className="w-full py-2.5 rounded-full border border-ink/10 text-ink hover:bg-ink/5 text-center text-sm font-bold transition-all mt-1">
               Explore Reward Store
             </Link>
           </div>
 
-          {/* Upcoming Events Widget */}
+          {/* Upcoming Events */}
           <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col gap-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -504,7 +508,7 @@ export default function DashboardPage() {
               </div>
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_6px_#00e293]" />
             </div>
-            
+
             <div className="flex flex-col gap-3">
               <div className="rounded-xl bg-ink/[0.02] border border-ink/5 p-4 flex flex-col gap-2 hover:bg-ink/5 transition-colors">
                 <div className="flex items-center justify-between">
@@ -518,7 +522,7 @@ export default function DashboardPage() {
                   <button className="text-[10px] text-accent-fg hover:underline font-bold flex items-center">RSVP Now <ArrowRight className="w-3 h-3 ml-1" /></button>
                 </div>
               </div>
-              
+
               <div className="rounded-xl bg-ink/[0.02] border border-ink/5 p-4 flex flex-col gap-2 hover:bg-ink/5 transition-colors">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono px-2 py-1 rounded bg-purple-500/10 text-purple-500 font-bold uppercase">Oct 02 • 14:00 WAT</span>
@@ -534,7 +538,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Guild Affiliation Card */}
+          {/* Guild Affiliation */}
           <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-ink-4 font-mono font-bold uppercase tracking-wider">Guild Membership</span>
@@ -553,7 +557,6 @@ export default function DashboardPage() {
               Your guild holds Rank #2 in the inter-cohort sprint. Next sync occurs Wednesday.
             </p>
           </div>
-
         </div>
       </div>
     </div>

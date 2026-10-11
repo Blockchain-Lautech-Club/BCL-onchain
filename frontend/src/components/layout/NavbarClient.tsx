@@ -33,6 +33,13 @@ export function NavbarClient() {
   const [profileOpen,  setProfileOpen]  = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // Redirect "/" based on wallet connection state
+  useEffect(() => {
+    if (pathname === "/") {
+      router.replace(walletAddress ? "/dashboard" : "/");
+    }
+  }, [walletAddress, pathname, router]);
+
   // Close profile popup on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -50,9 +57,18 @@ export function NavbarClient() {
 
   const displayName = user?.bcl_domain || shortAddr || "philip.bcl";
 
+  // Resolve nav href: Home goes to /dashboard if connected, /landing if not
+  const resolveHref = (href: string) => {
+    if (href === "/") return walletAddress ? "/dashboard" : "/";
+    return href;
+  };
+
   const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+    const resolved = resolveHref(href);
+    if (resolved === "/dashboard" || resolved === "/") {
+      return pathname === "/dashboard" || pathname === "/" || pathname === "/";
+    }
+    return pathname.startsWith(resolved);
   };
 
   // XP / level data
@@ -75,7 +91,7 @@ export function NavbarClient() {
     try {
       await disconnectWallet?.();
     } catch {
-      // fallback — some setups expose logout via api directly
+      // fallback
     }
   };
 
@@ -83,7 +99,7 @@ export function NavbarClient() {
     <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.3)] border-b border-ink/[0.06]">
       <div className="h-20 max-w-[1400px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between gap-4">
 
-        {/* ── Logo ────────────────────────────────────────────────────────── */}
+        {/* ── Logo → always goes to landing page ─────────────────────────── */}
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="BCL Onchain Logo" width={32} height={32} className="object-contain" />
@@ -98,11 +114,12 @@ export function NavbarClient() {
         {/* ── Desktop Nav ─────────────────────────────────────────────────── */}
         <nav className="hidden lg:flex items-center gap-0.5 bg-ink/[0.04] border border-ink/[0.06] rounded-full px-1.5 py-1.5 shadow-sm">
           {NAV_LINKS.map(({ href, label }) => {
+            const resolvedHref = resolveHref(href);
             const active = isActive(href);
             return (
               <Link
                 key={label}
-                href={href}
+                href={resolvedHref}
                 className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
                   active
                     ? "bg-ink/[0.10] text-accent-fg font-semibold shadow-sm"
@@ -161,7 +178,7 @@ export function NavbarClient() {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent shadow-[0_0_6px_rgba(0,245,160,0.8)]" />
               </Link>
 
-              {/* ── User avatar + disconnect popup ─────────────────────── */}
+              {/* ── User avatar + profile popup ────────────────────────── */}
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setProfileOpen(prev => !prev)}
@@ -180,7 +197,7 @@ export function NavbarClient() {
                 {/* Popup */}
                 {profileOpen && (
                   <div className="absolute right-0 top-[calc(100%+10px)] w-72 rounded-2xl bg-surface border border-ink/10 shadow-2xl shadow-black/30 overflow-hidden z-50">
-                    
+
                     {/* Header */}
                     <div className="px-4 py-4 border-b border-ink/5 bg-ink/[0.02]">
                       <div className="flex items-center gap-3">
@@ -287,21 +304,24 @@ export function NavbarClient() {
       {mobileOpen && (
         <div className="lg:hidden border-t border-ink/[0.06] bg-surface/95 backdrop-blur-xl px-4 py-3 space-y-1 shadow-xl">
 
-          {NAV_LINKS.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={label}
-              href={href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                isActive(href)
-                  ? "bg-accent/10 text-accent-fg"
-                  : "text-ink-3 hover:text-ink hover:bg-ink/[0.04]"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </Link>
-          ))}
+          {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+            const resolvedHref = resolveHref(href);
+            return (
+              <Link
+                key={label}
+                href={resolvedHref}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                  isActive(href)
+                    ? "bg-accent/10 text-accent-fg"
+                    : "text-ink-3 hover:text-ink hover:bg-ink/[0.04]"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </Link>
+            );
+          })}
 
           <Link
             href="/profile"

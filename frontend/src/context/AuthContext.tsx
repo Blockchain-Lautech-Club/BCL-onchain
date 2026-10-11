@@ -36,54 +36,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { disconnectAsync } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
 
-  const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<UserStats | null>(null);
+  const [user,          setUser]          = useState<User | null>(null);
+  const [stats,         setStats]         = useState<UserStats | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isAdmin,       setIsAdmin]       = useState(false);
+  const [isLoading,     setIsLoading]     = useState(true);
+  const [isConnecting,  setIsConnecting]  = useState(false);
 
   const checkSession = useCallback(async () => {
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
       const me = await api.getMe();
-      if (me?.wallet_address) {
-        setWalletAddress(me.wallet_address);
-        setIsAdmin(me.is_admin);
 
-        // Load full profile + stats in parallel
-        const [profile, userStats] = await Promise.allSettled([
-          api.getProfile(),
-          api.getMyStats(),
-        ]);
-
-        if (profile.status === "fulfilled") {
-          setUser({
-            id: profile.value.id,
-            wallet_address: profile.value.wallet_address,
-            username: profile.value.username ?? undefined,
-            level: profile.value.level,
-            total_points: profile.value.total_points,
-            status: "active",
-            is_admin: me.is_admin,
-          });
-        } else {
-          setUser({
-            id: me.id,
-            wallet_address: me.wallet_address,
-            level: 0,
-            total_points: 0,
-            status: "active",
-            is_admin: me.is_admin,
-          });
-        }
-
-        if (userStats.status === "fulfilled") {
-          setStats(userStats.value);
-        }
+      if (!me?.wallet_address) {
+        // No active session — clear everything and stop loading
+        setUser(null);
+        setStats(null);
+        setWalletAddress(null);
+        setIsAdmin(false);
+        setIsLoading(false);
+        return;
       }
+
+      // We have a session — fetch profile + stats in parallel
+      const [profileResult, statsResult] = await Promise.allSettled([
+        api.getProfile(),
+        api.getMyStats(),
+      ]);
+
+      const newUser: User =
+        profileResult.status === "fulfilled"
+          ? {
+              id:             profileResult.value.id,
+              wallet_address: profileResult.value.wallet_address,
+              username:       profileResult.value.username ?? undefined,
+              level:          profileResult.value.level,
+              total_points:   profileResult.value.total_points,
+              status:         "active",
+              is_admin:       me.is_admin,
+            }
+          : {
+              id:             me.id,
+              wallet_address: me.wallet_address,
+              level:          0,
+              total_points:   0,
+              status:         "active",
+              is_admin:       me.is_admin,
+            };
+
+      const newStats =
+        statsResult.status === "fulfilled" ? statsResult.value : null;
+
+      // Set all state together before clearing isLoading
+      // so components never see walletAddress without user
+      setWalletAddress(me.wallet_address);
+      setIsAdmin(me.is_admin);
+      setUser(newUser);
+      setStats(newStats);
     } catch {
-      // No valid session — user needs to connect wallet
+      // Session check failed (401, network error, etc.) — not logged in
       setUser(null);
       setStats(null);
       setWalletAddress(null);
@@ -145,6 +157,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setWalletAddress(res.wallet_address);
       setIsAdmin(res.is_admin);
       toast.success("Signed in successfully!");
+
+      // Re-fetch full profile + stats after login
       await checkSession();
     } catch (err: unknown) {
       console.error("Wallet connection failed:", err);
@@ -158,16 +172,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const disconnectWallet = async () => {
-    try {
-      await api.logout();
-    } catch {
-      // ignore
-    }
-    try {
-      await disconnectAsync();
-    } catch {
-      // ignore
-    }
+    try { await api.logout(); } catch { /* ignore */ }
+    try { await disconnectAsync(); } catch { /* ignore */ }
     setUser(null);
     setStats(null);
     setWalletAddress(null);
@@ -180,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         stats,
+        // Expose appKitAddress as fallback only when walletAddress not yet set
         walletAddress: walletAddress || (appKitAddress ? appKitAddress.toLowerCase() : null),
         isAdmin,
         isLoading,
