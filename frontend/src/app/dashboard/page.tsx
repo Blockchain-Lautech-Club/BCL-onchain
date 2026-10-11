@@ -64,7 +64,7 @@ export default function DashboardPage() {
       await refreshUserData();
       const points = await api.getMyPoints().catch(() => []);
       setRecentPoints(points.slice(0, 5));
-      toast.success("Daily streak recorded in database! +20 XP added 🔥");
+      toast.success("Daily streak recorded! +20 XP added 🔥");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Claim failed";
       if (msg.includes("already") || (err as { status?: number }).status === 409) {
@@ -84,7 +84,7 @@ export default function DashboardPage() {
         await refreshUserData();
         const points = await api.getMyPoints().catch(() => []);
         setRecentPoints(points.slice(0, 5));
-        toast.success("Correct! +50 XP bonus recorded in database 🎉");
+        toast.success("Correct! +50 XP bonus earned 🎉");
         setTimeout(() => setShowQuizModal(false), 800);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Quiz claim failed";

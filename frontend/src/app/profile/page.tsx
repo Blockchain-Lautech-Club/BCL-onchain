@@ -127,7 +127,7 @@ export default function ProfilePage() {
       setProfile(updated);
       setIsEditing(false);
       await refreshUserData();
-      toast.success("Profile saved to database successfully!");
+      toast.success("Profile saved successfully!");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
