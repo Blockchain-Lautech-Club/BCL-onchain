@@ -78,7 +78,7 @@ async def leaderboard(limit: int = Query(50, ge=1, le=200), offset: int = Query(
          .order_by(User.total_points.desc(), User.id).limit(limit).offset(offset))
     users = (await session.execute(q)).scalars().all()
     return [LeaderboardEntry(rank=offset + i + 1, wallet_address=u.wallet_address, username=u.username,
-                             total_points=u.total_points, level=u.level) for i, u in enumerate(users)]
+                             avatar_url=u.avatar_url, total_points=u.total_points, level=u.level) for i, u in enumerate(users)]
 
 
 @router.get("/users/{wallet}/nfts", response_model=list[MintOut])

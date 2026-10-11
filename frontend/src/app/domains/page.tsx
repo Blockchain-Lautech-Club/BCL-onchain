@@ -3,8 +3,10 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, DomainRecord } from "@/lib/api";
-import { checkOnchainNameAvailability, getOnchainBclBalance } from "@/lib/contracts";
+import { checkOnchainNameAvailability, getOnchainBclBalance, CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { useAuth } from "@/context/AuthContext";
+import { useWriteContract } from "wagmi";
+import { parseAbi, maxUint256 } from "viem";
 import toast from "react-hot-toast";
 import {
   Globe,
@@ -49,6 +51,8 @@ function DomainsContent() {
   const [loadingMyDomains, setLoadingMyDomains] = useState(false);
 
   // Registration flow state
+  const { writeContractAsync } = useWriteContract();
+  const [isApproving, setIsApproving] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [regResult, setRegResult] = useState<{ success: boolean; message: string; txHash?: string } | null>(null);
 
@@ -120,6 +124,62 @@ function DomainsContent() {
     }
   }
 
+  async function handleApprove() {
+    if (!walletAddress) {
+      toast.error("Please connect your wallet first");
+      await connectWallet();
+      return;
+    }
+
+    try {
+      setIsApproving(true);
+      toast("Please confirm BCL token approval in your wallet...", { icon: "✍️" });
+
+      try {
+        await writeContractAsync({
+          address: CONTRACT_ADDRESSES.BCL_TOKEN,
+          abi: parseAbi([
+            "function approve(address spender, uint256 amount) external returns (bool)",
+          ]),
+          functionName: "approve",
+          args: [CONTRACT_ADDRESSES.NAME_NFT, maxUint256],
+        });
+      } catch (wagmiErr) {
+        const eth = (
+          window as unknown as {
+            ethereum?: { request: (args: { method: string; params: unknown[] }) => Promise<string> };
+          }
+        ).ethereum;
+        if (eth) {
+          const spenderPadded = CONTRACT_ADDRESSES.NAME_NFT.toLowerCase().replace("0x", "").padStart(64, "0");
+          const amountPadded = "f".repeat(64);
+          const data = `0x095ea7b3${spenderPadded}${amountPadded}`;
+          await eth.request({
+            method: "eth_sendTransaction",
+            params: [{
+              from: walletAddress,
+              to: CONTRACT_ADDRESSES.BCL_TOKEN,
+              data,
+            }],
+          });
+        } else {
+          throw wagmiErr;
+        }
+      }
+
+      toast.success("BCL token approved! You can now confirm & claim your domain.");
+      await loadWalletData(walletAddress);
+    } catch (err: unknown) {
+      console.error("Approval error:", err);
+      const msg = err instanceof Error ? err.message : "Approval failed";
+      if (!msg.includes("User rejected") && !msg.includes("rejected")) {
+        toast.error(msg);
+      }
+    } finally {
+      setIsApproving(false);
+    }
+  }
+
   async function handleRegister() {
     if (!searchResult || !searchResult.available) return;
     const clean = searchResult.name.replace(".bcl", "");
@@ -170,7 +230,12 @@ function DomainsContent() {
         success: false,
         message: msg,
       });
-      toast.error(msg);
+      if (msg.includes("approve") || msg.includes("allowance")) {
+        toast.error("Please approve BCL tokens in your wallet first (Step 1)");
+        if (walletAddress) loadWalletData(walletAddress);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsRegistering(false);
     }
@@ -243,6 +308,9 @@ function DomainsContent() {
   }
 
   const bclTokensRequired = 10 * years;
+  const requiredCostWei = BigInt(bclTokensRequired) * BigInt("1000000000000000000");
+  const currentAllowanceWei = bclBalance?.allowance_wei ? BigInt(bclBalance.allowance_wei) : BigInt(0);
+  const needsApproval = currentAllowanceWei < requiredCostWei;
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -375,14 +443,41 @@ function DomainsContent() {
                       >
                         <UserIcon className="w-3.5 h-3.5" /> CREATE PROFILE TO CLAIM DOMAIN →
                       </button>
+                    ) : needsApproval ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs px-0.5">
+                          <span className="text-ink-3">Step 1 of 2: Authorize BCL Tokens</span>
+                          <span className="text-amber-500 font-bold">Approval Required</span>
+                        </div>
+                        <button
+                          onClick={handleApprove}
+                          disabled={isApproving}
+                          className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 text-xs transition cursor-pointer disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
+                        >
+                          {isApproving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                          <span>{isApproving ? "APPROVING IN WALLET..." : `1. APPROVE ${bclTokensRequired} BCL TOKEN`}</span>
+                        </button>
+                        <button
+                          disabled
+                          className="w-full rounded-xl bg-ink/5 border border-ink/10 text-ink-4 font-bold py-2.5 text-xs cursor-not-allowed opacity-60 flex items-center justify-center gap-1.5"
+                        >
+                          <span>2. CONFIRM & CLAIM {searchResult.name}</span>
+                        </button>
+                      </div>
                     ) : (
-                      <button
-                        onClick={handleRegister}
-                        disabled={isRegistering}
-                        className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 text-xs transition cursor-pointer disabled:opacity-40 shadow-sm"
-                      >
-                        {isRegistering ? "PROCESSING REGISTRATION..." : `CONFIRM & CLAIM ${searchResult.name}`}
-                      </button>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-500 font-bold px-0.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> BCL Token Approved
+                        </div>
+                        <button
+                          onClick={handleRegister}
+                          disabled={isRegistering}
+                          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 text-xs transition cursor-pointer disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
+                        >
+                          {isRegistering ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                          <span>{isRegistering ? "PROCESSING REGISTRATION..." : `CONFIRM & CLAIM ${searchResult.name}`}</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

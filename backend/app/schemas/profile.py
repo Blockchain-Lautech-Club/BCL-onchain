@@ -29,6 +29,7 @@ class LeaderboardEntry(BaseModel):
     rank: int
     wallet_address: str
     username: str | None
+    avatar_url: str | None = None
     total_points: int
     level: int
 

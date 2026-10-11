@@ -9,6 +9,7 @@ export interface User {
   id: number;
   wallet_address: string;
   username?: string;
+  avatar_url?: string | null;
   level: number;
   total_points: number;
   status: string;
@@ -83,6 +84,7 @@ export interface LeaderboardEntry {
   rank: number;
   wallet_address: string;
   username?: string;
+  avatar_url?: string | null;
   total_points: number;
   level: number;
   bcl_domain?: string;

@@ -106,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id:             prof.id,
             wallet_address: prof.wallet_address || activeAddress,
             username:       prof.username ?? undefined,
+            avatar_url:     prof.avatar_url || prof.avatar_emoji || "🧑‍💻",
             level:          prof.level,
             total_points:   prof.total_points,
             status:         "active",

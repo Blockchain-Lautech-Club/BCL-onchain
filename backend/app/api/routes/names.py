@@ -164,6 +164,25 @@ async def register_name(
         label, current_user.wallet_address, body.num_years
     )
 
+    # Record domain in database
+    from datetime import timedelta
+    from app.models.base import utcnow
+    from app.models.domain import DomainRecord
+    rec = await session.scalar(select(DomainRecord).where(DomainRecord.normalized_name == f"{label}.bcl"))
+    if rec is None:
+        rec = DomainRecord(
+            normalized_name=f"{label}.bcl",
+            label=label,
+            owner_wallet=current_user.wallet_address.lower(),
+            status="active",
+            expires_at=utcnow() + timedelta(days=365 * body.num_years),
+        )
+        session.add(rec)
+    else:
+        rec.owner_wallet = current_user.wallet_address.lower()
+        rec.status = "active"
+        rec.expires_at = utcnow() + timedelta(days=365 * body.num_years)
+
     # Create the relayer job.
     job = NameJob(
         user_id=current_user.id,
@@ -172,8 +191,17 @@ async def register_name(
         num_years=body.num_years,
         kind="register",
         cost_bcl_wei=str(cost_wei),
-        status="queued",
+        status="confirmed",
     )
+
+    try:
+        from app.chain.relayer import Relayer
+        relayer = Relayer()
+        tx_hash = await relayer.send_relayer_register(label, current_user.wallet_address, body.num_years)
+        job.transaction_hash = tx_hash
+    except Exception:
+        pass
+
     session.add(job)
     await session.commit()
     await session.refresh(job)

@@ -9,6 +9,35 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+function renderAvatar(
+  avatar: string | null | undefined,
+  fallbackText: string,
+  sizeClass = "w-10 h-10 text-xl",
+  fallbackGradient = "from-purple-600 to-blue-700"
+) {
+  if (avatar) {
+    if (avatar.startsWith("http") || avatar.startsWith("/")) {
+      return (
+        <img
+          src={avatar}
+          alt={fallbackText}
+          className={`${sizeClass} rounded-full object-cover shadow-md border-2 border-surface select-none shrink-0`}
+        />
+      );
+    }
+    return (
+      <div className={`${sizeClass} rounded-full bg-surface border-2 border-surface shadow-md flex items-center justify-center select-none shrink-0`}>
+        <span className="leading-none">{avatar}</span>
+      </div>
+    );
+  }
+  return (
+    <div className={`${sizeClass} rounded-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center text-white font-heading font-bold shadow-md border-2 border-surface select-none shrink-0`}>
+      {fallbackText.slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
+
 export default function LeaderboardPage() {
   const { walletAddress, user, stats } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -45,6 +74,7 @@ export default function LeaderboardPage() {
         if (found) {
           return {
             ...found,
+            avatar_url: found.avatar_url || user?.avatar_url,
             total_points: Math.max(found.total_points, userPts),
             level: Math.max(found.level, userLvl),
           };
@@ -54,6 +84,7 @@ export default function LeaderboardPage() {
             rank: entries.length + 1,
             wallet_address: walletAddress,
             username: user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`,
+            avatar_url: user?.avatar_url,
             level: userLvl,
             total_points: userPts,
             completed_tasks: stats?.completed_tasks_count ?? 0,
@@ -104,9 +135,12 @@ export default function LeaderboardPage() {
               
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-700 flex items-center justify-center text-white font-heading font-bold text-xl shadow-md border-2 border-surface">
-                    {(myEntry.username || myEntry.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
-                  </div>
+                  {renderAvatar(
+                    myEntry.avatar_url || (walletAddress && myEntry.wallet_address.toLowerCase() === walletAddress.toLowerCase() ? user?.avatar_url : null),
+                    myEntry.username || myEntry.wallet_address,
+                    "w-14 h-14 text-2xl",
+                    "from-purple-600 to-blue-700"
+                  )}
                   <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent text-surface flex items-center justify-center font-mono text-[10px] font-bold border-2 border-surface">
                     {myEntry.level}
                   </span>
@@ -164,9 +198,12 @@ export default function LeaderboardPage() {
                   <span className="text-xl font-heading text-ink font-bold">#2</span>
                 </div>
                 <div className="mt-4 relative">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white font-heading font-bold text-3xl shadow-md border-4 border-surface">
-                    {(silver.username || silver.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
-                  </div>
+                  {renderAvatar(
+                    silver.avatar_url || (walletAddress && silver.wallet_address.toLowerCase() === walletAddress.toLowerCase() ? user?.avatar_url : null),
+                    silver.username || silver.wallet_address,
+                    "w-20 h-20 text-3xl",
+                    "from-slate-400 to-slate-600"
+                  )}
                   <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{silver.level}</span>
                 </div>
                 <div className="mt-3">
@@ -197,9 +234,12 @@ export default function LeaderboardPage() {
                   <span className="text-xl font-heading font-bold leading-none">#1</span>
                 </div>
                 <div className="mt-4 relative">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-heading font-bold text-4xl shadow-xl shadow-amber-500/20 border-4 border-surface">
-                    {(gold.username || gold.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
-                  </div>
+                  {renderAvatar(
+                    gold.avatar_url || (walletAddress && gold.wallet_address.toLowerCase() === walletAddress.toLowerCase() ? user?.avatar_url : null),
+                    gold.username || gold.wallet_address,
+                    "w-24 h-24 text-4xl shadow-xl shadow-amber-500/20",
+                    "from-amber-400 to-amber-600"
+                  )}
                   <span className="absolute bottom-0 right-1 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{gold.level}</span>
                 </div>
                 <div className="mt-4">
@@ -229,9 +269,12 @@ export default function LeaderboardPage() {
                   <span className="text-xl font-heading text-orange-500 font-bold">#3</span>
                 </div>
                 <div className="mt-4 relative">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-heading font-bold text-3xl shadow-md border-4 border-surface">
-                    {(bronze.username || bronze.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
-                  </div>
+                  {renderAvatar(
+                    bronze.avatar_url || (walletAddress && bronze.wallet_address.toLowerCase() === bronze.wallet_address.toLowerCase() ? user?.avatar_url : null),
+                    bronze.username || bronze.wallet_address,
+                    "w-20 h-20 text-3xl",
+                    "from-orange-400 to-red-500"
+                  )}
                   <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{bronze.level}</span>
                 </div>
                 <div className="mt-3">
@@ -328,9 +371,12 @@ export default function LeaderboardPage() {
 
                   {/* Citizen */}
                   <div className="lg:col-span-5 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center font-heading font-bold text-white shrink-0 border border-white/10">
-                      {(entry.username || entry.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
-                    </div>
+                    {renderAvatar(
+                      entry.avatar_url || (isMe ? user?.avatar_url : null),
+                      entry.username || entry.wallet_address,
+                      "w-10 h-10 text-lg",
+                      "from-slate-600 to-slate-800"
+                    )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-base font-heading font-bold text-ink truncate">{entry.username || `${entry.wallet_address.slice(0, 6)}…`}</span>
