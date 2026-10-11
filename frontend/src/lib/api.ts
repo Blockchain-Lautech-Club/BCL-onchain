@@ -299,6 +299,10 @@ export const api = {
     return request<PointsLedgerItem[]>(`/users/${wallet.toLowerCase()}/points`).catch(() => []);
   },
 
+  async getUserDomains(wallet: string): Promise<DomainRecord[]> {
+    return request<DomainRecord[]>(`/users/${wallet.toLowerCase()}/domains`).catch(() => []);
+  },
+
   async updateProfile(body: UpdateProfilePayload): Promise<ProfileData> {
     return request("/me", {
       method: "PATCH",

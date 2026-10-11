@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api, User, UserStats, ProfileData } from "@/lib/api";
+import { api, User, UserStats, ProfileData, DomainRecord } from "@/lib/api";
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
 import { useDisconnect, useSignMessage } from "wagmi";
 import toast from "react-hot-toast";
@@ -69,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Try authenticated profile/stats first, then fall back to public database record
       let prof: ProfileData | null = null;
       let userStats: UserStats | null = null;
+      let domains: DomainRecord[] = [];
 
       try {
         prof = await api.getProfile();
@@ -81,6 +82,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {
         userStats = await api.getUserStats(activeAddress).catch(() => null);
       }
+
+      try {
+        domains = await api.getMyNames();
+      } catch {
+        domains = await api.getUserDomains(activeAddress).catch(() => []);
+      }
+
+      const activeDomain = domains.find(d => d.status === "active")?.normalized_name;
 
       const envAdminWallets = (process.env.NEXT_PUBLIC_ADMIN_WALLETS || "0x825aab493a07fe7dbe29c4de1431deba84bf14eb")
         .toLowerCase()
@@ -101,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             total_points:   prof.total_points,
             status:         "active",
             is_admin:       isUserAdmin,
+            bcl_domain:     activeDomain,
           }
         : {
             id:             me?.id || 0,
@@ -109,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             total_points:   0,
             status:         "active",
             is_admin:       isUserAdmin,
+            bcl_domain:     activeDomain,
           };
 
       const newStats: UserStats = userStats

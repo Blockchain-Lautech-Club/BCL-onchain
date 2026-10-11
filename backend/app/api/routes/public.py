@@ -126,6 +126,13 @@ async def user_points(wallet: str, session: AsyncSession = Depends(get_session))
     return [LedgerOut.model_validate(r) for r in (await session.execute(q)).scalars().all()]
 
 
+@router.get("/users/{wallet}/domains", response_model=list[DomainOut])
+async def user_domains(wallet: str, session: AsyncSession = Depends(get_session)):
+    wallet = auth_service.normalize_address(wallet)
+    q = select(DomainRecord).where(DomainRecord.owner_wallet == wallet, DomainRecord.status == "active")
+    return [DomainOut.model_validate(r) for r in (await session.execute(q)).scalars().all()]
+
+
 @router.get("/domains/availability")
 async def availability(name: str):
     label = domain_service.normalize_label(name)

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { api, NFTMintRecord, TaskSubmission, PointsLedgerItem, ProfileData } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
@@ -261,6 +262,18 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-accent/10 text-accent-fg font-mono text-[10px] font-bold tracking-wider uppercase border border-accent/20">
                   <Shield className="w-3 h-3" /> VERIFIED CITIZEN
                 </div>
+                {user?.bcl_domain ? (
+                  <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 font-mono text-[10px] font-bold tracking-wider uppercase border border-purple-500/20">
+                    <Globe2 className="w-3 h-3" /> {user.bcl_domain}
+                  </div>
+                ) : (
+                  <Link
+                    href="/domains"
+                    className="flex items-center gap-1 px-3 py-1 rounded-full bg-ink/5 hover:bg-ink/10 text-ink-3 hover:text-ink font-mono text-[10px] font-bold tracking-wider uppercase border border-ink/10 transition-colors"
+                  >
+                    <Globe2 className="w-3 h-3" /> Claim .bcl Domain →
+                  </Link>
+                )}
               </div>
 
               <div className="flex items-center gap-2 font-mono text-xs text-ink-4 font-semibold flex-wrap">
@@ -370,9 +383,15 @@ export default function ProfilePage() {
               <div className="flex flex-col">
                 <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider mb-1">Passport ID</span>
                 <span className="font-mono text-sm text-accent-fg font-bold truncate max-w-[110px]">#BCL-{walletAddress.slice(-5)}</span>
-                <button onClick={() => copyToClipboard(`https://bcl.com/p/${displayName}`)} className="font-mono text-[10px] text-ink-4 hover:text-ink transition-colors flex items-center gap-1 mt-0.5 font-bold">
-                  {displayName.toLowerCase()}.bcl <ExternalLink className="w-3 h-3" />
-                </button>
+                {user?.bcl_domain ? (
+                  <Link href={`/domains?name=${user.bcl_domain.replace(".bcl", "")}`} className="font-mono text-[10px] text-accent-fg hover:underline transition-colors flex items-center gap-1 mt-0.5 font-bold">
+                    {user.bcl_domain} <ExternalLink className="w-3 h-3" />
+                  </Link>
+                ) : (
+                  <Link href="/domains" className="font-mono text-[10px] text-amber-500 hover:underline transition-colors flex items-center gap-1 mt-0.5 font-bold">
+                    Claim .bcl domain <ExternalLink className="w-3 h-3" />
+                  </Link>
+                )}
               </div>
             </div>
           </div>

@@ -56,9 +56,8 @@ export function NavbarClient() {
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : null;
 
-  const displayName = user?.username
-    ? (user.username.endsWith(".bcl") ? user.username : `${user.username}.bcl`)
-    : (user?.bcl_domain || shortAddr || "philip.bcl");
+  // Real display name: use registered .bcl domain if owned onchain, otherwise profile username or address
+  const displayName = user?.bcl_domain || user?.username || shortAddr || "Citizen";
 
   // Resolve nav href: Home goes to /dashboard if connected, /landing if not
   const resolveHref = (href: string) => {
@@ -209,10 +208,25 @@ export function NavbarClient() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-ink text-sm truncate">{displayName}</span>
+                            <span className="font-bold text-ink text-sm truncate">{user?.username || shortAddr}</span>
                             <BadgeCheck className="w-4 h-4 text-accent-fg shrink-0" />
                           </div>
-                          <span className="font-mono text-[10px] text-ink-4 truncate block">{shortAddr}</span>
+                          {user?.bcl_domain ? (
+                            <div className="flex items-center gap-1 text-[11px] font-mono text-accent-fg font-semibold mt-0.5">
+                              <Globe2 className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{user.bcl_domain}</span>
+                            </div>
+                          ) : (
+                            <Link
+                              href="/domains"
+                              onClick={() => setProfileOpen(false)}
+                              className="text-[11px] font-mono text-accent-fg/80 hover:text-accent-fg hover:underline font-medium flex items-center gap-1 mt-0.5"
+                            >
+                              <Globe2 className="w-3 h-3 shrink-0" />
+                              Claim .bcl domain →
+                            </Link>
+                          )}
+                          <span className="font-mono text-[10px] text-ink-4 truncate block mt-0.5">{shortAddr}</span>
                         </div>
                       </div>
 
