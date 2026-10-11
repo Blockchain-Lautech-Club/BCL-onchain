@@ -455,7 +455,7 @@ function DomainsContent() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="e.g. adebayo, builder, ada"
+                  placeholder="e.g. philip, builder, ada"
                   className="w-full bg-page border border-ink/[0.1] rounded-xl pl-4 pr-14 py-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand transition"
                 />
                 <span className="absolute right-4 top-3 text-xs text-ink-3 font-bold">.bcl</span>
