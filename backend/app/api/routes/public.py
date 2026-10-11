@@ -106,7 +106,9 @@ async def leaderboard(limit: int = Query(50, ge=1, le=200), offset: int = Query(
             level=r.level,
         ) for i, r in enumerate(user_rows)]
     except Exception as e:
-        raise AppError(500, "leaderboard_error", f"Leaderboard retrieval failed: {e}")
+        import traceback
+        tb = traceback.format_exc()
+        raise AppError(500, "leaderboard_error", f"Leaderboard retrieval failed: {e} | {tb}")
 
 
 @router.get("/users/{wallet}/nfts", response_model=list[MintOut])

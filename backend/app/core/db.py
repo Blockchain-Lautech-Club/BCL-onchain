@@ -49,22 +49,9 @@ engine = create_async_engine(
     connect_args={"prepare_threshold": None},
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-_db_initialized = False
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Request-scoped session. Routes/services commit explicitly; uncommitted work is rolled back on close."""
-    global _db_initialized
-    if not _db_initialized:
-        try:
-            from app.models.base import Base
-            import app.models  # noqa: F401
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            _db_initialized = True
-        except Exception as e:
-            print(f"Lazy DB init note: {e}")
-            _db_initialized = True
-
     async with SessionLocal() as session:
         yield session
