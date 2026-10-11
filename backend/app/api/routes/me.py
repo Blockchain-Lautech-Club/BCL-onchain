@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,6 +44,58 @@ async def update_profile(body: ProfileUpdate, user: User = Depends(get_current_u
     return await profile(user, session)
 
 
+@router.get("/stats")
+async def my_stats(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    """Aggregated stats used by the dashboard and auth context."""
+    thresholds = await level_service.get_thresholds(session)
+    info = level_service.next_level_info(user.total_points, thresholds)
+
+    # Count verified task submissions
+    completed_q = select(func.count()).where(
+        TaskSubmission.user_id == user.id,
+        TaskSubmission.status == "verified",
+    )
+    completed_tasks_count = (await session.execute(completed_q)).scalar() or 0
+
+    # Count active domain names
+    active_names_q = select(func.count()).where(
+        DomainRecord.owner_wallet == user.wallet_address,
+        DomainRecord.status == "active",
+    )
+    active_names_count = (await session.execute(active_names_q)).scalar() or 0
+
+    # Streak: count consecutive days with at least one verified submission, going back from today.
+    # Simple heuristic: look at distinct submission dates for the user, sorted desc.
+    from datetime import date, timedelta
+    from sqlalchemy import cast, Date as SADate
+    dates_q = (
+        select(cast(TaskSubmission.created_at, SADate).label("day"))
+        .where(TaskSubmission.user_id == user.id, TaskSubmission.status == "verified")
+        .distinct()
+        .order_by(cast(TaskSubmission.created_at, SADate).desc())
+        .limit(365)
+    )
+    rows = (await session.execute(dates_q)).scalars().all()
+    streak_days = 0
+    expected = date.today()
+    for d in rows:
+        if d == expected or d == expected - timedelta(days=1):
+            streak_days += 1
+            expected = d - timedelta(days=1)
+        else:
+            break
+
+    return {
+        "level": user.level,
+        "total_points": user.total_points,
+        "points_to_next_level": info["points_to_next"] or 0,
+        "next_level_threshold": info["next_level_threshold"] or 0,
+        "completed_tasks_count": completed_tasks_count,
+        "active_names_count": active_names_count,
+        "streak_days": streak_days,
+    }
+
+
 @router.get("/submissions", response_model=list[SubmissionOut])
 async def my_submissions(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     q = select(TaskSubmission).where(TaskSubmission.user_id == user.id).order_by(TaskSubmission.id.desc()).limit(200)
@@ -58,12 +110,13 @@ async def my_points(user: User = Depends(get_current_user), session: AsyncSessio
 
 @router.get("/nfts", response_model=list[MintOut])
 async def my_nfts(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    q = select(NFTMint).where(NFTMint.user_id == user.id).order_by(NFTMint.level)
+    q = select(NFTMint).where(NFTMint.user_id == user.id).order_by(NFTMint.id.desc())
     return [mint_out(m) for m in (await session.execute(q)).scalars().all()]
 
 
+@router.get("/names", response_model=list[DomainOut])
 @router.get("/domains", response_model=list[DomainOut])
-async def my_domains(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def my_names(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     q = select(DomainRecord).where(DomainRecord.owner_wallet == user.wallet_address)
     return (await session.execute(q)).scalars().all()
 

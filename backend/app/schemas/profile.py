@@ -47,12 +47,13 @@ class MintOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    level: int
-    status: str  # queued|pending|confirmed|failed  (UI shows success only on "confirmed")
-    token_id: int | None
+    token_id: int
+    milestone_type: str
+    status: str  # queued|pending|whitelisted|confirmed|failed
     transaction_hash: str | None
     explorer_url: str | None = None
     failure_reason: str | None
+    created_at: datetime
 
 
 class NotificationOut(BaseModel):

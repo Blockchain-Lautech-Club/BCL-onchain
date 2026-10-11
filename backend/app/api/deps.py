@@ -36,15 +36,17 @@ async def get_current_user(user: User | None = Depends(get_optional_user)) -> Us
 
 
 async def is_admin(session: AsyncSession, user: User) -> bool:
-<<<<<<< HEAD
-=======
-    if user.wallet_address.lower() in settings.bootstrap_admins:
-        return True
->>>>>>> b1298a7303a22b207e5d3ce1c318eefdaf605332
-    return bool(await session.scalar(select(Role.id).where(Role.user_id == user.id, Role.role == RoleName.ADMIN)))
+    return bool(
+        await session.scalar(
+            select(Role.id).where(Role.user_id == user.id, Role.role == RoleName.ADMIN)
+        )
+    )
 
 
-async def require_admin(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)) -> User:
+async def require_admin(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> User:
     """Role is checked against the DB on every request, never trusted from the token."""
     if not await is_admin(session, user):
         raise AppError(403, "forbidden", "Admin role required")

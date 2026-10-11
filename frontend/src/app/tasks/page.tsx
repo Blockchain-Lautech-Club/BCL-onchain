@@ -2,21 +2,23 @@
 
 import React, { useEffect, useState } from "react";
 import { api, Task } from "@/lib/api";
-import { QuestCard } from "@/components/quest/QuestCard";
-import { FALLBACK_QUESTS, taskToCard, type QuestCardData } from "@/lib/quests";
+import { taskToCard, type QuestCardData } from "@/lib/quests";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
-import {
-  Zap, Loader2, Search, Grid3X3, List
+import { 
+  Zap, Loader2, Search, Grid3X3, List, X, 
+  ChevronDown, CheckCircle2, Clock, Terminal, 
+  Award, ArrowRight, Shield, Hexagon, Play, 
+  Users, TrendingUp, Cpu
 } from "lucide-react";
 
 const CATEGORIES = ["All", "Community", "Social", "Learning", "Developer", "Creator", "Events", "Hackathon", "Partner", "Beginner"];
 
 export default function TasksPage() {
-  const { walletAddress, connectWallet, refreshUserData } = useAuth();
+  const { walletAddress, connectWallet, refreshUserData, stats } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [apiOk, setApiOk] = useState(false);
   const [category, setCategory] = useState("All");
+  const [sortBy, setSortBy] = useState("featured");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [searchQ, setSearchQ] = useState("");
@@ -25,175 +27,372 @@ export default function TasksPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    api.getTasks().then((d) => { setTasks(d || []); setApiOk(true); }).catch(() => {}).finally(() => setLoading(false));
+    api.getTasks()
+      .then((d) => setTasks(d || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  // Live quests from the API; demo set only if the API is unreachable or has none published.
-  const cards: QuestCardData[] = apiOk && tasks.length > 0 ? tasks.map(taskToCard) : FALLBACK_QUESTS;
-  const filtered = cards.filter(q =>
+  let cards: QuestCardData[] = tasks.map(taskToCard);
+
+  let filtered = cards.filter((q) =>
     (category === "All" || q.category.toLowerCase() === category.toLowerCase()) &&
     (searchQ === "" || q.title.toLowerCase().includes(searchQ.toLowerCase()))
   );
 
+  // Sorting
+  if (sortBy === "highest-xp") {
+    filtered.sort((a, b) => b.xp - a.xp);
+  } else if (sortBy === "newest") {
+    filtered.sort((a, b) => (b.id as number) - (a.id as number));
+  }
+
+  // Derived stats
+  const totalXpPool = tasks.reduce((sum, t) => sum + (t.points || 0), 0);
+  const publishedCount = tasks.filter((t) => t.status === "published").length;
+  const verifiedCount = stats?.completed_tasks_count ?? 0;
+  const verificationRate = publishedCount > 0 ? Math.round((verifiedCount / publishedCount) * 100) : 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!evidenceInput.trim()) return;
+    if (!evidenceInput.trim() || !selectedTask) return;
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    toast.success("Submission queued for on-chain verification!");
-    setIsSubmitting(false);
-    setEvidenceInput("");
+    try {
+      const taskId = typeof selectedTask.id === "string" ? parseInt(selectedTask.id, 10) : selectedTask.id;
+      await api.submitTask(taskId, { url: evidenceInput.trim() });
+      toast.success("Submission queued for on-chain verification!");
+      setSelectedTask(null);
+      setEvidenceInput("");
+      await refreshUserData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Submission failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Helper to determine badge color based on category
+  const getCategoryColor = (cat: string) => {
+    switch(cat.toLowerCase()) {
+      case 'developer': return 'text-purple-500 bg-purple-500/10';
+      case 'learning': return 'text-amber-500 bg-amber-500/10';
+      case 'hackathon': return 'text-red-500 bg-red-500/10';
+      case 'community': return 'text-accent-fg bg-accent/10';
+      case 'creator': return 'text-blue-500 bg-blue-500/10';
+      default: return 'text-ink bg-ink/5';
+    }
   };
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Hero */}
-      <div className="relative rounded-2xl bg-gradient-to-br from-surface to-surface border border-accent/15 p-6 sm:p-8 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern opacity-50 pointer-events-none" />
-        <div className="absolute top-[-30%] right-[-5%] w-64 h-64 bg-accent/[0.07] blur-[80px] pointer-events-none rounded-full" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="badge-green">ON-CHAIN ACHIEVEMENT ENGINE</span>
+    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col">
+      
+      {/* 1. Discovery Hero & Metrics Header */}
+      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 overflow-hidden shadow-sm mb-8">
+        <div className="absolute -right-16 -top-24 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
+        <div className="absolute -left-20 -bottom-24 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ink/5 text-accent-fg mb-4 shadow-sm border border-ink/5">
+              <Hexagon className="w-4 h-4" />
+              <span className="font-mono text-[10px] uppercase font-bold tracking-wider">On-Chain Achievement Engine</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold text-ink tracking-tight mb-3">
+              Quests Discovery
+            </h1>
+            <p className="text-sm sm:text-base text-ink-4 max-w-xl">
+              Do more. Learn more. Contribute more. Earn more. Validate cryptographic mastery across decentralized campus hubs.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold font-heading text-ink mb-2 tracking-tight">Quests Discovery</h1>
-          <p className="text-sm text-ink-4 max-w-lg mb-6">
-            Do more. Learn more. Contribute more. Earn more. Validate cryptographic mastery across decentralized campus hubs.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <div className="stat-card">
-              <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">Active Quests</div>
-              <div className="text-xl font-extrabold text-ink font-heading num-mono">48 <span className="text-xs font-normal text-accent-fg">+6 new</span></div>
+          
+          {/* High-Precision Telemetry Strips */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full lg:w-auto shrink-0">
+            <div className="p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
+              <span className="font-mono text-[10px] uppercase font-bold text-ink-4 tracking-wider">Active Quests</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-heading font-bold text-ink">{loading ? "..." : publishedCount}</span>
+                <span className="font-mono text-[10px] text-accent-fg font-bold">+6 new</span>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">Total XP Pool</div>
-              <div className="text-xl font-extrabold text-accent-fg font-heading num-mono">124.5K <span className="text-xs font-normal text-ink-5">XP</span></div>
+            <div className="p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
+              <span className="font-mono text-[10px] uppercase font-bold text-ink-4 tracking-wider">Total XP Pool</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-heading font-bold text-amber-500">
+                  {loading ? "..." : totalXpPool >= 1000 ? `${(totalXpPool / 1000).toFixed(1)}K` : totalXpPool}
+                </span>
+                <span className="font-mono text-[10px] text-amber-500 font-bold">XP</span>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">Your Verification</div>
-              <div className="text-xl font-extrabold text-ink font-heading num-mono">78% <span className="text-xs font-normal text-ink-5">Tier 2</span></div>
+            <div className="col-span-2 sm:col-span-1 p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
+              <span className="font-mono text-[10px] uppercase font-bold text-ink-4 tracking-wider">Your Verification</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-heading font-bold text-accent-fg">{loading ? "..." : `${verificationRate}%`}</span>
+                <span className="font-mono text-[10px] text-ink-4 font-bold">{verifiedCount} Done</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Search + Filter */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 flex items-center gap-2 bg-surface border border-ink/[0.08] rounded-xl px-4 py-2.5">
-          <Search className="w-4 h-4 text-ink-5 shrink-0" />
-          <input
-            type="text"
-            value={searchQ}
-            onChange={(e) => setSearchQ(e.target.value)}
-            placeholder="Search quests by name, skill, sponsor, or contract..."
-            className="flex-1 bg-transparent text-xs text-ink placeholder:text-ink-5 outline-none"
-          />
-          <span className="text-[10px] text-ink-5 bg-ink/[0.04] border border-ink/[0.06] px-1.5 py-0.5 rounded font-mono">⌘ K</span>
+        {/* Search & Quick Sort Command Bar */}
+        <div className="relative z-10 mt-8 pt-6 border-t border-ink/5 flex flex-col md:flex-row items-center gap-4">
+          <div className="relative w-full flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-4" />
+            <input 
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              className="w-full h-12 pl-12 pr-20 rounded-xl bg-ink/[0.03] border border-ink/5 text-ink placeholder:text-ink-4/60 text-sm outline-none focus:border-accent/40 focus:bg-surface transition-all"
+              placeholder="Search quests by name, skill, sponsor, or contract..." 
+              type="text"
+            />
+            {searchQ ? (
+              <button onClick={() => setSearchQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-4 hover:text-ink">
+                <X className="w-4 h-4" />
+              </button>
+            ) : (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-2 py-1 rounded bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">
+                <span>⌘</span><span>K</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="relative w-full md:w-64 shrink-0">
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full h-12 px-4 rounded-xl bg-ink/[0.03] border border-ink/5 text-ink text-sm font-semibold outline-none cursor-pointer appearance-none focus:border-accent/40 focus:bg-surface pr-10"
+            >
+              <option value="featured">Featured Quests</option>
+              <option value="highest-xp">Highest XP Reward</option>
+              <option value="newest">Newest Releases</option>
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-4 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Filter Pills Strip */}
+        <div className="relative z-10 mt-4 flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`shrink-0 px-5 py-2 rounded-full font-mono text-[11px] uppercase tracking-wider font-bold transition-all ${
+                category === cat
+                  ? "bg-ink text-surface shadow-md"
+                  : "bg-ink/5 text-ink-4 hover:text-ink hover:bg-ink/10"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* 2. Live Status Filter Sub-Bar */}
+      <div className="flex items-center justify-between gap-4 mb-6 px-2">
+        <div className="flex items-center gap-3 text-ink-4">
+          <span className="font-mono text-sm text-ink font-bold">Showing {filtered.length} of {cards.length} Quests</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-fg hidden sm:block" />
+          <span className="text-xs hidden sm:inline text-ink-4">Synced with LAUTECH L2 Settlement RPC</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-surface border border-ink/[0.08] text-xs text-ink-3 font-medium">
-            Featured Quests
+          <button 
+            onClick={() => setView("grid")}
+            className={`p-2 rounded-lg transition-colors ${view === "grid" ? "bg-ink/10 text-accent-fg" : "bg-transparent text-ink-4 hover:bg-ink/5 hover:text-ink"}`}
+          >
+            <Grid3X3 className="w-5 h-5" />
           </button>
-          <button onClick={() => setView("grid")} className={`p-2.5 rounded-xl border transition ${view==="grid" ? "bg-accent/15 border-accent/25 text-accent-fg" : "bg-surface border-ink/[0.08] text-ink-5"}`}>
-            <Grid3X3 className="w-4 h-4" />
-          </button>
-          <button onClick={() => setView("list")} className={`p-2.5 rounded-xl border transition ${view==="list" ? "bg-accent/15 border-accent/25 text-accent-fg" : "bg-surface border-ink/[0.08] text-ink-5"}`}>
-            <List className="w-4 h-4" />
+          <button 
+            onClick={() => setView("list")}
+            className={`p-2 rounded-lg transition-colors ${view === "list" ? "bg-ink/10 text-accent-fg" : "bg-transparent text-ink-4 hover:bg-ink/5 hover:text-ink"}`}
+          >
+            <List className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Categories */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
-              category === cat
-                ? "bg-accent/15 text-accent-fg border border-accent/25"
-                : "text-ink-4 hover:text-ink"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Count */}
-      <div className="flex items-center justify-between text-xs text-ink-5">
-        <span>Showing <span className="text-ink font-semibold">{filtered.length}</span> of {cards.length} Quests</span>
-        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-accent" /> Synced with Polygon & Arbitrum RPC nodes</span>
-      </div>
-
-      {/* Quest Grid */}
-      <div className={`grid gap-4 ${view === "grid" ? "sm:grid-cols-2 lg:grid-cols-4" : "grid-cols-1"}`}>
-        {loading ? (
-          <div className="col-span-4 py-16 text-center">
-            <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-accent-fg" />
-            <span className="text-xs text-ink-5">Loading quests from chain...</span>
+      {/* 3. Quests Grid */}
+      {loading ? (
+        <div className={`grid gap-6 ${view === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"}`}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-xl bg-surface border border-ink/5 h-[380px] animate-pulse" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl bg-surface border border-ink/5 p-16 text-center space-y-4">
+          <div className="w-20 h-20 bg-ink/5 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Search className="w-10 h-10 text-ink-4" />
           </div>
-        ) : filtered.map((q) => (
-          <QuestCard
-            key={q.id}
-            quest={q}
-            onAction={() => { if (!walletAddress) { connectWallet(); } else { setSelectedTask(q); } }}
-          />
-        ))}
-      </div>
+          <h2 className="text-2xl font-heading font-bold text-ink">No quests match your criteria</h2>
+          <p className="text-sm text-ink-4">Try adjusting your filters or checking back later for new drops.</p>
+          <button onClick={() => { setCategory("All"); setSearchQ(""); }} className="px-6 py-2.5 rounded-full bg-ink/5 text-ink font-bold text-sm hover:bg-ink/10 transition-colors">
+            Clear all filters
+          </button>
+        </div>
+      ) : (
+        <div className={`grid gap-6 ${view === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1 lg:grid-cols-2"}`}>
+          {filtered.map((q) => {
+            const catColor = getCategoryColor(q.category);
+            const isCompleted = false; // Add real completed check if available via API
 
-      {/* Sponsor CTA */}
-      <div className="surface-card rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-accent-fg" />
+            return (
+              <article 
+                key={q.id} 
+                className={`group relative flex flex-col justify-between rounded-2xl bg-surface border border-ink/5 p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer ${isCompleted ? 'opacity-80' : ''}`}
+                onClick={() => {
+                  if (!walletAddress) connectWallet();
+                  else setSelectedTask(q);
+                }}
+              >
+                {q.category.toLowerCase() === 'hackathon' && (
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-amber-500 to-purple-500 rounded-t-2xl" />
+                )}
+                
+                <div className="flex flex-col flex-1">
+                  {/* Image/Header Area */}
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden mb-4 bg-ink/5 border border-ink/5">
+                    <img 
+                      src={q.image || "https://images.unsplash.com/photo-1639762681485-074b7f4ec651?auto=format&fit=crop&q=80&w=1000"} 
+                      alt={q.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                    
+                    {/* Top Left Badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
+                      <span className={`w-1.5 h-1.5 rounded-full ${q.category.toLowerCase() === 'hackathon' ? 'bg-red-500' : 'bg-accent'}`} />
+                      <span className="font-mono text-[10px] text-white font-bold uppercase tracking-wider">
+                        {q.category.toLowerCase() === 'hackathon' ? 'Advanced' : 'Active'}
+                      </span>
+                    </div>
+                    
+                    {/* Top Right Badge */}
+                    <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono text-[10px] font-bold">
+                      <Clock className="w-3 h-3" />
+                      <span>7d left</span>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${catColor}`}>
+                      {q.category}
+                    </span>
+                    <div className="flex items-center gap-1 text-ink-4 font-mono text-[10px] font-bold">
+                      <TrendingUp className="w-3 h-3" />
+                      <span>Skill Track</span>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-lg font-heading font-bold text-ink leading-tight group-hover:text-accent-fg transition-colors mb-2">
+                    {q.title}
+                  </h3>
+                  <p className="text-sm text-ink-4 line-clamp-2">
+                    {q.description}
+                  </p>
+                </div>
+
+                {/* Footer / Actions */}
+                <div className="pt-4 mt-4 border-t border-ink/5">
+                  <div className="p-3 rounded-xl bg-ink/[0.02] border border-ink/5 mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-amber-500">
+                      <Zap className="w-4 h-4 fill-amber-500" />
+                      <span className="font-mono text-sm font-bold">+{q.xp.toLocaleString()} XP</span>
+                    </div>
+                    <span className="text-xs text-ink-4 font-semibold truncate max-w-[130px]">
+                      {q.category.toLowerCase() === 'hackathon' ? 'Major Reward' : 'Verification Badge'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-ink-4 font-mono text-[10px] font-bold mb-4">
+                    <div className="flex items-center -space-x-2">
+                      <span className="w-6 h-6 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center text-[8px] text-ink">U1</span>
+                      <span className="w-6 h-6 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center text-[8px] text-accent-fg">U2</span>
+                      <span className="w-6 h-6 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center text-[8px] text-purple-500">U3</span>
+                    </div>
+                    <span>342 Joined</span>
+                  </div>
+
+                  <button className="w-full py-2.5 rounded-xl bg-ink/5 text-ink font-heading text-sm font-bold flex items-center justify-center gap-2 group-hover:bg-accent group-hover:text-surface transition-all">
+                    <span>{q.category.toLowerCase() === 'hackathon' ? 'Register Team' : 'Start Quest'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 4. Bottom Interactive Protocol Callout */}
+      <section className="mt-16 rounded-2xl bg-gradient-to-br from-page via-surface to-page border border-ink/5 p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-accent/10 to-transparent pointer-events-none" />
+        
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10 text-center sm:text-left">
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-ink/10 flex items-center justify-center text-accent-fg shrink-0 shadow-sm">
+            <Cpu className="w-8 h-8" />
           </div>
           <div>
-            <div className="text-sm font-bold font-heading text-ink">Have a Quest or Hackathon to Sponsor?</div>
-            <div className="text-xs text-ink-4">Deploy verified task criteria and XP rewards for 4,000+ certified student developers.</div>
+            <h4 className="text-2xl font-heading font-bold text-ink mb-2">Have a Quest or Hackathon to Sponsor?</h4>
+            <p className="text-sm text-ink-4 max-w-lg">Deploy verified task criteria and XP rewards directly to the BCL ecosystem for 4,000+ certified student developers to solve.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button className="btn-outline px-4 py-2 text-xs font-bold">Read Docs</button>
-          <button className="btn-green px-4 py-2 text-xs font-bold flex items-center gap-1.5">
-            <Zap className="w-3 h-3" /> Submit Quest RFP
+        
+        <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto relative z-10">
+          <button className="w-full sm:w-auto px-6 py-3 rounded-full bg-surface border border-ink/10 text-ink hover:bg-ink/5 transition-all text-sm font-bold">
+            Read Docs
+          </button>
+          <button className="w-full sm:w-auto px-6 py-3 rounded-full bg-ink text-surface hover:shadow-lg transition-all text-sm font-bold flex items-center justify-center gap-2">
+            Submit Quest RFP <ArrowRight className="w-4 h-4" />
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* Submit Modal */}
+      {/* 5. Submit Modal */}
       {selectedTask && walletAddress && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-ink/[0.1] bg-surface p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="badge-green mb-1">{selectedTask.category}</div>
-                <h3 className="font-heading font-bold text-base text-ink">{selectedTask.title}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl border border-ink/10 bg-surface p-8 space-y-5 shadow-2xl relative">
+            <button 
+              onClick={() => { setSelectedTask(null); setEvidenceInput(""); }} 
+              className="absolute top-6 right-6 text-ink-4 hover:text-ink transition-colors bg-ink/5 p-2 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${getCategoryColor(selectedTask.category)}`}>
+                  {selectedTask.category}
+                </span>
               </div>
-              <button onClick={() => setSelectedTask(null)} className="text-ink-5 hover:text-ink transition">✕</button>
+              <h3 className="font-heading font-bold text-2xl text-ink leading-tight mb-2 pr-8">{selectedTask.title}</h3>
+              <p className="text-sm text-ink-4">{selectedTask.description}</p>
             </div>
-            <p className="text-xs text-ink-4">{selectedTask.description}</p>
-            <div className="flex items-center gap-2">
-              <span className="xp-tag"><Zap className="w-2.5 h-2.5" />+{selectedTask.xp.toLocaleString()} XP</span>
-              <span className="text-[10px] text-ink-5">{selectedTask.reward}</span>
+            
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 w-fit">
+              <Zap className="w-4 h-4 fill-amber-500" />
+              <span className="font-mono text-sm font-bold">+{selectedTask.xp.toLocaleString()} XP</span>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-3">
+            
+            <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-ink/5">
               <div>
-                <label className="block text-[11px] text-ink-4 uppercase font-semibold mb-1.5">Proof / Evidence URL</label>
+                <label className="block font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider mb-2">
+                  Proof / Evidence URL
+                </label>
                 <input
                   type="text"
                   value={evidenceInput}
                   onChange={(e) => setEvidenceInput(e.target.value)}
                   placeholder="https://github.com/... or 0x..."
-                  className="w-full bg-page border border-ink/[0.1] rounded-xl px-4 py-2.5 text-xs text-ink placeholder:text-ink-5 focus:outline-none focus:border-accent/40 font-mono"
+                  className="w-full bg-ink/[0.03] border border-ink/10 rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-4/60 focus:outline-none focus:border-accent/50 focus:bg-surface transition-all font-mono"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSubmitting || !evidenceInput.trim()}
-                className="w-full btn-green py-2.5 text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full bg-ink text-surface text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-ink-3 transition-colors"
               >
-                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                {isSubmitting ? "Verifying on-chain..." : "Submit Proof"}
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                {isSubmitting ? "Verifying..." : "Submit Proof"}
               </button>
             </form>
           </div>

@@ -3,450 +3,492 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { api, Task } from "@/lib/api";
+import { api, Task, TaskSubmission } from "@/lib/api";
 import {
   CheckCircle2, Loader2, ArrowLeft, Zap, Shield, ExternalLink,
-  Lock, Clock, Users, Award, ChevronRight, Copy, AlertCircle
+  Lock, Clock, Users, Award, ChevronRight, Copy, AlertCircle,
+  Terminal, Flame, Folder, PlayCircle, Gavel, Headset, MessageSquare, Calendar
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { QuestImage } from "@/components/quest/QuestImage";
 import { coverForCategory } from "@/lib/quests";
+import { getExplorerUrl } from "@/lib/contracts";
 
-// ─── Mock Quest Detail Data ───────────────────────────────────────────────────
-const QUEST_DETAIL: Record<string, {
-  title: string; track: string; difficulty: string; xp: number; timeLeft: string;
-  desc: string; authority: string; authorityRole: string; authorityTags: string[];
-  rules: string[]; liveSupport: string;
-  contenders: number; rewardNFT: string; stage: { current: number; total: number };
-  checkpoints: {
-    id: string; title: string; xp: number; status: "verified" | "active" | "locked";
-    desc: string; verificationNote: string; address?: string; repo?: string; ciResult?: string;
-    inputs?: { label: string; placeholder: string; type?: string }[];
-  }[];
-}> = {
-  "m4": {
-    title: "Confluence Hackathon 2025: Protocol Prototype",
-    track: "Developer Guild · Hackathon Major Event",
-    difficulty: "Intermediate", xp: 1000, timeLeft: "12d 8h remaining",
-    desc: "Engineer, architect, and deploy an account-abstracted decentralized application using the BCL framework on Base Sepolia. Complete verification checkpoints to seal your entry.",
-    authority: "BCL Hackathon Council", authorityRole: "Official Council",
-    authorityTags: ["#BaseSepolia", "#ERC4337", "#PaymasterReady"],
-    rules: [
-      "Smart contracts must be fully open-source with MIT or Apache-2.0 licenses.",
-      "All gas sponsorship logic must implement anti-drain protection guards.",
-      "Anti-Sybil gating: Every team member requires verified BCL Student Pass.",
-    ],
-    liveSupport: "Discord Relay",
-    contenders: 240, rewardNFT: "Contender SBT Genesis",
-    stage: { current: 4, total: 5 },
-    checkpoints: [
-      {
-        id: "cp1", title: "Fork the BCL Scaffold Repo on GitHub", xp: 150, status: "verified",
-        desc: "Initialize an open fork under your authorized student team handle.",
-        verificationNote: "Verified via GitHub OAuth",
-        repo: "philip-arch/bcl-account-scaffold",
-      },
-      {
-        id: "cp2", title: "Deploy ERC-4337 Account Factory to Base Sepolia", xp: 350, status: "verified",
-        desc: "Instantiate the verified Account Factory on-chain and register the initialization salt.",
-        verificationNote: "Verified via RPC Scanner", address: "0x72a9...d4b1",
-      },
-      {
-        id: "cp3", title: "Automated userOp Bundler Suite (>90% Coverage)", xp: 200, status: "verified",
-        desc: "Execute gas simulation vectors and bundler batching stress tests via Foundry.",
-        verificationNote: "Automated CI runner confirmed", ciResult: "94.2% Passed",
-      },
-      {
-        id: "cp4", title: "Submit Live Demo URL & Project Pitch Deck", xp: 200, status: "active",
-        desc: "Deliver the production interface deployment (Vercel/IPFS) and an asynchronous Loom walkthrough explaining your paymaster logic and key architecture decisions.",
-        verificationNote: "Oracle scanner validates repo commits within <15 seconds.",
-        inputs: [
-          { label: "Hosted Application URL (Vercel, Fleek, or IPFS)", placeholder: "https://confluence-bcl-demo.vercel.app", type: "url" },
-          { label: "Loom Walkthrough or Pitch Deck URL", placeholder: "https://loom.com/share/9b18c0...", type: "url" },
-        ],
-      },
-      {
-        id: "cp5", title: "Community Peer Review & Mentor Feedback Session", xp: 100, status: "locked",
-        desc: "Participate in the assigned discord review room with a designated council auditor.",
-        verificationNote: "Unlocks automatically upon successful submission of Task 4.",
-      },
-    ],
-  },
-  "default": {
-    title: "Build Your First DApp", track: "Developer · Lvl 2 Track",
-    difficulty: "Intermediate", xp: 750, timeLeft: "6d left",
-    desc: "Deploy a verified token contract on Sepolia testnet and hook it up to a live React/Vite frontend with Wagmi wallet connection and live event listening.",
-    authority: "BCL Developer Guild", authorityRole: "Verified Guild",
-    authorityTags: ["#Sepolia", "#ERC20", "#Wagmi"],
-    rules: [
-      "Contract must be open-source and verified on Sepolia Etherscan.",
-      "Frontend must include a live balance display and transfer UI.",
-      "Submit only from your registered BCL wallet address.",
-    ],
-    liveSupport: "Discord",
-    contenders: 380, rewardNFT: "Web3 Builder NFT",
-    stage: { current: 1, total: 3 },
-    checkpoints: [
-      {
-        id: "cp1", title: "Deploy ERC-20 Token to Sepolia", xp: 300, status: "active",
-        desc: "Write, test and deploy an ERC-20 contract. Verify it on Sepolia Etherscan.",
-        verificationNote: "Verified via RPC contract-code scanner.",
-        inputs: [{ label: "Deployed Contract Address (Sepolia)", placeholder: "0xAbCd…", type: "text" }],
-      },
-      {
-        id: "cp2", title: "Build & Deploy Frontend", xp: 300, status: "locked",
-        desc: "Connect your contract to a React/Vite app using Wagmi. Deploy to Vercel or IPFS.",
-        verificationNote: "Verified via live URL scan.",
-        inputs: [{ label: "Live App URL", placeholder: "https://my-dapp.vercel.app", type: "url" }],
-      },
-      {
-        id: "cp3", title: "Submit Demo Video", xp: 150, status: "locked",
-        desc: "Record a 2-minute Loom showing wallet connect, token transfer, and live balance update.",
-        verificationNote: "Reviewed within 24 hours.",
-        inputs: [{ label: "Loom URL", placeholder: "https://loom.com/share/…", type: "url" }],
-      },
-    ],
-  },
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
 export function QuestDetailClient() {
   const params = useParams();
   const router = useRouter();
-  const { walletAddress, connectWallet } = useAuth();
-  const id = typeof params?.id === "string" ? params.id : "default";
+  const { walletAddress, connectWallet, refreshUserData } = useAuth();
+  const id = typeof params?.id === "string" ? params.id : "";
 
   const [task, setTask] = useState<Task | null>(null);
+  const [submission, setSubmission] = useState<TaskSubmission | null>(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState<string | null>(null);
-  const [inputs, setInputs] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState<Set<string>>(new Set());
-
-  const quest = QUEST_DETAIL[id] ?? QUEST_DETAIL["default"];
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [evidenceInput, setEvidenceInput] = useState("");
 
   useEffect(() => {
-    const numId = parseInt(id, 10);
-    if (!isNaN(numId)) {
-      api.getTask(numId).then(setTask).catch(() => {}).finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [id]);
-
-  const completedCheckpoints = quest.checkpoints.filter((c) => c.status === "verified").length;
-  const totalCheckpoints = quest.checkpoints.length;
-  const progressPct = Math.round((completedCheckpoints / totalCheckpoints) * 100);
-  const allDone = completedCheckpoints === totalCheckpoints;
-
-  const handleSubmit = async (cpId: string) => {
-    if (!walletAddress) { await connectWallet(); return; }
-    const cp = quest.checkpoints.find((c) => c.id === cpId);
-    if (!cp) return;
-    setSubmitting(cpId);
-    try {
-      const evidence: Record<string, unknown> = { checkpoint: cpId };
-      (cp.inputs ?? []).forEach((inp) => {
-        evidence[inp.label] = inputs[`${cpId}__${inp.label}`] || "";
-      });
+    const fetchQuestData = async () => {
       const numId = parseInt(id, 10);
-      if (!isNaN(numId)) {
-        await api.submitTask(numId, evidence);
-      } else {
-        await new Promise((r) => setTimeout(r, 1000));
+      if (isNaN(numId)) {
+        setLoading(false);
+        return;
       }
-      setSubmitted((prev) => new Set([...prev, cpId]));
-      toast.success("Submission sent! Oracle scanning…");
+      try {
+        const [taskData, subsData] = await Promise.all([
+          api.getTask(numId),
+          walletAddress ? api.getMySubmissions() : Promise.resolve([])
+        ]);
+        setTask(taskData);
+        const userSub = subsData.find(s => s.task_id === numId);
+        if (userSub) setSubmission(userSub);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuestData();
+  }, [id, walletAddress]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletAddress) { 
+      await connectWallet(); 
+      return; 
+    }
+    if (!evidenceInput.trim() || !task) return;
+    
+    setIsSubmitting(true);
+    try {
+      await api.submitTask(task.id, { url: evidenceInput.trim() });
+      toast.success("Submission sent! Oracle scanning initialization...");
+      // Optimistic update — use "submitted" which is a valid status in the union
+      setSubmission({
+        id: Math.random(),
+        task_id: task.id,
+        user_id: 0,
+        wallet: walletAddress,
+        evidence: { url: evidenceInput.trim() },
+        status: "submitted",
+        created_at: new Date().toISOString(),
+      });
+      await refreshUserData();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Submission failed");
     } finally {
-      setSubmitting(null);
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-ink-5">
-        <button onClick={() => router.push("/tasks")} className="hover:text-ink transition-colors flex items-center gap-1">
-          <ArrowLeft className="w-3.5 h-3.5" /> Quests
-        </button>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-ink-4">Quest Details</span>
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-accent-fg" />
       </div>
+    );
+  }
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left: Main */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Quest Header */}
-          <div className="rounded-2xl bg-surface border border-white/8 overflow-hidden">
-            <QuestImage
-              src={task?.image_url || (id === "m4" ? "/quests/confluence-hackathon.svg" : coverForCategory(task?.category ?? "developer"))}
-              alt={quest.title}
-              heightClass="h-44"
-            />
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] text-blue-300 font-semibold">Developer Guild</span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-[10px] text-amber-300 font-semibold">Hackathon Major Event</span>
-                <span className="flex items-center gap-1 text-[10px] text-red-400 font-semibold">
-                  <Clock className="w-3 h-3" /> {quest.timeLeft}
-                </span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-extrabold font-heading text-ink">{quest.title}</h1>
-                <p className="text-sm text-ink-4 mt-2">{quest.desc}</p>
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-ink-5">Checkpoint Synchronization</span>
-                  <span className="text-accent-fg font-semibold">{completedCheckpoints} of {totalCheckpoints} Tasks Completed ({progressPct}%)</span>
-                </div>
-                <div className="h-2 rounded-full bg-white/8 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all" style={{ width: `${progressPct}%` }} />
-                </div>
-              </div>
+  if (!task) {
+    return (
+      <div className="w-full max-w-[1280px] mx-auto px-4 py-20 text-center">
+        <h1 className="text-2xl font-heading font-bold text-ink">Quest Not Found</h1>
+        <p className="text-ink-4 mt-2 mb-6">The quest you are looking for does not exist or has been archived.</p>
+        <button onClick={() => router.push("/tasks")} className="btn-outline px-6 py-2">Return to Discovery</button>
+      </div>
+    );
+  }
+
+  const isVerified = submission?.status === "verified";
+  const isPending  = submission?.status === "submitted" || submission?.status === "under_review";
+  const isRejected = submission?.status === "rejected";
+  const hasSubmitted = !!submission;
+
+  // Calculate dynamic progress to mirror the HTML design
+  const progressPct  = isVerified ? 100 : hasSubmitted ? 80 : 50;
+  const currentStage = isVerified ? 3 : hasSubmitted ? 2 : 1;
+
+  // Helper for category styles
+  const getCategoryStyles = (cat: string) => {
+    switch(cat?.toLowerCase()) {
+      case 'developer': return { text: 'text-purple-500', bg: 'bg-purple-500/10' };
+      case 'learning':  return { text: 'text-amber-500',  bg: 'bg-amber-500/10'  };
+      case 'hackathon': return { text: 'text-red-500',    bg: 'bg-red-500/10'    };
+      case 'community': return { text: 'text-accent-fg',  bg: 'bg-accent/10'     };
+      case 'creator':   return { text: 'text-blue-500',   bg: 'bg-blue-500/10'   };
+      default:          return { text: 'text-accent-fg',  bg: 'bg-accent/10'     };
+    }
+  };
+  const catStyles = getCategoryStyles(task.category);
+
+  return (
+    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
+      
+      {/* Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-ink-4 font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2">
+        <button onClick={() => router.push("/tasks")} className="hover:text-ink transition-colors flex items-center gap-1">
+          <Folder className="w-4 h-4" /> Quests
+        </button>
+        <span className="text-ink/20">/</span>
+        <span className="text-ink-4">{task.category || "General"}</span>
+        <span className="text-ink/20">/</span>
+        <span className="text-accent-fg font-medium">Quest Details</span>
+      </nav>
+
+      {/* Hero Banner: Cyber-Glass Surface */}
+      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 shadow-sm overflow-hidden p-6 md:p-10">
+        {/* Ambient Specular Glows */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-accent/10 blur-[90px] pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-purple-500/10 blur-[80px] pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+          {/* Title & Tags */}
+          <div className="space-y-4 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`px-3 py-1.5 rounded-full ${catStyles.bg} ${catStyles.text} font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-ink/5`}>
+                <Terminal className="w-3.5 h-3.5" />
+                <span>{task.category || "Ecosystem"} Guild</span>
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Flame className="w-3.5 h-3.5" />
+                <span>Active Campaign</span>
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-ink/5 text-ink-4 font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-ink/5">
+                <span className="w-1.5 h-1.5 rounded-full bg-ink-4 animate-ping" />
+                <span>Epoch Open</span>
+              </span>
             </div>
-          </div>
-
-          {/* Verification Protocol */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold font-heading text-ink flex items-center gap-2">
-                <Shield className="w-4 h-4 text-accent-fg" /> Verification Protocol
-              </h2>
-              <span className="text-[10px] text-ink-5 font-mono">All tasks require cryptographic proof</span>
-            </div>
-
-            {quest.checkpoints.map((cp, idx) => {
-              const isSubmitted = submitted.has(cp.id);
-              const effectiveStatus = isSubmitted ? "verified" : cp.status;
-
-              return (
-                <div
-                  key={cp.id}
-                  className={`rounded-2xl border p-5 space-y-3 transition-all ${
-                    effectiveStatus === "verified"
-                      ? "bg-surface border-green-500/20"
-                      : effectiveStatus === "active"
-                      ? "bg-surface border-accent/30 ring-1 ring-accent/20"
-                      : "bg-surface/60 border-white/6 opacity-70"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        effectiveStatus === "verified" ? "bg-green-500/20" : effectiveStatus === "active" ? "bg-accent/20" : "bg-white/8"
-                      }`}>
-                        {effectiveStatus === "verified" ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        ) : effectiveStatus === "locked" ? (
-                          <Lock className="w-3.5 h-3.5 text-ink-5" />
-                        ) : (
-                          <span className="text-[10px] font-bold text-accent-fg">{idx + 1}</span>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-semibold text-sm ${effectiveStatus === "active" ? "text-accent-fg" : "text-ink"}`}>
-                            {cp.title}
-                          </span>
-                          {effectiveStatus === "active" && (
-                            <span className="px-2 py-0.5 rounded-full bg-accent/20 border border-accent/30 text-[10px] text-accent-fg font-semibold">● ACTIVE CHECKPOINT</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-ink-4 mt-1">{cp.desc}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="flex items-center gap-1 text-xs font-semibold text-yellow-400">
-                        <Zap className="w-3 h-3" />+{cp.xp} XP
-                      </span>
-                      {effectiveStatus === "verified" && (
-                        <span className="px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/25 text-[10px] text-green-400 font-semibold">Validated</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[11px] text-ink-5">
-                    <Shield className="w-3 h-3 shrink-0" />
-                    <span>{cp.verificationNote}</span>
-                    {cp.address && (
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(cp.address!); toast.success("Copied"); }}
-                        className="flex items-center gap-1 text-accent-fg hover:underline ml-1"
-                      >
-                        {cp.address} <Copy className="w-2.5 h-2.5" />
-                      </button>
-                    )}
-                    {cp.repo && (
-                      <a href={`https://github.com/${cp.repo}`} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-accent-fg hover:underline">
-                        repo: {cp.repo} <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    )}
-                    {cp.ciResult && (
-                      <span className="text-green-400 font-semibold">· {cp.ciResult}</span>
-                    )}
-                  </div>
-
-                  {effectiveStatus === "active" && cp.inputs && (
-                    <div className="space-y-3 pt-1">
-                      {cp.inputs.map((inp) => (
-                        <div key={inp.label} className="space-y-1">
-                          <label className="text-[10px] text-ink-5 uppercase tracking-wider">{inp.label}</label>
-                          <input
-                            type={inp.type ?? "text"}
-                            value={inputs[`${cp.id}__${inp.label}`] ?? ""}
-                            onChange={(e) => setInputs((prev) => ({ ...prev, [`${cp.id}__${inp.label}`]: e.target.value }))}
-                            placeholder={inp.placeholder}
-                            className="w-full rounded-xl bg-subtle border border-white/10 px-3 py-2.5 text-sm text-ink placeholder:text-ink-5/50 focus:outline-none focus:border-accent/50 font-mono"
-                          />
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => handleSubmit(cp.id)}
-                        disabled={!!submitting || isSubmitted}
-                        className="btn-primary flex items-center gap-2 disabled:opacity-60"
-                      >
-                        {submitting === cp.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                        {submitting === cp.id ? "Verifying…" : isSubmitted ? "Submitted" : "Verify Submission"}
-                      </button>
-                    </div>
-                  )}
-
-                  {effectiveStatus === "locked" && (
-                    <div className="flex items-center gap-2 text-xs text-ink-5">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      {cp.verificationNote}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Final Audit CTA */}
-          <div className={`rounded-2xl border p-5 flex items-center justify-between gap-4 ${
-            allDone ? "bg-accent/10 border-accent/30" : "bg-surface/60 border-white/6 opacity-60"
-          }`}>
-            <div>
-              <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">
-                Terminal Action · Stage {quest.stage.current} / {quest.stage.total}
-              </div>
-              <div className="flex items-center gap-2">
-                <Award className="w-4 h-4 text-accent-fg" />
-                <span className="font-bold text-ink">{quest.rewardNFT}</span>
-              </div>
-              <p className="text-xs text-ink-4 mt-0.5">Mintable directly to your verified smart wallet upon final review pass.</p>
-            </div>
-            <button
-              disabled={!allDone}
-              className="btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {allDone
-                ? <><Zap className="w-4 h-4" /> Submit for Final Audit</>
-                : <><Lock className="w-4 h-4" /> Submit Quest for Final Audit</>
-              }
-            </button>
-          </div>
-          {!allDone && (
-            <p className="text-center text-[11px] text-ink-5">
-              Unlocked when all {totalCheckpoints} checkpoints register valid state.
+            
+            <h1 className="text-3xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">
+              {task.title}
+            </h1>
+            <p className="text-sm md:text-base text-ink-4 max-w-2xl leading-relaxed">
+              {task.description}
             </p>
-          )}
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-surface border border-white/8 p-5 space-y-3">
-            <h3 className="font-bold font-heading text-ink text-sm flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-accent-fg" /> Reward Payload
-            </h3>
-            {[
-              { label: "Experience", value: `+${quest.xp} XP`, color: "text-yellow-400" },
-              { label: "Soulbound Credential", value: "Contender NFT", color: "text-purple-300" },
-              { label: "Gas Subsidies", value: "BCL Sponsored", color: "text-accent-fg" },
-            ].map((r) => (
-              <div key={r.label} className="flex items-center justify-between text-sm">
-                <span className="text-ink-5 text-xs">{r.label}</span>
-                <span className={`font-semibold text-xs ${r.color}`}>{r.value}</span>
+            
+            {/* Dynamic Overall Progress Meter */}
+            <div className="space-y-2 pt-2 max-w-md">
+              <div className="flex justify-between items-center font-mono text-[10px] font-bold uppercase tracking-wider">
+                <span className="text-ink-4">Checkpoint Synchronization</span>
+                <span className="text-accent-fg">{currentStage} of 3 Tasks Completed ({progressPct}%)</span>
               </div>
-            ))}
-          </div>
-
-          <div className="rounded-2xl bg-surface border border-white/8 p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs text-ink-5 uppercase tracking-wider">Quest Authority</h3>
-              <span className="badge-green text-[10px]">Official Council</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center shrink-0">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <div className="font-semibold text-ink text-sm">{quest.authority}</div>
-                <div className="text-[10px] text-ink-5">In coalition with Base Ecosystem & Arbitrum Guilds</div>
+              <div className="h-2 w-full rounded-full bg-ink/5 overflow-hidden p-[1px]">
+                <div 
+                  className="h-full rounded-full bg-gradient-to-r from-purple-500 to-accent transition-all duration-700 shadow-[0_0_12px_rgba(0,245,160,0.5)]" 
+                  style={{ width: `${progressPct}%` }} 
+                />
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {quest.authorityTags.map((t) => (
-                <span key={t} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/8 text-[10px] text-ink-5">{t}</span>
-              ))}
-            </div>
           </div>
 
-          <div className="rounded-2xl bg-surface border border-white/8 p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold font-heading text-ink text-sm flex items-center gap-2">
-                <Users className="w-3.5 h-3.5" /> Contender Roster
-              </h3>
-              <span className="badge-amber text-[10px]">{quest.contenders} Teams</span>
+          {/* Rewards Summary Metric Cluster */}
+          <div className="shrink-0 bg-surface/90 border border-ink/5 rounded-2xl p-6 shadow-lg flex flex-col gap-4 min-w-[280px] backdrop-blur-md">
+            <div className="flex items-center justify-between pb-2 border-b border-ink/5">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-ink-4">Reward Payload</span>
+              <Shield className="text-accent-fg w-4 h-4" />
             </div>
-            <p className="text-xs text-ink-4">Pioneers collaborating across campus hubs and international dev relays.</p>
-            <div className="flex items-center gap-1.5">
-              {["🟣", "🟢", "🔵", "🟡"].map((c, i) => (
-                <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-xs border-2 border-surface">
-                  {c}
-                </div>
-              ))}
-              <span className="text-xs text-ink-5 ml-1">+{quest.contenders - 4}</span>
-            </div>
-            <div className="space-y-2 text-xs">
-              {["team-lagos-zero", "arch-solvers"].map((team, i) => (
-                <div key={team} className="flex items-center justify-between py-1.5 border-b border-white/6 last:border-0">
-                  <span className="text-ink-4 font-mono">{team}</span>
-                  <span className="text-accent-fg">Task {i + 3} Verified {i === 0 ? "3m" : "14m"} ago</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-surface border border-white/8 p-5 space-y-3">
-            <h3 className="font-bold font-heading text-ink text-sm flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-amber-400" /> Rules & Audit Guidelines
-            </h3>
-            <div className="space-y-2">
-              {quest.rules.map((r) => (
-                <div key={r} className="flex items-start gap-2 text-xs text-ink-4">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
-                  <span>{r}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-gradient-to-br from-[#0d1a0d] to-surface border border-green-500/15 p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold font-heading text-ink text-sm">Live Support Desk</h3>
-              <span className="badge-green text-[10px]">{quest.liveSupport}</span>
-            </div>
-            <p className="text-xs text-ink-4">Stuck on bundler errors? Join the dedicated hackathon warroom or schedule an audit slot.</p>
-            <div className="flex gap-2">
-              <button className="flex-1 btn-primary text-xs">#hackathon-support</button>
-              <button className="flex-1 btn-outline text-xs">Office Hours (Today 18:00)</button>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm text-ink flex items-center gap-2 font-semibold">
+                  <Zap className="text-amber-500 w-4 h-4" /> Experience
+                </span>
+                <span className="font-mono text-sm text-amber-500 font-bold">+{task.points?.toLocaleString()} XP</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm text-ink flex items-center gap-2 font-semibold">
+                  <Award className="text-purple-500 w-4 h-4" /> Soulbound Credential
+                </span>
+                <span className="font-mono text-[10px] font-bold px-2.5 py-1 bg-purple-500/10 text-purple-500 rounded uppercase tracking-wider">Milestone NFT</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm text-ink flex items-center gap-2 font-semibold">
+                  <Lock className="text-accent-fg w-4 h-4" /> Gas Subsidies
+                </span>
+                <span className="font-mono text-[10px] font-bold text-accent-fg uppercase tracking-wider">BCL Sponsored</span>
+              </div>
             </div>
           </div>
         </div>
+      </section>
+
+      {/* 12-Column Responsive Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        {/* Left Column: Verification Flow & Checklist (7 Cols) */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-heading font-bold text-ink flex items-center gap-2">
+              <CheckCircle2 className="text-accent-fg w-5 h-5" />
+              <span>Verification Protocol</span>
+            </h2>
+            <span className="font-mono text-[10px] text-ink-4 uppercase tracking-wider font-bold hidden sm:block">All tasks require cryptographic proof</span>
+          </div>
+
+          {/* Flow Step 1: Quest Initialization */}
+          <div className="p-6 rounded-2xl bg-surface border border-ink/5 shadow-sm transition-all">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-accent/20 text-accent-fg flex items-center justify-center shrink-0 mt-0.5 shadow-[0_0_8px_rgba(0,245,160,0.3)]">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-heading font-bold text-ink">Quest Initialization & Requirements</h3>
+                    <span className="font-mono text-[10px] text-amber-500 font-bold uppercase tracking-wider">Unlocked</span>
+                  </div>
+                  <p className="text-sm text-ink-4">Quest parameters loaded. Your wallet is authorized to interact with this protocol challenge.</p>
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <span className="font-mono text-[10px] text-ink-4 font-bold flex items-center gap-1 uppercase tracking-wider">
+                      <Shield className="w-3.5 h-3.5 text-accent-fg" /> Authenticated via Web3 Provider
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span className="hidden sm:inline-block px-2.5 py-1 rounded bg-ink/5 font-mono text-[10px] font-bold text-ink-4 uppercase tracking-wider">Validated</span>
+            </div>
+          </div>
+
+          {/* Flow Step 2: Proof Submission */}
+          <div className={`relative p-6 md:p-8 rounded-2xl transition-all shadow-sm ${
+            isVerified ? "bg-surface border border-ink/5" : "bg-surface border border-accent/20 shadow-[0_0_20px_rgba(0,245,160,0.05)]"
+          }`}>
+            {!isVerified && (
+              <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-accent text-surface font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-surface animate-pulse" />
+                ACTIVE CHECKPOINT
+              </div>
+            )}
+            
+            <div className={`space-y-4 ${!isVerified ? 'pt-2' : ''}`}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  {isVerified && (
+                    <div className="w-8 h-8 rounded-full bg-accent/20 text-accent-fg flex items-center justify-center shrink-0 shadow-[0_0_8px_rgba(0,245,160,0.3)]">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  )}
+                  <h3 className="text-xl font-heading font-bold text-ink">Submit Protocol Proof of Work</h3>
+                </div>
+                <span className="font-mono text-sm text-amber-500 font-bold">+{task.points?.toLocaleString()} XP</span>
+              </div>
+              
+              <p className="text-sm text-ink-4 leading-relaxed">
+                {isVerified 
+                  ? "Your submission has been successfully processed and recorded on-chain by the oracle consensus."
+                  : "Deliver the production interface deployment, transaction hash, or repository link required to satisfy this quest's parameters."}
+              </p>
+
+              {isVerified ? (
+                <div className="mt-4 pt-4 border-t border-ink/5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[10px] text-ink-4 font-bold flex items-center gap-1 uppercase tracking-wider">
+                      <Terminal className="w-3.5 h-3.5 text-accent-fg" /> Automated CI runner confirmed
+                    </span>
+                    <span className="text-ink/20">•</span>
+                    {submission?.tx_hash ? (
+                      <a href={getExplorerUrl(submission.tx_hash)} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] font-bold text-purple-500 hover:text-purple-400 transition-colors flex items-center gap-1 uppercase tracking-wider">
+                        {submission.tx_hash.slice(0, 10)}... <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <span className="font-mono text-[10px] font-bold text-accent-fg uppercase tracking-wider">100% Passed</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <label className="block font-mono text-[10px] text-ink uppercase font-bold tracking-wider" htmlFor="proof-url">
+                      Hosted Application, Tx Hash, or Repository URL
+                    </label>
+                    <div className="relative flex items-center">
+                      <PlayCircle className="absolute left-4 w-5 h-5 text-ink-4" />
+                      <input 
+                        id="proof-url"
+                        value={evidenceInput}
+                        onChange={(e) => setEvidenceInput(e.target.value)}
+                        className="w-full h-12 pl-12 pr-4 rounded-xl bg-ink/5 text-ink font-mono text-sm placeholder:text-ink-4/50 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
+                        placeholder="https://github.com/..." 
+                        required 
+                        disabled={isPending || isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-ink/5">
+                    <span className="text-xs text-ink-4 font-medium">
+                      Oracle scanner validates commits within <span className="font-bold text-ink">{"<15 seconds"}</span>.
+                    </span>
+                    <button 
+                      type="submit"
+                      disabled={isSubmitting || isPending}
+                      className="w-full sm:w-auto px-6 py-3 rounded-full bg-accent text-surface font-bold text-sm hover:shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                      <span>{isSubmitting ? "Verifying..." : isPending ? "Pending Audit" : "Verify Submission"}</span>
+                    </button>
+                  </div>
+
+                  {isPending && (
+                    <div className="p-3 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Triggering consensus RPC verification... Validating submission hash.</span>
+                    </div>
+                  )}
+                  {isRejected && (
+                    <div className="p-3 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Verification failed. Please review guidelines and submit valid proof.</span>
+                    </div>
+                  )}
+                </form>
+              )}
+            </div>
+          </div>
+
+          {/* Flow Step 3: Locked / Final Protocol */}
+          <div className={`p-6 rounded-2xl flex flex-col gap-4 shadow-sm transition-all ${
+            isVerified ? "bg-surface border border-ink/5" : "bg-ink/[0.02] border border-ink/5 opacity-60"
+          }`}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-ink/5 text-ink-4 flex items-center justify-center shrink-0 mt-0.5">
+                  {isVerified ? <CheckCircle2 className="w-5 h-5 text-accent-fg" /> : <Lock className="w-4 h-4" />}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className={`text-lg font-heading font-bold ${isVerified ? 'text-ink' : 'text-ink-4'}`}>Ecosystem Consensus & Settlement</h3>
+                    {!isVerified && <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider">+ Bonus XP</span>}
+                  </div>
+                  <p className="text-sm text-ink-4">Finalize the quest parameters and mint your respective Soulbound token directly to your identity.</p>
+                  
+                  {!isVerified && (
+                    <div className="pt-2">
+                      <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5" /> Unlocks automatically upon successful submission of Proof of Work
+                      </span>
+                    </div>
+                  )}
+                  {isVerified && (
+                    <div className="pt-2">
+                      <span className="font-mono text-[10px] text-accent-fg font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <Shield className="w-3.5 h-3.5" /> Consensus Achieved. Rewards Dispatched.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Quest Metadata, Contenders, Rules (5 Cols) */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          
+          {/* Host & Ecosystem Sponsorship */}
+          <div className="p-6 rounded-2xl bg-surface border border-ink/5 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] text-ink-4 uppercase tracking-wider font-bold">Quest Authority</span>
+              <span className="font-mono text-[10px] text-accent-fg uppercase tracking-wider font-bold">Official Guild</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-ink/5 flex items-center justify-center shrink-0 border border-ink/5">
+                <Shield className="w-7 h-7 text-ink" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-lg font-heading font-bold text-ink">{task.category || "Ecosystem"} Guild</h4>
+                <p className="text-xs text-ink-4 leading-tight">In coalition with Campus DAOs & Layer-2 Ecosystem Partners</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-ink/5">
+              {["#Verification", "#Onchain", "#Build"].map(tag => (
+                <span key={tag} className="px-2 py-1 rounded bg-ink/5 font-mono text-[10px] font-bold text-ink-4">{tag}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Contenders Activity Roster */}
+          <div className="p-6 rounded-2xl bg-surface border border-ink/5 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-heading font-bold text-ink flex items-center gap-2">
+                <Users className="text-purple-500 w-5 h-5" />
+                <span>Contender Roster</span>
+              </h4>
+              <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-500 font-bold tracking-wider uppercase">Active</span>
+            </div>
+            <p className="text-sm text-ink-4">
+              Pioneers collaborating across campus hubs and international dev relays.
+            </p>
+            
+            <div className="flex items-center -space-x-3 overflow-hidden py-1">
+              <div className="w-10 h-10 rounded-full border-2 border-surface bg-gradient-to-br from-accent to-blue-500" />
+              <div className="w-10 h-10 rounded-full border-2 border-surface bg-gradient-to-br from-purple-500 to-pink-500" />
+              <div className="w-10 h-10 rounded-full border-2 border-surface bg-gradient-to-br from-amber-500 to-red-500" />
+              <div className="w-10 h-10 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center font-mono text-[10px] text-ink font-bold backdrop-blur-sm">
+                +42
+              </div>
+            </div>
+            
+            <div className="space-y-2 pt-2 text-sm">
+              <div className="flex items-center justify-between p-2 rounded-lg bg-ink/5 border border-ink/5">
+                <span className="text-ink font-bold font-mono text-xs">campus-lead.bcl</span>
+                <span className="font-mono text-[10px] text-accent-fg font-bold uppercase">Verified 3m ago</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-ink/5 border border-ink/5">
+                <span className="text-ink font-bold font-mono text-xs">arch-solvers.bcl</span>
+                <span className="font-mono text-[10px] text-ink-4 font-bold uppercase">Verified 14m ago</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Eligibility & Criteria Protocol */}
+          <div className="p-6 rounded-2xl bg-surface border border-ink/5 shadow-sm space-y-4">
+            <h4 className="text-lg font-heading font-bold text-ink flex items-center gap-2">
+              <Gavel className="text-amber-500 w-5 h-5" />
+              <span>Rules & Audit Guidelines</span>
+            </h4>
+            <ul className="space-y-3 text-sm text-ink-4">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="text-accent-fg w-4 h-4 mt-0.5 shrink-0" />
+                <span>Submissions must link to accessible, open-source repositories or valid on-chain transaction hashes.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="text-accent-fg w-4 h-4 mt-0.5 shrink-0" />
+                <span>Plagiarism or submitting unmodified template code will result in immediate rejection by the oracle.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="text-accent-fg w-4 h-4 mt-0.5 shrink-0" />
+                <span>Ensure your connected wallet matches your established student BCL passport identity.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Support & Office Hours Card */}
+          <div className="p-6 rounded-2xl bg-surface border border-ink/5 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-heading font-bold text-ink flex items-center gap-2">
+                <Headset className="text-blue-500 w-5 h-5" />
+                <span>Live Support Desk</span>
+              </h4>
+              <span className="font-mono text-[10px] text-blue-500 font-bold uppercase tracking-wider">Discord Relay</span>
+            </div>
+            <p className="text-sm text-ink-4">
+              Stuck on bundler errors or require a manual review? Join the dedicated quest war room or schedule an audit slot.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button className="flex-1 px-4 py-2.5 rounded-xl bg-ink/5 text-ink text-xs font-bold hover:bg-ink/10 transition-colors flex items-center justify-center gap-2">
+                <MessageSquare className="w-4 h-4" /> #quest-support
+              </button>
+              <button className="flex-1 px-4 py-2.5 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2">
+                <Calendar className="w-4 h-4" /> Office Hours
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

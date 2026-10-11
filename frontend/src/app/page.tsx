@@ -11,17 +11,11 @@ export default function Home() {
   return (
     <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-2">
       <LandingHero />
-      <StatsBar />
-      <HowItWorksSection />
-      <LiveQuestsPreview />
+      
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <LeaderboardSpotlight />
-        <GuildsCampus />
-      </div>
+      
 
-      <EcosystemPartners />
-      <LandingCTA />
+     
     </div>
   );
 }

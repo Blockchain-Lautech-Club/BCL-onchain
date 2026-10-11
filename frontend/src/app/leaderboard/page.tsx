@@ -2,221 +2,383 @@
 
 import React, { useEffect, useState } from "react";
 import { api, LeaderboardEntry } from "@/lib/api";
-import { Loader2, Trophy, CheckCircle2, Zap, ArrowRight, Crown } from "lucide-react";
-
-const TOP3 = [
-  { rank: 2, handle: "amina.bcl", role: "Designer Guild Lead", level: 16, xp: 3650, quests: 39, poaps: 14, velocity: "+420 XP/wk" },
-  { rank: 1, handle: "samuel.bcl", role: "Fullstack Protocol Engineer", level: 18, xp: 4120, quests: 46, poaps: 22, velocity: "+680 XP/wk", crown: true },
-  { rank: 3, handle: "tobi.bcl", role: "Security & Audit Guild", level: 15, xp: 3110, quests: 34, poaps: 11, velocity: "+310 XP/wk" },
-];
-
-const REST = [
-  { rank: 4, handle: "funke.bcl", focus: "DeFi Architect", level: 15, quests: 32, rep: 98.4, xp: 2990, momentum: "+248 XP" },
-  { rank: 5, handle: "chidi.bcl", focus: "Campus Ambassador", level: 15, quests: 31, rep: 96.8, xp: 2940, momentum: "+198 XP" },
-  { rank: 6, handle: "zainab.bcl", focus: "2K Cryptography", level: 14, quests: 29, rep: 95.2, xp: 2890, momentum: "+310 XP" },
-  { rank: 7, handle: "david.bcl", focus: "Solidity Guild", level: 14, quests: 28, rep: 94.7, xp: 2875, momentum: "+110 XP" },
-  { rank: 8, handle: "bola.bcl", focus: "Media & Storytelling", level: 14, quests: 26, rep: 92.9, xp: 2860, momentum: "+180 XP" },
-];
+import { useAuth } from "@/context/AuthContext";
+import { 
+  Loader2, CheckCircle2, Zap, Crown, Search, 
+  ChevronDown, Trophy, Medal, Shield, Star, Flame
+} from "lucide-react";
+import Link from "next/link";
 
 export default function LeaderboardPage() {
+  const { walletAddress, user, stats } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("Overall Standings");
-  const [timeframe, setTimeframe] = useState("Season 02");
+  const [searchQ, setSearchQ] = useState("");
+  const [category, setCategory] = useState("all");
 
   useEffect(() => {
-    api.getLeaderboard(50).then(d => setEntries(d || [])).catch(() => {}).finally(() => setLoading(false));
+    api.getLeaderboard(50)
+      .then((d) => setEntries(d || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
+  // Filtering
+  const filtered = entries.filter((e) => 
+    searchQ === "" || 
+    e.username?.toLowerCase().includes(searchQ.toLowerCase()) || 
+    e.wallet_address.toLowerCase().includes(searchQ.toLowerCase())
+  );
+
+  const top3 = filtered.slice(0, 3);
+  const rest = filtered.slice(3);
+
+  const gold = top3[0];
+  const silver = top3[1];
+  const bronze = top3[2];
+
+  // Current user's position
+  const myEntry = walletAddress
+    ? entries.find((e) => e.wallet_address.toLowerCase() === walletAddress.toLowerCase())
+    : null;
+
+  const totalMembers = entries.length || 1;
+  const percentile = myEntry ? Math.max(1, Math.round((myEntry.rank / totalMembers) * 100)) : 0;
+
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="badge-amber">SEASON 02: GENESIS ACCELERATION</span>
-            <span className="text-[10px] text-ink-5">· 18 DAYS LEFT</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold font-heading text-ink tracking-tight">BCL Onchain Leaderboard</h1>
-          <p className="text-sm text-ink-4 mt-1 max-w-xl">Recognizing consistent builders, creators, researchers, and campus ambassadors across LAUTECH.</p>
-        </div>
-        <div className="stat-card shrink-0">
-          <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">Ecosystem Pool</div>
-          <div className="text-xl font-extrabold text-accent-fg font-heading num-mono">14,250 BCL</div>
-        </div>
-      </div>
-
-      {/* Current User Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-subtle to-surface border border-accent/15 p-5 grid sm:grid-cols-4 gap-4">
-        <div className="flex items-center gap-3 col-span-2">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 shrink-0" />
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-heading font-bold text-ink">philip.bcl</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg" />
-              <span className="badge-green">You</span>
+    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-10">
+      
+      {/* 1. Header Section */}
+      <section className="relative z-10 pt-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface border border-ink/5 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-accent-fg animate-pulse" />
+              <span className="font-mono text-[10px] text-accent-fg font-bold uppercase tracking-wider">Season 02: Genesis Acceleration • Active</span>
             </div>
-            <div className="text-[10px] text-ink-5">Level 14 Pioneer · Guild Core Developer</div>
+            <h1 className="text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">BCL Onchain Leaderboard</h1>
+            <p className="text-sm md:text-base text-ink-4 leading-relaxed max-w-xl">
+              Recognizing consistent builders, creators, researchers, and campus ambassadors across the LAUTECH ecosystem.
+            </p>
+          </div>
+          
+          {/* Telemetry Pill */}
+          <div className="flex items-center gap-4 bg-surface border border-ink/5 px-6 py-4 rounded-2xl shadow-sm">
+            <div className="text-right">
+              <p className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider">Ecosystem Pool</p>
+              <p className="text-xl font-heading font-bold text-accent-fg">14,250 BCL</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-ink/5 flex items-center justify-center text-accent-fg shadow-inner border border-ink/5">
+              <Trophy className="w-6 h-6" />
+            </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4 col-span-2">
-          {[
-            { label: "Current Rank", value: "#27" },
-            { label: "Total XP", value: "2,840" },
-            { label: "Streak Status", value: "7 Days 🔥" },
-            { label: "Percentile", value: "Top 3%" },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <div className="text-[10px] text-ink-5 uppercase tracking-wider">{label}</div>
-              <div className="text-sm font-bold text-ink font-heading num-mono">{value}</div>
-            </div>
-          ))}
-          <button className="btn-green px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 col-span-3 sm:col-span-1 justify-center">
-            <Zap className="w-3 h-3" /> Push Rank with a Quest
-          </button>
-        </div>
-      </div>
 
-      {/* Top 3 Podium */}
-      <div className="grid grid-cols-3 gap-4">
-        {TOP3.map(({ rank, handle, role, level, xp, quests, poaps, velocity, crown }) => (
-          <div
-            key={rank}
-            className={`quest-card p-5 flex flex-col items-center text-center gap-3 ${
-              rank === 1 ? "rank-1 scale-[1.02]" : rank === 2 ? "rank-2" : "rank-3"
-            }`}
-          >
-            {crown ? <Crown className="w-6 h-6 text-yellow-700 dark:text-yellow-400" /> : <div className="text-lg font-extrabold text-ink-3 num-mono">#{rank}</div>}
-            <div className="relative">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-700 border-2 border-white/10 mx-auto" />
-              <span className="absolute -bottom-1 -right-1 text-[10px] font-bold text-white bg-brand rounded-full w-5 h-5 flex items-center justify-center">L{level}</span>
-            </div>
-            <div>
-              <div className="font-heading font-bold text-ink flex items-center gap-1 justify-center text-sm">
-                {handle} <CheckCircle2 className="w-3 h-3 text-accent-fg" />
+        {/* User Current Standing Pinned Banner */}
+        {walletAddress && myEntry && (
+          <div className="mt-8 rounded-2xl bg-surface border border-ink/5 p-6 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-accent/10 to-transparent pointer-events-none" />
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+              
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-700 flex items-center justify-center text-white font-heading font-bold text-xl shadow-md border-2 border-surface">
+                    {(myEntry.username || myEntry.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent text-surface flex items-center justify-center font-mono text-[10px] font-bold border-2 border-surface">
+                    {myEntry.level}
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg font-heading font-bold text-ink">{myEntry.username || `${myEntry.wallet_address.slice(0, 6)}…${myEntry.wallet_address.slice(-4)}`}</span>
+                    <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                    <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent-fg font-mono text-[10px] font-bold">You</span>
+                  </div>
+                  <p className="text-xs text-ink-4">Level {myEntry.level} Pioneer • Ecosystem Contributor</p>
+                </div>
               </div>
-              <div className="text-[10px] text-ink-4">{role}</div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full lg:w-auto flex-1 max-w-2xl mx-auto">
+                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Current Rank</span>
+                  <span className="text-xl font-heading text-accent-fg font-bold">#{myEntry.rank}</span>
+                </div>
+                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Total XP</span>
+                  <span className="text-xl font-heading text-ink font-bold">{myEntry.total_points.toLocaleString()}</span>
+                </div>
+                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Streak Status</span>
+                  <span className="text-xl font-heading text-amber-500 font-bold flex items-center gap-1">{stats?.streak_days ?? 0}d <Flame className="w-4 h-4"/></span>
+                </div>
+                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Percentile</span>
+                  <span className="text-xl font-heading text-purple-500 font-bold">Top {percentile}%</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto shrink-0 justify-between lg:justify-end">
+                <Link href="/tasks" className="px-6 py-3 rounded-full bg-accent text-surface font-bold text-sm hover:shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shrink-0">
+                  <Zap className="w-4 h-4" /> Push Rank with Quests
+                </Link>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 w-full text-center text-[10px]">
-              <div><div className="font-bold text-ink num-mono text-sm">{xp.toLocaleString()}</div><div className="text-ink-5">XP</div></div>
-              <div><div className="font-bold text-ink num-mono text-sm">{quests}</div><div className="text-ink-5">Quests</div></div>
-              <div><div className="font-bold text-accent-fg num-mono text-sm">{poaps}</div><div className="text-ink-5">POAPs</div></div>
-            </div>
-            <div className="text-[10px] text-ink-4">{velocity} <span className="text-accent-fg">🔥</span></div>
           </div>
-        ))}
-      </div>
+        )}
+      </section>
 
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {["Overall Standings", "Developers", "Creators & Designers", "Community & Ambassadors", "Learners & Researchers"].map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${filter === f ? "bg-ink/[0.08] text-ink" : "text-ink-4 hover:text-ink"}`}>{f}</button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5">
-          {["All-Time", "Season 02", "This Week"].map(t => (
-            <button key={t} onClick={() => setTimeframe(t)} className={`px-3 py-1 rounded-lg text-xs font-medium transition ${timeframe === t ? "bg-accent/15 text-accent-fg border border-accent/20" : "text-ink-4 hover:text-ink"}`}>{t}</button>
-          ))}
-        </div>
-      </div>
+      {/* 2. Podium View: Top 3 High Tier Contributors */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent-fg" /></div>
+      ) : top3.length > 0 ? (
+        <section className="py-8">
+          <div className="flex flex-col md:flex-row items-end justify-center gap-6 pt-10">
+            
+            {/* #2 Silver */}
+            {silver && (
+              <div className="w-full md:w-1/3 order-2 md:order-1 bg-surface border border-ink/5 rounded-2xl p-6 relative shadow-sm flex flex-col items-center text-center transform transition-transform hover:-translate-y-1">
+                <div className="absolute -top-6 w-12 h-12 rounded-full bg-surface border border-ink/10 flex items-center justify-center shadow-sm">
+                  <span className="text-xl font-heading text-ink font-bold">#2</span>
+                </div>
+                <div className="mt-4 relative">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white font-heading font-bold text-3xl shadow-md border-4 border-surface">
+                    {(silver.username || silver.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{silver.level}</span>
+                </div>
+                <div className="mt-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-lg font-heading text-ink font-bold">{silver.username || `${silver.wallet_address.slice(0, 6)}…`}</span>
+                    <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                  </div>
+                </div>
+                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
+                  <div>
+                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
+                    <span className="text-lg font-heading text-ink font-bold">{silver.total_points.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
+                    <span className="text-lg font-heading text-accent-fg font-bold">Silver</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-      {/* Search */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 flex items-center gap-2 bg-surface border border-ink/[0.07] rounded-xl px-4 py-2">
-          <span className="text-ink-5 text-xs">🔍</span>
-          <input type="text" placeholder="Search handles, ens, or guilds (e.g. 'smart contracts')..." className="flex-1 bg-transparent text-xs text-ink placeholder:text-ink-5 outline-none" />
-          <span className="text-[10px] text-ink-5 border border-ink/[0.06] px-1.5 py-0.5 rounded font-mono">bk</span>
-        </div>
-        <div className="flex items-center gap-1 text-[10px] text-ink-5">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent" /> 1,418 Active Citizens
-          <span className="ml-2 badge-green">Onchain Attested XP</span>
-        </div>
-      </div>
+            {/* #1 Gold */}
+            {gold && (
+              <div className="w-full md:w-1/3 order-1 md:order-2 bg-surface border border-amber-500/20 rounded-2xl p-8 relative shadow-lg flex flex-col items-center text-center -mt-6 transform transition-transform hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent rounded-2xl pointer-events-none" />
+                <div className="absolute -top-8 w-16 h-16 rounded-full bg-amber-500 text-white flex flex-col items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.4)] border-4 border-surface">
+                  <Crown className="w-5 h-5 -mb-1" />
+                  <span className="text-xl font-heading font-bold leading-none">#1</span>
+                </div>
+                <div className="mt-4 relative">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-heading font-bold text-4xl shadow-xl shadow-amber-500/20 border-4 border-surface">
+                    {(gold.username || gold.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="absolute bottom-0 right-1 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{gold.level}</span>
+                </div>
+                <div className="mt-4">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-2xl font-heading text-ink font-bold tracking-tight">{gold.username || `${gold.wallet_address.slice(0, 6)}…`}</span>
+                    <CheckCircle2 className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <span className="inline-block mt-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase tracking-wider">Apex Contributor</span>
+                </div>
+                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-4 mt-6 grid grid-cols-2 gap-2 text-center shadow-inner">
+                  <div>
+                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
+                    <span className="text-xl font-heading text-amber-500 font-bold">{gold.total_points.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
+                    <span className="text-xl font-heading text-ink font-bold">Gold</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-      {/* Table */}
-      <div className="surface-card rounded-2xl overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-page border-b border-ink/[0.05]">
-            <tr>
-              {["RANK", "CITIZEN / CONTRIBUTOR", "GUILD FOCUS", "LEVEL", "QUESTS", "REP SCORE", "TOTAL XP", "MOMENTUM"].map(h => (
-                <th key={h} className="py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-ink-5">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ink/[0.04]">
-            {loading ? (
-              <tr><td colSpan={8} className="py-12 text-center"><Loader2 className="w-4 h-4 animate-spin mx-auto text-accent-fg" /></td></tr>
-            ) : REST.map(({ rank, handle, focus, level, quests, rep, xp, momentum }) => {
-              const isMe = handle === "philip.bcl";
+            {/* #3 Bronze */}
+            {bronze && (
+              <div className="w-full md:w-1/3 order-3 bg-surface border border-ink/5 rounded-2xl p-6 relative shadow-sm flex flex-col items-center text-center transform transition-transform hover:-translate-y-1">
+                <div className="absolute -top-6 w-12 h-12 rounded-full bg-surface border border-ink/10 flex items-center justify-center shadow-sm">
+                  <span className="text-xl font-heading text-orange-500 font-bold">#3</span>
+                </div>
+                <div className="mt-4 relative">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-heading font-bold text-3xl shadow-md border-4 border-surface">
+                    {(bronze.username || bronze.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{bronze.level}</span>
+                </div>
+                <div className="mt-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-lg font-heading text-ink font-bold">{bronze.username || `${bronze.wallet_address.slice(0, 6)}…`}</span>
+                    <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                  </div>
+                </div>
+                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
+                  <div>
+                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
+                    <span className="text-lg font-heading text-ink font-bold">{bronze.total_points.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
+                    <span className="text-lg font-heading text-orange-500 font-bold">Bronze</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {/* 3. Dynamic Category Filter & Search Section */}
+      <section className="flex flex-col gap-4">
+        <div className="bg-surface border border-ink/5 p-4 rounded-2xl shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+              <button onClick={() => setCategory("all")} className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${category === 'all' ? 'bg-ink text-surface shadow-md' : 'bg-ink/5 text-ink-4 hover:text-ink'}`}>Overall Standings</button>
+              <button onClick={() => setCategory("dev")} className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${category === 'dev' ? 'bg-ink text-surface shadow-md' : 'bg-ink/5 text-ink-4 hover:text-ink'}`}>Developers</button>
+              <button onClick={() => setCategory("creator")} className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${category === 'creator' ? 'bg-ink text-surface shadow-md' : 'bg-ink/5 text-ink-4 hover:text-ink'}`}>Creators</button>
+            </div>
+
+            <div className="flex items-center gap-2 bg-ink/[0.03] p-1 rounded-xl shrink-0 border border-ink/5">
+              <button className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold uppercase tracking-wider bg-surface text-accent-fg shadow-sm border border-ink/5">All-Time</button>
+              <button className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold uppercase tracking-wider text-ink-4 hover:text-ink">Season 02</button>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2 border-t border-ink/5">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-4" />
+              <input 
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                className="w-full h-11 pl-10 pr-12 rounded-xl bg-ink/[0.03] text-ink placeholder:text-ink-4/60 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all border border-ink/5 font-mono" 
+                placeholder="Search handles or addresses..." 
+              />
+            </div>
+            <div className="flex items-center justify-end gap-6 text-ink-4 font-mono text-[10px] font-bold uppercase tracking-wider">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-fg" />
+                <span>{entries.length} Active Citizens</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-2">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Onchain Attested XP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Comprehensive Leaderboard Table */}
+      <section className="mb-10">
+        <div className="w-full overflow-hidden rounded-2xl bg-surface border border-ink/5 shadow-sm">
+          
+          {/* Table Header */}
+          <div className="hidden lg:grid grid-cols-12 gap-4 px-8 py-4 bg-ink/[0.02] border-b border-ink/5 font-mono text-[10px] font-bold uppercase tracking-wider text-ink-4">
+            <div className="col-span-1">Rank</div>
+            <div className="col-span-5">Citizen</div>
+            <div className="col-span-2 text-center">Level</div>
+            <div className="col-span-2 text-right">Total XP</div>
+            <div className="col-span-2 text-right">Action</div>
+          </div>
+
+          {/* Table Rows */}
+          <div className="divide-y divide-ink/5">
+            {rest.length === 0 && !loading && (
+              <div className="py-12 text-center text-sm text-ink-5">No entries found matching your criteria.</div>
+            )}
+            {rest.map((entry) => {
+              const isMe = walletAddress && entry.wallet_address.toLowerCase() === walletAddress.toLowerCase();
               return (
-                <tr key={rank} className={`hover:bg-ink/[0.02] transition ${isMe ? "bg-accent/[0.04] border-l-2 border-l-accent" : ""}`}>
-                  <td className="py-3.5 px-4 font-bold text-ink-3 num-mono">#{rank}</td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 border border-white/[0.08] flex items-center justify-center text-[10px] font-bold text-slate-300">
-                        {handle[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5 font-semibold text-ink">
-                          {handle} <CheckCircle2 className="w-3 h-3 text-accent-fg" />
-                          {isMe && <span className="badge-green">You</span>}
-                        </div>
-                        <div className="text-[10px] text-ink-5 font-mono">{`0x742d...44e`}</div>
-                      </div>
+                <div key={entry.rank} className={`grid grid-cols-1 lg:grid-cols-12 gap-4 items-center px-6 lg:px-8 py-5 hover:bg-ink/[0.02] transition-colors relative ${isMe ? "bg-accent/[0.03]" : ""}`}>
+                  {isMe && <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-fg" />}
+                  
+                  {/* Rank */}
+                  <div className="flex items-center justify-between lg:col-span-1">
+                    <span className="text-xl font-heading font-bold text-ink">#{entry.rank}</span>
+                  </div>
+
+                  {/* Citizen */}
+                  <div className="lg:col-span-5 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center font-heading font-bold text-white shrink-0 border border-white/10">
+                      {(entry.username || entry.wallet_address.slice(0, 2)).slice(0, 2).toUpperCase()}
                     </div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span className="text-[11px] text-accent-fg bg-accent/[0.08] border border-accent/15 px-2 py-0.5 rounded-md">{focus}</span>
-                  </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <span className="text-[10px] font-semibold text-ink-3 bg-ink/[0.04] border border-ink/[0.06] px-2 py-0.5 rounded-full">L{level}</span>
-                  </td>
-                  <td className="py-3.5 px-4 text-ink font-semibold num-mono">{quests}</td>
-                  <td className="py-3.5 px-4 text-ink-3 num-mono">{rep}</td>
-                  <td className="py-3.5 px-4 font-bold text-ink num-mono">{xp.toLocaleString()}</td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-bold text-accent-fg num-mono">{momentum}</span>
-                      <span className="badge-blue">Passport</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-base font-heading font-bold text-ink truncate">{entry.username || `${entry.wallet_address.slice(0, 6)}…`}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg shrink-0" />
+                        {isMe && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-accent/10 text-accent-fg ml-1">You</span>}
+                      </div>
+                      <span className="font-mono text-[10px] text-ink-4 block truncate">{entry.wallet_address.slice(0, 10)}...{entry.wallet_address.slice(-4)}</span>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+
+                  {/* Level */}
+                  <div className="flex items-center justify-between lg:justify-center lg:col-span-2">
+                    <span className="lg:hidden text-xs text-ink-4 font-bold uppercase">Level:</span>
+                    <span className="px-3 py-1 rounded-full bg-ink/5 font-mono text-[11px] font-bold text-ink">L{entry.level}</span>
+                  </div>
+
+                  {/* XP */}
+                  <div className="flex items-center justify-between lg:justify-end lg:col-span-2">
+                    <span className="lg:hidden text-xs text-ink-4 font-bold uppercase">XP:</span>
+                    <span className="text-lg font-heading font-bold text-ink">{entry.total_points.toLocaleString()}</span>
+                  </div>
+
+                  {/* Action */}
+                  <div className="flex items-center justify-end lg:col-span-2">
+                    <button className="px-4 py-2 rounded-xl bg-ink/5 hover:bg-ink/10 text-ink text-xs font-bold transition-colors">
+                      Passport
+                    </button>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-        <div className="px-4 py-3 border-t border-ink/[0.05] flex items-center justify-between text-[10px] text-ink-5">
-          <span>Showing ranks 1-8 and current tier (26-28) of 1,418 contributors</span>
-          <div className="flex gap-2">
-            <button className="btn-outline px-3 py-1 text-xs">Previous</button>
-            <span className="text-xs text-ink px-3 py-1">Page 1 of 52</span>
-            <button className="btn-outline px-3 py-1 text-xs">Next</button>
           </div>
-        </div>
-      </div>
 
-      {/* Season Rewards */}
-      <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-white dark:from-[#1a0e00] dark:to-[#0a0d14] border border-amber-500/20 p-6">
-        <div className="badge-amber mb-3">SEASON 02 APEX REWARDS</div>
-        <div className="grid sm:grid-cols-2 gap-6 items-center">
-          <div>
-            <h3 className="text-xl font-extrabold font-heading text-ink mb-2">Ecosystem Devcon Grants & Hardware Allocations</h3>
-            <p className="text-xs text-ink-4">Top 10 contributors at Season 02 close receive fully-funded travel grants to Devcon, custom BCL Ledger hardware wallets, and dedicated quarterly ecosystem research stipends.</p>
-          </div>
-          <div className="flex items-center gap-6">
-            <div>
-              <div className="text-[10px] text-ink-5 uppercase tracking-wider">Allocated Grant</div>
-              <div className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 font-heading num-mono">$12,500</div>
-            </div>
-            <div>
-              <div className="text-[10px] text-ink-5 uppercase tracking-wider">Physical Badges</div>
-              <div className="text-2xl font-extrabold text-ink font-heading">10 Ledgers</div>
-            </div>
-            <button className="btn-green px-4 py-2 text-xs font-bold">Review Prize Criteria</button>
+          {/* Pagination Footer */}
+          <div className="px-6 lg:px-8 py-4 bg-ink/[0.02] border-t border-ink/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider">
+              Showing ranks 1-{Math.min(50, entries.length)} of {entries.length} contributors
+            </span>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* 5. Gamified Season Rewards Teaser Banner */}
+      <section className="mb-10">
+        <div className="rounded-2xl bg-gradient-to-r from-surface via-surface to-surface border border-ink/5 p-6 md:p-10 shadow-sm relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+          <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="space-y-3 max-w-2xl relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
+              <Star className="w-3.5 h-3.5" /> Season 02 Apex Rewards
+            </div>
+            <h2 className="text-2xl md:text-3xl font-heading font-bold text-ink tracking-tight">Ecosystem Devcon Grants & Hardware Allocations</h2>
+            <p className="text-sm text-ink-4 leading-relaxed">
+              Top 10 contributors at Season 02 close receive fully-funded travel grants to Devcon, custom BCL Ledger hardware wallets, and dedicated ecosystem research stipends.
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-4 shrink-0 relative z-10 w-full lg:w-auto">
+            <div className="bg-surface border border-ink/5 px-5 py-3 rounded-xl shadow-sm text-center flex-1 lg:flex-none">
+              <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Allocated Grant</span>
+              <span className="text-xl font-heading text-amber-500 font-bold">$12,500</span>
+            </div>
+            <div className="bg-surface border border-ink/5 px-5 py-3 rounded-xl shadow-sm text-center flex-1 lg:flex-none">
+              <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Physical Badges</span>
+              <span className="text-xl font-heading text-accent-fg font-bold">10 Ledgers</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }

@@ -42,6 +42,7 @@ export interface TaskSubmission {
   status: "submitted" | "under_review" | "verified" | "rejected";
   reason?: string;
   tx_hash?: string;
+  
   created_at: string;
 }
 
