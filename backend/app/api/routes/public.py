@@ -76,44 +76,36 @@ async def health():
 @router.get("/leaderboard", response_model=list[LeaderboardEntry])
 async def leaderboard(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
                       session: AsyncSession = Depends(get_session)):
-    import traceback
     try:
-        q = (select(User).where(User.status == "active", User.total_points > 0)
+        # Select explicit columns so rows are plain values and never trigger ORM lazy-loading
+        q = (select(User.wallet_address, User.username, User.avatar_url, User.total_points, User.level)
+             .where(User.status == "active", User.total_points > 0)
              .order_by(User.total_points.desc(), User.id).limit(limit).offset(offset))
-        users = (await session.execute(q)).scalars().all()
+        user_rows = (await session.execute(q)).all()
 
         domain_map: dict[str, str] = {}
-        if users:
-            wallets = [u.wallet_address.lower() for u in users]
+        if user_rows:
+            wallets = [r.wallet_address.lower() for r in user_rows]
             try:
-                domains_q = select(DomainRecord).where(DomainRecord.owner_wallet.in_(wallets), DomainRecord.status == "active")
-                domain_rows = (await session.execute(domains_q)).scalars().all()
-                domain_map = {d.owner_wallet.lower(): d.normalized_name for d in domain_rows}
+                domains_q = select(DomainRecord.owner_wallet, DomainRecord.normalized_name).where(
+                    DomainRecord.owner_wallet.in_(wallets),
+                    DomainRecord.status == "active"
+                )
+                domain_rows = (await session.execute(domains_q)).all()
+                domain_map = {d[0].lower(): d[1] for d in domain_rows}
             except Exception:
-                await session.rollback()
-
-            try:
-                from app.models.name_nft import NameNFTRecord
-                nft_q = select(NameNFTRecord).where(NameNFTRecord.owner_wallet.in_(wallets))
-                nft_rows = (await session.execute(nft_q)).scalars().all()
-                for n in nft_rows:
-                    w = n.owner_wallet.lower()
-                    if w not in domain_map:
-                        domain_map[w] = f"{n.label}.bcl"
-            except Exception:
-                await session.rollback()
+                pass
 
         return [LeaderboardEntry(
             rank=offset + i + 1,
-            wallet_address=u.wallet_address,
-            username=domain_map.get(u.wallet_address.lower()) or u.username or f"{u.wallet_address[:6]}…{u.wallet_address[-4:]}",
-            bcl_domain=domain_map.get(u.wallet_address.lower()),
-            avatar_url=u.avatar_url,
-            total_points=u.total_points,
-            level=u.level,
-        ) for i, u in enumerate(users)]
+            wallet_address=r.wallet_address,
+            username=domain_map.get(r.wallet_address.lower()) or r.username or f"{r.wallet_address[:6]}…{r.wallet_address[-4:]}",
+            bcl_domain=domain_map.get(r.wallet_address.lower()),
+            avatar_url=r.avatar_url,
+            total_points=r.total_points,
+            level=r.level,
+        ) for i, r in enumerate(user_rows)]
     except Exception as e:
-        print(f"Leaderboard error: {traceback.format_exc()}")
         raise AppError(500, "leaderboard_error", f"Leaderboard retrieval failed: {e}")
 
 
