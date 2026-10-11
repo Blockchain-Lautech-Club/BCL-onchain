@@ -1,6 +1,9 @@
 "use client";
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api, Task, LeaderboardEntry } from "@/lib/api";
 import { 
   Zap, 
   Compass, 
@@ -21,20 +24,54 @@ import {
   Layers,
   Hexagon,
   Network,
-  Fingerprint
+  Fingerprint,
+  Loader2
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export function LandingHero() {
-  const { walletAddress, connectWallet } = useAuth();
+  const { walletAddress, connectWallet, user, stats } = useAuth();
+  const router = useRouter();
   const [handle, setHandle] = useState("");
   const [claimStatus, setClaimStatus] = useState("");
+  const [isCheckingHandle, setIsCheckingHandle] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [platformStats, setPlatformStats] = useState<{
+    total_users: number;
+    total_points_awarded: number;
+    total_tasks_completed: number;
+    total_domains_registered: number;
+  } | null>(null);
 
-  const handleClaim = () => {
-    if (handle.trim()) {
-      setClaimStatus(`✓ ${handle}.bcl is available! Verification dispatched to contract.`);
-    } else {
+  useEffect(() => {
+    api.getTasks().then(t => setTasks((t || []).slice(0, 3))).catch(() => {});
+    api.getLeaderboard(5).then(l => setLeaderboard(l || [])).catch(() => {});
+    api.getPlatformStats().then(s => setPlatformStats(s)).catch(() => {});
+  }, []);
+
+  const handleClaim = async () => {
+    const clean = handle.trim().toLowerCase().replace(".bcl", "");
+    if (!clean) {
       setClaimStatus("Please enter a valid handle to claim.");
+      return;
+    }
+    setIsCheckingHandle(true);
+    setClaimStatus("");
+    try {
+      const res = await api.checkNameAvailability(clean);
+      if (res.available) {
+        setClaimStatus(`✓ ${clean}.bcl is open! Redirecting to claim console...`);
+        setTimeout(() => {
+          router.push(`/domains?name=${encodeURIComponent(clean)}`);
+        }, 500);
+      } else {
+        setClaimStatus(`✕ ${clean}.bcl is already registered or unavailable.`);
+      }
+    } catch {
+      router.push(`/domains?name=${encodeURIComponent(clean)}`);
+    } finally {
+      setIsCheckingHandle(false);
     }
   };
 
@@ -113,17 +150,21 @@ export function LandingHero() {
                 {/* Profile */}
                 <div className="flex items-center gap-4">
                   <div className="relative shrink-0">
-                    <img className="w-20 h-20 rounded-xl object-cover border border-white/10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4tQpTETNo4xosVkCSylV1WC_D84A6fazWNUS3cMuSiCMqq-Y9cve-ZWxFguehJFc1TkpCEdhJ_y_-MeRRMMyMfzy69ACgm86SD8i1cZ6ZRbtdt88ZSGZuZliXYXNTDuzNfMO3swbTxAmg33PUa6g1kK28BtfjVSb8ayEq-3AJP3s608uQ1TDEIxBWUJKA-yHgtPuvCSwRuJp9sepk3BzVBCTCCHXEAlhAJEcsLXhM-rKNkx5wTm7G" alt="lautech avatar" />
+                    <div className="w-20 h-20 rounded-xl bg-gradient-to-tr from-accent/30 to-brand/30 border border-white/10 flex items-center justify-center font-heading font-extrabold text-2xl text-ink">
+                      {(user?.username || (walletAddress ? walletAddress.slice(2, 4) : "BC")).toUpperCase()}
+                    </div>
                     <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-surface border border-accent/20 flex items-center justify-center">
                       <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-heading font-bold text-lg text-ink truncate">lautech.bcl</div>
-                    <div className="text-xs text-ink-4 font-medium mb-1">Level 14 Pioneer</div>
+                    <div className="font-heading font-bold text-lg text-ink truncate">
+                      {user?.username ? `${user.username}.bcl` : (walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : "builder.bcl")}
+                    </div>
+                    <div className="text-xs text-ink-4 font-medium mb-1">Level {stats?.level ?? user?.level ?? 1} Pioneer</div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-accent-fg">2,840 XP</span>
-                      <span className="text-xs text-ink-4">/ 3,200 XP</span>
+                      <span className="text-sm font-bold text-accent-fg">{(stats?.total_points ?? user?.total_points ?? 0).toLocaleString()} XP</span>
+                      <span className="text-xs text-ink-4">/ {(stats?.next_level_threshold ?? 100).toLocaleString()} XP</span>
                     </div>
                   </div>
                 </div>
@@ -131,11 +172,18 @@ export function LandingHero() {
                 {/* Progress */}
                 <div className="space-y-1.5">
                   <div className="progress-track">
-                    <div className="progress-fill shadow-[0_0_10px_rgba(0,245,160,0.5)]" style={{ width: "78%" }} />
+                    <div 
+                      className="progress-fill shadow-[0_0_10px_rgba(0,245,160,0.5)]" 
+                      style={{ 
+                        width: `${Math.min(100, Math.round(((stats?.total_points ?? user?.total_points ?? 0) / Math.max(1, stats?.next_level_threshold ?? 100)) * 100))}%` 
+                      }} 
+                    />
                   </div>
                   <div className="flex justify-between text-[10px] text-ink-4">
-                    <span>Progress to Tier 15</span>
-                    <span className="text-accent-fg font-bold">78%</span>
+                    <span>Progress to Level {(stats?.level ?? user?.level ?? 1) + 1}</span>
+                    <span className="text-accent-fg font-bold">
+                      {Math.min(100, Math.round(((stats?.total_points ?? user?.total_points ?? 0) / Math.max(1, stats?.next_level_threshold ?? 100)) * 100))}%
+                    </span>
                   </div>
                 </div>
 
@@ -184,10 +232,34 @@ export function LandingHero() {
       {/* 2. STATS TELEMETRY */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Active Cohort", value: "4,800+", desc: "Students & developers", icon: Users, color: "text-accent-fg" },
-          { label: "Quests Verified", value: "38,400+", desc: "Code submissions", icon: CheckCircle2, color: "text-purple-500" },
-          { label: "XP Distributed", value: "1.2M+", desc: "Sovereign tokens", icon: Zap, color: "text-amber-500" },
-          { label: "Community Events", value: "140+", desc: "Campus buildathons", icon: Calendar, color: "text-blue-500" }
+          { 
+            label: "Active Cohort", 
+            value: platformStats?.total_users ? `${platformStats.total_users}` : "1,420+", 
+            desc: "Verified builders", 
+            icon: Users, 
+            color: "text-accent-fg" 
+          },
+          { 
+            label: "Quests Available", 
+            value: tasks.length > 0 ? `${tasks.length}` : "18", 
+            desc: "Onchain quests", 
+            icon: CheckCircle2, 
+            color: "text-purple-500" 
+          },
+          { 
+            label: "XP Distributed", 
+            value: platformStats?.total_points_awarded ? `${platformStats.total_points_awarded.toLocaleString()} XP` : "14,250 BCL", 
+            desc: "Sovereign points", 
+            icon: Zap, 
+            color: "text-amber-500" 
+          },
+          { 
+            label: "Domains Claimed", 
+            value: platformStats?.total_domains_registered ? `${platformStats.total_domains_registered}` : "48+", 
+            desc: "Botchain handles", 
+            icon: Calendar, 
+            color: "text-blue-500" 
+          }
         ].map((stat, i) => (
           <div key={i} className="flex flex-col p-5 rounded-xl border border-ink/5 bg-surface shadow-sm hover:border-ink/10 transition-colors">
             <div className="flex items-center justify-between mb-2">
@@ -251,69 +323,28 @@ export function LandingHero() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Quest 1 */}
-          <div className="flex flex-col rounded-xl bg-surface border border-ink/5 p-6 shadow-sm hover:shadow-md transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <span className="badge-green">Onboarding</span>
-              <span className="px-2 py-1 rounded bg-accent/10 text-accent-fg font-mono text-xs font-bold">+300 XP</span>
-            </div>
-            <h3 className="text-lg font-semibold text-ink group-hover:text-accent-fg transition-colors">Welcome to BCL Ecosystem</h3>
-            <p className="text-sm text-ink-4 mt-2 mb-6 flex-1">Join the community Discord, follow the official X account, and set up your student sovereign profile handle.</p>
-            <div className="space-y-2 mb-6">
-              <div className="flex justify-between text-xs text-ink-4">
-                <span>Completion rate</span>
-                <span className="text-accent-fg font-semibold">2/3 Done</span>
+          {tasks.length > 0 ? (
+            tasks.map((task) => (
+              <div key={task.id} className="flex flex-col rounded-xl bg-surface border border-ink/5 p-6 shadow-sm hover:shadow-md transition-all group">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="badge-green capitalize">{task.category || "Quest"}</span>
+                  <span className="px-2 py-1 rounded bg-accent/10 text-accent-fg font-mono text-xs font-bold">+{task.points} XP</span>
+                </div>
+                <h3 className="text-lg font-semibold text-ink group-hover:text-accent-fg transition-colors">{task.title}</h3>
+                <p className="text-sm text-ink-4 mt-2 mb-6 flex-1 line-clamp-3">{task.description}</p>
+                <Link href={`/tasks/${task.id}`} className="w-full py-2.5 rounded-lg bg-ink/5 text-ink text-sm font-semibold hover:bg-ink/10 transition-colors flex items-center justify-center gap-2">
+                  View Quest <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
-              <div className="w-full h-1.5 rounded-full bg-ink/10">
-                <div className="h-full bg-accent-fg rounded-full w-2/3" />
-              </div>
+            ))
+          ) : (
+            <div className="col-span-full p-8 text-center rounded-xl bg-surface border border-ink/5 space-y-3">
+              <div className="text-sm text-ink-4">Missions will populate as soon as protocol milestones are published.</div>
+              <Link href="/tasks" className="btn-green inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold">
+                Go to Quest Console <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
-            <button className="w-full py-2.5 rounded-lg bg-ink/5 text-ink text-sm font-semibold hover:bg-ink/10 transition-colors flex items-center justify-center gap-2">
-              Continue Quest <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-          
-          {/* Quest 2 */}
-          <div className="flex flex-col rounded-xl bg-surface border border-ink/5 p-6 shadow-sm hover:shadow-md transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <span className="badge-amber">Fundamentals</span>
-              <span className="px-2 py-1 rounded bg-amber-500/10 text-amber-500 font-mono text-xs font-bold">+150 XP</span>
-            </div>
-            <h3 className="text-lg font-semibold text-ink group-hover:text-amber-500 transition-colors">Blockchain 101 Interactive Quiz</h3>
-            <p className="text-sm text-ink-4 mt-2 mb-6 flex-1">Demonstrate foundational knowledge of consensus algorithms, cryptographic hashes, and EVM architecture basics.</p>
-            <div className="space-y-2 mb-6">
-              <div className="flex justify-between text-xs text-ink-4">
-                <span>Estimated time</span>
-                <span className="text-ink font-semibold">12 mins</span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-ink/10" />
-            </div>
-            <button className="btn-green w-full py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
-              Start Quiz
-            </button>
-          </div>
-
-          {/* Quest 3 */}
-          <div className="flex flex-col rounded-xl bg-surface border border-ink/5 p-6 shadow-sm hover:shadow-md transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <span className="badge-blue">Engineering</span>
-              <span className="px-2 py-1 rounded bg-purple-500/10 text-purple-500 font-mono text-xs font-bold">+750 XP</span>
-            </div>
-            <h3 className="text-lg font-semibold text-ink group-hover:text-purple-500 transition-colors">Build Your First DApp</h3>
-            <p className="text-sm text-ink-4 mt-2 mb-6 flex-1">Deploy an audited smart contract, connect a front-end interface, and submit the verified repository hash.</p>
-            <div className="space-y-2 mb-6">
-              <div className="flex justify-between text-xs text-ink-4">
-                <span>Reward item</span>
-                <span className="text-purple-500 font-semibold">Rare Builder NFT</span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-ink/10">
-                <div className="h-full bg-purple-500 rounded-full w-1/4" />
-              </div>
-            </div>
-            <button className="w-full py-2.5 rounded-lg bg-ink/5 text-ink text-sm font-semibold hover:bg-ink/10 transition-colors flex items-center justify-center gap-2">
-              Review Criteria <Code className="w-4 h-4" />
-            </button>
-          </div>
+          )}
         </div>
       </section>
 
@@ -332,50 +363,37 @@ export function LandingHero() {
           </div>
           
           <div className="flex flex-col space-y-2">
-            {[
-              { rank: 1, name: "samuel.bcl", level: "L18 • 46 Quests", xp: "4,120 XP", role: "Top Dev Guild", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAoAenEh4xab8qcLXXgGypPFko5EoCpoXqmcupK2zz7-NC0gBqxxcddzFRUtKnDrGoDks51mADnldW1O2aTaWV7TpzZyCQin7ZefZ2w5TA8krOotc0MDqfaqKFEM04AhzVwtCXpxFbRINJ52g0LJnKEJKmESMIRyivUck6RIUllLN3w9j5DR3pqU9tpyB2hZ6I72ZlQs0vYJIG9jVtCZioZ1CjKCuepESuyBUDXfcf-pF1f_W67UG7r", color: "text-amber-500", bg: "bg-amber-500/10" },
-              { rank: 2, name: "amina.bcl", level: "L16 • 39 Quests", xp: "3,650 XP", role: "Lead Designer", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAHyVm8V_Sj-ibN4pe1npL6Nwl0Yqpe8slkhKBYlSROKyX47kjd5oY_hPgp7OeUFXUY5gdun2yUO4c93L0FaTsvgKPdwWd4ad1LBSfT4nAqigLmSvtBIvUCENXrvG9lnHufWZjMAqT6ID5fQh-7cIc9V6Y1WUFNXBc5Lz_x5L8PoC4VcDXyFdg8Kxlt0cWqLCdi_MPKn8AQ4bLhN8XQA0dqECJ9UVR17BSK2vMdS7YIbtxZSdthikm6", color: "text-ink-3", bg: "bg-ink/5" },
-              { rank: 3, name: "tobi.bcl", level: "L15 • 34 Quests", xp: "3,110 XP", role: "Smart Contracts", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBs7XnzeU2-tPsOBUVXMnPTTQ83B6AGmN3UW2ZguOoQmyfN7oIZjw0ifL9yTk_OVQsOgQ0BTstinEggqG9-49tb6mcMAAbi3sZ5HHUDeHKuXY_qT8cpMuX7k7Dw6OqaSDmZ5jJa3ryCBegqwsUEjhVFNhjH8D_S8wtwEl62WPBs63BCobSJ-dDLxp0Re-NCHH3GAzEaI-nHquMLWhcXPUFLwkOInNG9qqm3h2ZTg08xVofBPC1NVoxT", color: "text-orange-400", bg: "bg-orange-400/10" },
-            ].map((user) => (
-              <div key={user.rank} className="flex items-center justify-between p-3 rounded-lg hover:bg-ink/5 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-full ${user.bg} ${user.color} flex items-center justify-center font-bold text-sm shrink-0`}>
-                    {user.rank}
-                  </div>
-                  <img src={user.img} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-ink">{user.name}</span>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg" />
+            {leaderboard.length > 0 ? (
+              leaderboard.slice(0, 4).map((entry) => (
+                <div key={entry.rank} className="flex items-center justify-between p-3 rounded-lg hover:bg-ink/5 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-accent/15 text-accent-fg flex items-center justify-center font-bold text-sm shrink-0">
+                      {entry.rank}
                     </div>
-                    <span className="text-xs text-ink-4">{user.level}</span>
+                    <div className="w-10 h-10 rounded-full bg-surface border border-ink/10 flex items-center justify-center font-heading font-bold text-sm text-ink">
+                      {(entry.username || entry.wallet_address).slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-ink">
+                          {entry.username ? `${entry.username}.bcl` : `${entry.wallet_address.slice(0, 6)}…${entry.wallet_address.slice(-4)}`}
+                        </span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg" />
+                      </div>
+                      <span className="text-xs text-ink-4">Level {entry.level} Pioneer</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="font-mono text-sm font-bold text-accent-fg">{entry.total_points.toLocaleString()} XP</span>
+                    <span className="text-[10px] text-ink-4 uppercase">Rank #{entry.rank}</span>
                   </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className={`font-mono text-sm font-bold ${user.color}`}>{user.xp}</span>
-                  <span className="text-[10px] text-ink-4 uppercase">{user.role}</span>
-                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-sm text-ink-4">
+                No contributors ranked yet. Complete quests to take rank #1!
               </div>
-            ))}
-            
-            {/* You (lautech) row */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-accent/5 border border-accent/20 mt-2">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-accent/20 text-accent-fg flex items-center justify-center font-bold text-sm shrink-0">4</div>
-                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4tQpTETNo4xosVkCSylV1WC_D84A6fazWNUS3cMuSiCMqq-Y9cve-ZWxFguehJFc1TkpCEdhJ_y_-MeRRMMyMfzy69ACgm86SD8i1cZ6ZRbtdt88ZSGZuZliXYXNTDuzNfMO3swbTxAmg33PUa6g1kK28BtfjVSb8ayEq-3AJP3s608uQ1TDEIxBWUJKA-yHgtPuvCSwRuJp9sepk3BzVBCTCCHXEAlhAJEcsLXhM-rKNkx5wTm7G" alt="lautech" className="w-10 h-10 rounded-full object-cover" />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-accent-fg">lautech.bcl (You)</span>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg" />
-                  </div>
-                  <span className="text-xs text-ink-4">L14 • 28 Quests Done</span>
-                </div>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="font-mono text-sm font-bold text-accent-fg">2,840 XP</span>
-                <span className="text-[10px] text-amber-500 uppercase">360 XP to Top 3</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -450,7 +468,7 @@ export function LandingHero() {
           </div>
           
           <div className="w-full lg:w-auto min-w-[320px] max-w-md flex flex-col space-y-3">
-           <div className="flex rounded-lg bg-page border border-ink/10 p-1 shadow-inner">
+            <div className="flex rounded-lg bg-page border border-ink/10 p-1 shadow-inner">
               <input 
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
@@ -461,9 +479,10 @@ export function LandingHero() {
               <span className="px-3 flex items-center font-mono text-sm text-accent-fg font-bold">.bcl</span>
               <button 
                 onClick={handleClaim}
-                className="px-6 py-2 rounded-md bg-ink text-surface text-sm font-bold hover:bg-ink-3 transition-colors shrink-0"
+                disabled={isCheckingHandle}
+                className="px-6 py-2 rounded-md bg-ink text-surface text-sm font-bold hover:bg-ink-3 transition-colors shrink-0 disabled:opacity-50"
               >
-                Claim
+                {isCheckingHandle ? "Checking..." : "Claim"}
               </button>
             </div>
             {claimStatus && (

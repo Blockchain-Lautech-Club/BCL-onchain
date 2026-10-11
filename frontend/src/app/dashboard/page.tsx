@@ -2,22 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Zap, Flame, ArrowRight, Shield, CheckCircle2, Clock,
   Trophy, Calendar, Loader2, Terminal, Lock, Gift,
-  Star, Award, TrendingUp, ChevronRight, Code, Megaphone
+  Star, Award, TrendingUp, ChevronRight, Code, Megaphone,
+  Globe
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { api, TaskSubmission, PointsLedgerItem } from "@/lib/api";
+import { api, TaskSubmission, PointsLedgerItem, DomainRecord } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
-
-function greet(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
+import toast from "react-hot-toast";
 
 function levelTitle(level: number): string {
   if (level >= 20) return "Legend";
@@ -28,28 +22,95 @@ function levelTitle(level: number): string {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const { user, stats, walletAddress, connectWallet, isLoading } = useAuth();
+  const { user, stats, walletAddress, connectWallet, isLoading, awardClaimedXp, refreshUserData } = useAuth();
+  const [greeting, setGreeting] = useState("Welcome");
   const [recentSubmissions, setRecentSubmissions] = useState<TaskSubmission[]>([]);
   const [recentPoints, setRecentPoints] = useState<PointsLedgerItem[]>([]);
+  const [myDomains, setMyDomains] = useState<DomainRecord[]>([]);
   const [claimedDaily, setClaimedDaily] = useState(false);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [quizCompleted, setQuizCompleted] = useState(false);
+  const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
 
-  // Redirect unauthenticated users to landing/home
+  const activeAddr = (walletAddress || user?.wallet_address)?.toLowerCase();
+
   useEffect(() => {
-    if (isLoading) return;
-    if (!walletAddress) {
-      router.replace("/");
+    const h = new Date().getHours();
+    if (h < 12) setGreeting("Good morning");
+    else if (h < 17) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+  }, []);
+
+  useEffect(() => {
+    if (!activeAddr) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const k = `bcl_daily_${activeAddr}_${todayStr}`;
+    if (typeof window !== "undefined" && localStorage.getItem(k)) {
+      setClaimedDaily(true);
     }
-  }, [isLoading, walletAddress, router]);
+    const qk = `bcl_quiz_${activeAddr}_${todayStr}`;
+    if (typeof window !== "undefined" && localStorage.getItem(qk)) {
+      setQuizCompleted(true);
+    }
 
-  useEffect(() => {
-    if (!walletAddress) return;
     api.getMySubmissions().then(s => setRecentSubmissions(s.slice(0, 3))).catch(() => {});
     api.getMyPoints().then(p => setRecentPoints(p.slice(0, 5))).catch(() => {});
-  }, [walletAddress]);
+    api.getMyNames().then(d => setMyDomains(d || [])).catch(() => {});
+  }, [activeAddr]);
 
-  // Only block on isLoading — don't also gate on user, which can lag behind
-  // walletAddress and cause an infinite spinner
+  const handleClaimDaily = async () => {
+    try {
+      await api.claimDaily();
+      setClaimedDaily(true);
+      await refreshUserData();
+      const points = await api.getMyPoints().catch(() => []);
+      setRecentPoints(points.slice(0, 5));
+      toast.success("Daily streak recorded in database! +20 XP added to your reputation 🔥");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Claim failed";
+      if (msg.includes("already") || (err as { status?: number }).status === 409) {
+        setClaimedDaily(true);
+        toast("Daily streak already claimed today!", { icon: "ℹ️" });
+      } else if ((err as { status?: number }).status === 404) {
+        awardClaimedXp(20, "Daily Streak Bonus (+20 XP)");
+        setClaimedDaily(true);
+        toast.success("Daily streak recorded! +20 XP added to your reputation 🔥");
+      } else {
+        toast.error(msg);
+      }
+    }
+  };
+
+  const handleCompleteQuiz = async () => {
+    if (quizAnswer === 0) {
+      try {
+        await api.claimDailyQuiz();
+        setQuizCompleted(true);
+        await refreshUserData();
+        const points = await api.getMyPoints().catch(() => []);
+        setRecentPoints(points.slice(0, 5));
+        toast.success("Correct! +50 XP bonus recorded in database 🎉");
+        setTimeout(() => setShowQuizModal(false), 800);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Quiz claim failed";
+        if (msg.includes("already") || (err as { status?: number }).status === 409) {
+          setQuizCompleted(true);
+          toast("Quiz already completed today!", { icon: "ℹ️" });
+          setShowQuizModal(false);
+        } else if ((err as { status?: number }).status === 404) {
+          awardClaimedXp(50, "Daily Web3 Micro-Quiz (+50 XP)");
+          setQuizCompleted(true);
+          toast.success("Correct! +50 XP bonus awarded 🎉");
+          setTimeout(() => setShowQuizModal(false), 800);
+        } else {
+          toast.error(msg);
+        }
+      }
+    } else {
+      toast.error("Incorrect. Remember: checks & effects must precede external calls!");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -58,16 +119,27 @@ export default function DashboardPage() {
     );
   }
 
-  // Auth resolved but no wallet or user — redirect is in flight, render nothing
-  if (!walletAddress || !user) {
-    return null;
+  // Not connected — prompt user to connect wallet
+  if (!walletAddress) {
+    return (
+      <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-20 flex flex-col items-center gap-4 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-ink/5 flex items-center justify-center mb-2">
+          <Lock className="w-8 h-8 text-ink-4" />
+        </div>
+        <h1 className="text-3xl font-extrabold font-heading text-ink tracking-tight">Access Your Dashboard</h1>
+        <p className="text-sm text-ink-4 max-w-sm">Sign in with your wallet to track your progress, verify quests, and unlock sovereign rewards.</p>
+        <button onClick={connectWallet} className="btn-green px-8 py-3 text-sm font-bold mt-4 flex items-center gap-2">
+          Connect Wallet <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+    );
   }
 
-  const displayName = user.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
-  const level = stats?.level ?? user.level ?? 0;
-  const totalPoints = stats?.total_points ?? user.total_points ?? 0;
-  const pointsToNext = stats?.points_to_next_level ?? 0;
-  const nextThreshold = stats?.next_level_threshold ?? 0;
+  const displayName = user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
+  const level = stats?.level ?? user?.level ?? 1;
+  const totalPoints = stats?.total_points ?? user?.total_points ?? 0;
+  const pointsToNext = stats?.points_to_next_level ?? 100;
+  const nextThreshold = stats?.next_level_threshold ?? 100;
   const streakDays = stats?.streak_days ?? 0;
   const completedTasks = stats?.completed_tasks_count ?? 0;
   const activeNames = stats?.active_names_count ?? 0;
@@ -80,6 +152,31 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+      {/* 0. Prompt Banner for New Users */}
+      {(!user || !user.username) && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-accent/15 via-purple-500/10 to-accent/5 border border-accent/25 p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/20 text-accent-fg font-mono text-[10px] font-bold uppercase">
+                 New Builder Detected
+              </div>
+              <h3 className="text-lg font-heading font-bold text-ink">
+                Complete Your Sovereign Profile
+              </h3>
+              <p className="text-xs sm:text-sm text-ink-3 max-w-xl">
+                Claim your username, set your bio, and initialize your on-chain reputation to track tasks, badges, and rewards.
+              </p>
+            </div>
+            <Link
+              href="/profile"
+              className="btn-green px-5 py-2.5 text-xs font-bold shrink-0 flex items-center gap-2 shadow-sm"
+            >
+              Create Profile <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* 1. Top Welcome & Status Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 shadow-sm">
@@ -97,7 +194,7 @@ export default function DashboardPage() {
               <span className="text-ink-4 text-[10px] font-bold tracking-wider">SEASON 2: ACCELERATION</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-ink tracking-tight">
-              {greet()}, {displayName} <span className="inline-block animate-pulse">👋</span>
+              {greeting}, {displayName} <span className="inline-block animate-pulse">👋</span>
             </h1>
             <p className="text-sm sm:text-base text-ink-4 mt-1">
               You're on a <span className="text-amber-500 font-bold">{streakDays}-day streak!</span> Complete today's daily quest to reach{" "}
@@ -107,7 +204,7 @@ export default function DashboardPage() {
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
-              onClick={() => setClaimedDaily(true)}
+              onClick={handleClaimDaily}
               disabled={claimedDaily}
               className={`px-5 py-2.5 rounded-full transition-all text-sm font-bold flex items-center gap-2 ${claimedDaily ? "bg-accent/20 text-accent-fg" : "bg-ink/5 text-ink hover:bg-ink/10 shadow-sm"}`}
             >
@@ -117,6 +214,9 @@ export default function DashboardPage() {
                 <><Flame className="w-4 h-4 text-amber-500" /> Claim Daily 20 XP</>
               )}
             </button>
+            <Link href="/domains" className="px-5 py-2.5 rounded-full border border-ink/10 text-ink text-sm font-bold flex items-center gap-2 hover:bg-ink/5 transition-colors">
+              <Globe className="w-4 h-4 text-accent-fg" /> .bcl Domains
+            </Link>
             <Link href="/tasks" className="btn-green px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg hover:shadow-accent/20">
               <Star className="w-4 h-4" /> Find Quests
             </Link>
@@ -271,8 +371,25 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          <button className="w-full lg:w-auto px-6 py-3 rounded-full bg-amber-500 text-white font-bold hover:shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all flex items-center justify-center gap-2 shrink-0">
-            Start Challenge <ArrowRight className="w-4 h-4" />
+          <button
+            onClick={() => {
+              if (quizCompleted) {
+                toast("You've already claimed today's quiz bonus!", { icon: "✅" });
+              } else {
+                setShowQuizModal(true);
+              }
+            }}
+            className={`w-full lg:w-auto px-6 py-3 rounded-full font-bold transition-all flex items-center justify-center gap-2 shrink-0 ${
+              quizCompleted
+                ? "bg-accent/20 text-accent-fg cursor-default"
+                : "bg-amber-500 text-white hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+            }`}
+          >
+            {quizCompleted ? (
+              <><CheckCircle2 className="w-4 h-4" /> Quiz Completed (+50 XP)</>
+            ) : (
+              <>Start Challenge <ArrowRight className="w-4 h-4" /></>
+            )}
           </button>
         </div>
       </div>
@@ -479,7 +596,9 @@ export default function DashboardPage() {
                     <span className="text-[10px] font-mono text-ink-4 mt-0.5">2,500 XP required</span>
                   </div>
                 </div>
-                <button className="px-3.5 py-1.5 rounded-full bg-ink text-surface text-[10px] font-bold hover:bg-ink-3 transition-colors">Claim</button>
+                <Link href="/market" className="px-3.5 py-1.5 rounded-full bg-ink text-surface text-[10px] font-bold hover:bg-ink-3 transition-colors">
+                  Redeem
+                </Link>
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-lg border border-ink/5 hover:bg-ink/5 transition-colors opacity-70">
@@ -538,6 +657,54 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Sovereign Domains (.bcl) */}
+          <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-accent-fg" />
+                <h3 className="text-lg font-heading font-bold text-ink">Sovereign Domains</h3>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent-fg font-bold uppercase">
+                {myDomains.length} Active
+              </span>
+            </div>
+
+            {myDomains.length === 0 ? (
+              <div className="rounded-xl bg-ink/[0.02] border border-dashed border-ink/10 p-4 text-center flex flex-col items-center gap-2">
+                <p className="text-xs text-ink-4">You have not registered a .bcl domain yet.</p>
+                <Link
+                  href="/domains"
+                  className="btn-green px-4 py-1.5 text-xs font-bold rounded-full flex items-center gap-1.5 shadow-sm"
+                >
+                  Claim Your .bcl Name <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {myDomains.slice(0, 3).map((d) => (
+                  <div key={d.id} className="flex items-center justify-between p-3 rounded-lg bg-ink/[0.02] border border-ink/5 hover:bg-ink/5 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent-fg font-mono text-xs font-bold shrink-0">
+                        .bcl
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-heading font-bold text-ink">{d.normalized_name}</span>
+                        <span className="text-[10px] font-mono text-ink-4">Expires: {new Date(d.expires_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-500 font-mono text-[10px] font-bold uppercase">Active</span>
+                  </div>
+                ))}
+                <Link
+                  href="/domains"
+                  className="w-full py-2 rounded-lg border border-ink/10 text-ink hover:bg-ink/5 text-center text-xs font-bold transition-all mt-1 flex items-center justify-center gap-1.5"
+                >
+                  Manage All Domains <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
+          </div>
+
           {/* Guild Affiliation */}
           <div className="rounded-xl bg-surface border border-ink/5 p-6 shadow-sm flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -559,6 +726,76 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Daily Web3 Micro-Quiz Modal */}
+      {showQuizModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-lg rounded-2xl bg-surface border border-ink/10 p-6 md:p-8 shadow-2xl space-y-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase">
+                  Daily Challenge • +50 XP
+                </span>
+                <h3 className="text-lg font-heading font-bold text-ink">
+                  Smart Contract Reentrancy Prevention
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowQuizModal(false)}
+                className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 flex items-center justify-center text-ink-4 hover:text-ink transition-colors font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-sm text-ink-3 leading-relaxed">
+              Which design pattern or guard is considered the canonical standard in Solidity to safely prevent recursive external reentrancy exploits?
+            </p>
+
+            <div className="space-y-2.5">
+              {[
+                { id: 0, text: "Checks-Effects-Interactions (CEI) pattern + ReentrancyGuard" },
+                { id: 1, text: "Using tx.origin == msg.sender verification" },
+                { id: 2, text: "Transferring ETH before deducting user internal balance" },
+                { id: 3, text: "Using call() with unlimited gas forwarded to arbitrary addresses" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setQuizAnswer(opt.id)}
+                  className={`w-full text-left p-3.5 rounded-xl border text-xs sm:text-sm font-medium transition-all ${
+                    quizAnswer === opt.id
+                      ? "border-accent bg-accent/10 text-ink font-bold shadow-sm"
+                      : "border-ink/10 hover:border-ink/20 hover:bg-ink/[0.02] text-ink-3"
+                  }`}
+                >
+                  <span className="font-mono text-xs text-ink-4 mr-2">{String.fromCharCode(65 + opt.id)}.</span>
+                  {opt.text}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-ink/5">
+              <button
+                onClick={() => setShowQuizModal(false)}
+                className="px-5 py-2.5 rounded-full text-xs font-bold text-ink-4 hover:text-ink transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCompleteQuiz}
+                disabled={quizAnswer === null}
+                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all shadow-md ${
+                  quizAnswer !== null
+                    ? "btn-green text-surface"
+                    : "bg-ink/10 text-ink-4 cursor-not-allowed"
+                }`}
+              >
+                Submit Answer (+50 XP)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

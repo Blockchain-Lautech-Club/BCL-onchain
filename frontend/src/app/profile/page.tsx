@@ -16,7 +16,7 @@ const AVATAR_OPTIONS = ["🧑‍💻","👾","🦊","🐉","🤖","⚡","🔮","
 const ROLE_OPTIONS   = ["builder","developer","designer","researcher","investor","community","founder","student","auditor","advocate"];
 
 export default function ProfilePage() {
-  const { walletAddress, user, stats, connectWallet } = useAuth();
+  const { walletAddress, user, stats, connectWallet, refreshUserData } = useAuth();
 
   // Data state
   const [profile,       setProfile]       = useState<ProfileData | null>(null);
@@ -61,6 +61,15 @@ export default function ProfilePage() {
         setGithubInput(  profData.github      || "");
         setWebsiteInput( profData.website     || "");
         setSkillsInput(  profData.skills      || []);
+
+        // Automatically open create profile modal if user has no username or arrived from create flow
+        if (!profData.username || (typeof window !== "undefined" && window.location.search.includes("create=true"))) {
+          setIsEditing(true);
+        }
+      } else {
+        if (typeof window !== "undefined" && window.location.search.includes("create=true")) {
+          setIsEditing(true);
+        }
       }
       setNfts(nftData || []);
       setSubmissions(subData || []);
@@ -70,6 +79,10 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!usernameInput.trim()) {
+      toast.error("Please enter a username (3-32 characters)");
+      return;
+    }
     try {
       setSavingProfile(true);
       const updated = await api.updateProfile({
@@ -85,7 +98,8 @@ export default function ProfilePage() {
       });
       setProfile(updated);
       setIsEditing(false);
-      toast.success("Profile updated!");
+      await refreshUserData();
+      toast.success("Profile saved successfully!");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
@@ -125,15 +139,15 @@ export default function ProfilePage() {
     );
   }
 
-  const currentLevel    = profile?.level          ?? user?.level          ?? 0;
-  const currentPoints   = profile?.total_points   ?? user?.total_points   ?? 0;
-  const pointsToNext    = profile?.points_to_next ?? stats?.points_to_next_level ?? 0;
-  const nextThreshold   = profile?.next_level_threshold ?? stats?.next_level_threshold ?? 0;
+  const currentPoints   = Math.max(profile?.total_points ?? 0, stats?.total_points ?? 0, user?.total_points ?? 0);
+  const currentLevel    = Math.max(profile?.level ?? 0, stats?.level ?? 0, user?.level ?? 0);
+  const nextThreshold   = profile?.next_level_threshold ?? stats?.next_level_threshold ?? 100;
+  const pointsToNext    = profile?.points_to_next ?? stats?.points_to_next_level ?? Math.max(0, nextThreshold - currentPoints);
   const levelProgress   = nextThreshold > 0 ? Math.min(100, Math.round(((nextThreshold - pointsToNext) / nextThreshold) * 100)) : 0;
   const displayName     = profile?.username || user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
   const shortAddr       = `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
   const confirmedNfts   = nfts.filter(n => n.status === "confirmed");
-  const streakDays      = stats?.streak_days ?? 0;
+  const streakDays      = Math.max(stats?.streak_days ?? 0, typeof window !== "undefined" && walletAddress ? parseInt(localStorage.getItem(`bcl_streak_days_${walletAddress.toLowerCase()}`) || "0", 10) : 0);
   const completedTasks  = submissions.filter(s => s.status === "verified").length;
   const displayAvatar   = profile?.avatar_emoji || "🧑‍💻";
 
@@ -158,6 +172,29 @@ export default function ProfilePage() {
           <span className="font-mono text-[10px] text-ink-4 font-bold uppercase">Synched L2 Node</span>
         </div>
       </div>
+
+      {/* 1.5 Setup Profile Alert if no username */}
+      {(!profile?.username && !user?.username) && (
+        <div className="relative overflow-hidden rounded-2xl bg-amber-500/10 border border-amber-500/25 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+              <Fingerprint className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold font-heading text-ink">Complete Your Profile Identity</h2>
+              <p className="text-xs text-ink-3 mt-0.5">
+                Choose a unique username to activate your citizen passport, earn XP points, and claim .bcl domains.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-accent text-surface font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md hover:opacity-90 shrink-0"
+          >
+            <Edit3 className="w-4 h-4" /> Set Username Now
+          </button>
+        </div>
+      )}
 
       {/* 2. Hero Passport Card */}
       <div className="relative overflow-hidden rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 shadow-sm">

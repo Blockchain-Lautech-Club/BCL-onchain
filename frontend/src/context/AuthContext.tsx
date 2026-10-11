@@ -16,6 +16,7 @@ interface AuthContextType {
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
   refreshUserData: () => Promise<void>;
+  awardClaimedXp: (points: number, reason?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   connectWallet: async () => {},
   disconnectWallet: async () => {},
   refreshUserData: async () => {},
+  awardClaimedXp: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -47,10 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
 
     try {
-      const me = await api.getMe();
+      const me = await api.getMe().catch(() => null);
+      const activeAddress = (me?.wallet_address || appKitAddress || (typeof window !== "undefined" ? localStorage.getItem("bcl_wallet_address") : null))?.toLowerCase();
 
-      if (!me?.wallet_address) {
-        // No active session — clear everything and stop loading
+      if (!activeAddress) {
         setUser(null);
         setStats(null);
         setWalletAddress(null);
@@ -59,43 +61,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // We have a session — fetch profile + stats in parallel
+      if (typeof window !== "undefined") {
+        localStorage.setItem("bcl_wallet_address", activeAddress);
+      }
+
+      // Fetch profile and stats in parallel; neither should block the other
       const [profileResult, statsResult] = await Promise.allSettled([
         api.getProfile(),
         api.getMyStats(),
       ]);
 
+      const bonus = typeof window !== "undefined"
+        ? parseInt(localStorage.getItem(`bcl_bonus_xp_${activeAddress}`) || "0", 10)
+        : 0;
+
+      const streakDaysSaved = typeof window !== "undefined"
+        ? parseInt(localStorage.getItem(`bcl_streak_days_${activeAddress}`) || "0", 10)
+        : 0;
+
       const newUser: User =
         profileResult.status === "fulfilled"
           ? {
               id:             profileResult.value.id,
-              wallet_address: profileResult.value.wallet_address,
+              wallet_address: profileResult.value.wallet_address || activeAddress,
               username:       profileResult.value.username ?? undefined,
               level:          profileResult.value.level,
               total_points:   profileResult.value.total_points,
               status:         "active",
-              is_admin:       me.is_admin,
+              is_admin:       me?.is_admin || profileResult.value.is_admin || false,
             }
           : {
-              id:             me.id,
-              wallet_address: me.wallet_address,
-              level:          0,
-              total_points:   0,
+              id:             me?.id || 0,
+              wallet_address: activeAddress,
+              level:          bonus >= 100 ? 1 : 0,
+              total_points:   bonus,
               status:         "active",
-              is_admin:       me.is_admin,
+              is_admin:       me?.is_admin || false,
             };
 
-      const newStats =
-        statsResult.status === "fulfilled" ? statsResult.value : null;
+      const newStats: UserStats =
+        statsResult.status === "fulfilled" && statsResult.value
+          ? statsResult.value
+          : {
+              level: newUser.level || 0,
+              total_points: newUser.total_points || bonus,
+              points_to_next_level: Math.max(0, 100 - (newUser.total_points || bonus)),
+              next_level_threshold: 100,
+              completed_tasks_count: 0,
+              active_names_count: 0,
+              streak_days: streakDaysSaved,
+            };
 
       // Set all state together before clearing isLoading
-      // so components never see walletAddress without user
-      setWalletAddress(me.wallet_address);
-      setIsAdmin(me.is_admin);
+      setWalletAddress(activeAddress);
+      setIsAdmin(Boolean(newUser.is_admin));
       setUser(newUser);
       setStats(newStats);
     } catch {
-      // Session check failed (401, network error, etc.) — not logged in
       setUser(null);
       setStats(null);
       setWalletAddress(null);
@@ -103,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [appKitAddress]);
 
   useEffect(() => {
     checkSession();
@@ -160,6 +182,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Re-fetch full profile + stats after login
       await checkSession();
+
+      // If user profile is not yet completed (no username), redirect directly to /profile
+      const prof = await api.getProfile().catch(() => null);
+      if (!prof?.username) {
+        toast("Welcome! Please choose a username to complete your profile.", { icon: "👤" });
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/profile")) {
+          window.location.href = "/profile?create=true";
+        }
+      }
     } catch (err: unknown) {
       console.error("Wallet connection failed:", err);
       const msg = err instanceof Error ? err.message : "Failed to connect wallet";
@@ -170,6 +201,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsConnecting(false);
     }
   };
+
+  const awardClaimedXp = useCallback((points: number, reason: string = "Daily Streak Bonus") => {
+    const rawAddr = walletAddress || appKitAddress || (typeof window !== "undefined" ? localStorage.getItem("bcl_wallet_address") : null);
+    if (!rawAddr) return;
+    const addr = rawAddr.toLowerCase();
+
+    let newTotalBonus = points;
+    let newStreak = 1;
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bcl_wallet_address", addr);
+      const key = `bcl_bonus_xp_${addr}`;
+      const curr = parseInt(localStorage.getItem(key) || "0", 10);
+      newTotalBonus = curr + points;
+      localStorage.setItem(key, String(newTotalBonus));
+
+      const streakKey = `bcl_streak_days_${addr}`;
+      const currStreak = parseInt(localStorage.getItem(streakKey) || "0", 10);
+      newStreak = currStreak + 1;
+      localStorage.setItem(streakKey, String(newStreak));
+
+      const ledgerKey = `bcl_bonus_ledger_${addr}`;
+      const existingRaw = localStorage.getItem(ledgerKey);
+      let existing: Array<{ id: number; points_delta: number; reason: string; created_at: string }> = [];
+      try { existing = existingRaw ? JSON.parse(existingRaw) : []; } catch {}
+      existing.unshift({
+        id: Date.now(),
+        points_delta: points,
+        reason,
+        created_at: new Date().toISOString(),
+      });
+      localStorage.setItem(ledgerKey, JSON.stringify(existing));
+
+      // Dispatch custom window event so all tabs/listeners update immediately
+      window.dispatchEvent(new CustomEvent("bcl_xp_awarded", { detail: { points, addr } }));
+    }
+
+    setUser(prev => {
+      const currentPts = (prev?.total_points ?? 0) + points;
+      return prev
+        ? { ...prev, total_points: currentPts }
+        : {
+            id: 0,
+            wallet_address: addr,
+            total_points: currentPts,
+            level: currentPts >= 100 ? 1 : 0,
+            status: "active",
+          };
+    });
+
+    setStats(prev => {
+      const currentPts = (prev?.total_points ?? 0) + points;
+      const nextThreshold = prev?.next_level_threshold || 100;
+      const pointsToNext = Math.max(0, nextThreshold - currentPts);
+      return {
+        level: prev?.level || (currentPts >= 100 ? 1 : 0),
+        total_points: currentPts,
+        points_to_next_level: pointsToNext,
+        next_level_threshold: nextThreshold,
+        completed_tasks_count: prev?.completed_tasks_count ?? 0,
+        active_names_count: prev?.active_names_count ?? 0,
+        streak_days: Math.max(newStreak, (prev?.streak_days ?? 0) + 1),
+      };
+    });
+  }, [walletAddress, appKitAddress]);
 
   const disconnectWallet = async () => {
     try { await api.logout(); } catch { /* ignore */ }
@@ -194,6 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         connectWallet,
         disconnectWallet,
         refreshUserData,
+        awardClaimedXp,
       }}
     >
       {children}

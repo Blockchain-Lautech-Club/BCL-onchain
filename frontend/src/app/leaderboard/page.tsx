@@ -37,9 +37,31 @@ export default function LeaderboardPage() {
   const silver = top3[1];
   const bronze = top3[2];
 
-  // Current user's position
+  const userPts = Math.max(stats?.total_points ?? 0, user?.total_points ?? 0);
+  const userLvl = Math.max(stats?.level ?? 0, user?.level ?? 0, 1);
   const myEntry = walletAddress
-    ? entries.find((e) => e.wallet_address.toLowerCase() === walletAddress.toLowerCase())
+    ? (() => {
+        const found = entries.find((e) => e.wallet_address.toLowerCase() === walletAddress.toLowerCase());
+        if (found) {
+          return {
+            ...found,
+            total_points: Math.max(found.total_points, userPts),
+            level: Math.max(found.level, userLvl),
+          };
+        }
+        if (userPts > 0 || user?.username) {
+          return {
+            rank: entries.length + 1,
+            wallet_address: walletAddress,
+            username: user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`,
+            level: userLvl,
+            total_points: userPts,
+            completed_tasks: stats?.completed_tasks_count ?? 0,
+            active_names: stats?.active_names_count ?? 0,
+          };
+        }
+        return null;
+      })()
     : null;
 
   const totalMembers = entries.length || 1;

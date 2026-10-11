@@ -124,6 +124,17 @@ export default function EventsPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (walletAddress) {
+      const saved = localStorage.getItem(`bcl_rsvps_${walletAddress}`);
+      if (saved) {
+        try {
+          setRsvpd(new Set(JSON.parse(saved)));
+        } catch {}
+      }
+    }
+  }, [walletAddress]);
+
   const handleRsvp = (eventId: string, title: string) => {
     if (!walletAddress) {
       toast.error("Connect your wallet to RSVP");
@@ -136,8 +147,9 @@ export default function EventsPage() {
         toast("RSVP removed");
       } else {
         next.add(eventId);
-        toast.success(`RSVP'd for "${title}"`);
+        toast.success(`RSVP confirmed for "${title}"! Notification set.`);
       }
+      localStorage.setItem(`bcl_rsvps_${walletAddress}`, JSON.stringify(Array.from(next)));
       return next;
     });
   };

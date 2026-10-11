@@ -33,9 +33,8 @@ export const botchainTestnet = defineChain({
   testnet: true,
 });
 
-// 1. Get Project ID from environment or provide fallback for local dev
-export const projectId =
-  process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "b56e18d47c72ab683b10814fe9495694";
+// 1. Get Project ID strictly from environment variable
+export const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
 
 // 2. Set up Networks (Botchain Testnet is primary)
 export const networks = [botchainTestnet, celoAlfajores, celo] as const;

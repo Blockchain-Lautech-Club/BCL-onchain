@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Home, Compass, Globe2, Calendar, Trophy, Gift, User,
+  Home, Compass, Globe, Globe2, Calendar, Trophy, Gift, User,
   Flame, Bell, Zap, Menu, X, BookOpen, ShoppingBag,
   BadgeCheck, LogOut, Copy, ExternalLink, ChevronDown, Wallet
 } from "lucide-react";
@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 const NAV_LINKS = [
   { href: "/",            label: "Home",        icon: Home        },
   { href: "/tasks",       label: "Quests",      icon: Compass     },
+  { href: "/domains",     label: "Domains",     icon: Globe       },
   { href: "/explore",     label: "Explore",     icon: Globe2      },
   { href: "/learn",       label: "Learn",       icon: BookOpen    },
   { href: "/events",      label: "Events",      icon: Calendar    },

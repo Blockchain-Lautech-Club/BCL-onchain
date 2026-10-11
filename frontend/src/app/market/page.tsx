@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import toast from "react-hot-toast";
 import {
   Zap, Shield, Search, ChevronDown, RefreshCw, Receipt,
   History, Nfc, Ticket, Lock, ExternalLink, ShoppingBag,
@@ -136,18 +137,107 @@ const VOUCHERS = [
 ];
 
 export default function MarketPage() {
-  const { walletAddress, connectWallet, user, stats } = useAuth();
+  const { walletAddress, connectWallet, user, stats, awardClaimedXp } = useAuth();
   const [activeCategory, setActiveCategory] = useState("All Rewards");
   const [searchQ, setSearchQ] = useState("");
   const [sortBy, setSortBy] = useState("featured");
+  const [vouchers, setVouchers] = useState<Array<{
+    id: number;
+    title: string;
+    badge: string;
+    badgeColor: string;
+    meta: string;
+    code: string;
+    ctaLabel: string;
+  }>>([]);
 
-  const spendableXp  = stats?.total_points ?? user?.total_points ?? 0;
-  const lifetimeXp   = spendableXp; // same unless you track separately
-  const level        = stats?.level ?? user?.level ?? 0;
-  const eligibleCount = REWARDS.filter(r => r.status === "eligible" && spendableXp >= r.xpCost).length;
+  const spendableXp = Math.max(stats?.total_points ?? 0, user?.total_points ?? 0);
+  const lifetimeXp = spendableXp;
+  const level = Math.max(stats?.level ?? 0, user?.level ?? 0, 1);
+
+  const activeAddr = (walletAddress || user?.wallet_address)?.toLowerCase();
+
+  useEffect(() => {
+    if (!activeAddr) {
+      setVouchers([]);
+      return;
+    }
+    const saved = localStorage.getItem(`bcl_vouchers_${activeAddr}`);
+    if (saved) {
+      try {
+        setVouchers(JSON.parse(saved));
+      } catch {
+        setVouchers([]);
+      }
+    } else {
+      setVouchers([]);
+    }
+  }, [activeAddr]);
+
+  const handleRedeem = (reward: { id: number; title: string; xpCost: number }) => {
+    if (!walletAddress) {
+      toast("Please connect your wallet first", { icon: "🔌" });
+      connectWallet();
+      return;
+    }
+
+    if (reward.id === 4 && level < 15) {
+      toast.error(`Level 15 required. You are currently Level ${level}.`);
+      return;
+    }
+
+    if (spendableXp < reward.xpCost) {
+      toast.error(`You need ${(reward.xpCost - spendableXp).toLocaleString()} more XP to redeem ${reward.title}.`);
+      return;
+    }
+
+    const code = `BCL-${Date.now().toString(36).slice(-4).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const newVoucher = {
+      id: Date.now(),
+      title: reward.title,
+      badge: "Redeemed",
+      badgeColor: "bg-accent/10 text-accent-fg border-accent/20",
+      meta: `Claimed for ${reward.xpCost.toLocaleString()} XP • Code: ${code}`,
+      code,
+      ctaLabel: "Show Code",
+    };
+
+    const updated = [newVoucher, ...vouchers];
+    setVouchers(updated);
+    if (activeAddr) {
+      localStorage.setItem(`bcl_vouchers_${activeAddr}`, JSON.stringify(updated));
+    }
+    awardClaimedXp(-reward.xpCost, `Voucher Redemption: ${reward.title}`);
+    toast.success(`Successfully redeemed ${reward.title}! Voucher saved below.`);
+  };
+
+  const computedRewards = REWARDS.map((r) => {
+    const isLocked = r.id === 4 && level < 15;
+    const isShortfall = !isLocked && spendableXp < r.xpCost;
+    const status = isLocked ? "locked" : isShortfall ? "shortfall" : "eligible";
+    const progressPct = Math.min(100, Math.round((spendableXp / Math.max(1, r.xpCost)) * 100));
+    const progressLabel = `Your XP: ${spendableXp.toLocaleString()} / ${r.xpCost.toLocaleString()}`;
+    
+    return {
+      ...r,
+      status,
+      progressPct,
+      progressLabel,
+      ctaLabel: status === "eligible" 
+        ? (r.ctaLabel || "Redeem Now")
+        : status === "shortfall"
+        ? `Need ${(r.xpCost - spendableXp).toLocaleString()} more XP`
+        : `Locked to Level 15 (Current: L${level})`,
+      infoBox: r.id === 4 
+        ? { label: "Your rank:", value: `Level ${level} (${Math.max(0, 15 - level)} levels left)` }
+        : r.infoBox,
+    };
+  });
+
+  const eligibleCount = computedRewards.filter(r => r.status === "eligible").length;
 
   // Filter + sort
-  let displayRewards = REWARDS.filter(r =>
+  let displayRewards = computedRewards.filter(r =>
     (activeCategory === "All Rewards" || r.category === activeCategory) &&
     (!searchQ || r.title.toLowerCase().includes(searchQ.toLowerCase()) || r.description.toLowerCase().includes(searchQ.toLowerCase()))
   );
@@ -398,7 +488,7 @@ export default function MarketPage() {
                 {reward.status === "eligible" ? (
                   <>
                     <button
-                      onClick={() => { if (!walletAddress) connectWallet(); }}
+                      onClick={() => handleRedeem(reward)}
                       className="flex-1 py-2.5 px-4 rounded-xl bg-accent text-surface font-bold text-sm hover:shadow-[0_0_18px_rgba(0,245,160,0.35)] transition-all flex items-center justify-center gap-2"
                     >
                       {reward.ctaIcon}
@@ -414,12 +504,18 @@ export default function MarketPage() {
                     )}
                   </>
                 ) : reward.status === "shortfall" ? (
-                  <button className="flex-1 py-2.5 px-4 rounded-xl bg-ink/5 text-ink hover:bg-ink/10 font-bold text-sm flex items-center justify-center gap-2 transition-colors border border-ink/5">
+                  <button 
+                    onClick={() => handleRedeem(reward)}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-ink/5 text-ink hover:bg-ink/10 font-bold text-sm flex items-center justify-center gap-2 transition-colors border border-ink/5"
+                  >
                     <Lock className="w-4 h-4 text-ink-4" />
                     <span>{reward.ctaLabel}</span>
                   </button>
                 ) : (
-                  <button disabled className="flex-1 py-2.5 px-4 rounded-xl bg-ink/5 text-ink-4/40 font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed border border-ink/5">
+                  <button 
+                    disabled 
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-ink/5 text-ink-4/40 font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed border border-ink/5"
+                  >
                     <Lock className="w-4 h-4" />
                     <span>{reward.ctaLabel}</span>
                   </button>
@@ -447,42 +543,49 @@ export default function MarketPage() {
           </div>
           <div className="flex items-center gap-4">
             <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider">
-              Redeemed: {VOUCHERS.length} items
+              Redeemed: {vouchers.length} items
             </span>
-            <button className="px-4 py-2 rounded-xl bg-ink/5 text-ink font-bold text-xs hover:bg-ink/10 transition-colors flex items-center gap-2 border border-ink/5">
-              <History className="w-4 h-4" />
-              All Records
-            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {VOUCHERS.map(v => (
-            <div
-              key={v.id}
-              className="flex items-center justify-between p-4 rounded-xl bg-ink/[0.02] border border-ink/10 shadow-sm hover:border-ink/20 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl bg-ink/5 flex items-center justify-center shrink-0 border border-ink/5 ${v.iconColor}`}>
-                  {v.icon}
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-base font-heading font-bold text-ink leading-tight">{v.title}</span>
-                    <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider border ${v.badgeColor}`}>
-                      {v.badge}
-                    </span>
+        {vouchers.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {vouchers.map(v => (
+              <div
+                key={v.id}
+                className="flex items-center justify-between p-4 rounded-xl bg-ink/[0.02] border border-ink/10 shadow-sm hover:border-ink/20 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-ink/5 flex items-center justify-center shrink-0 border border-ink/5 text-accent-fg">
+                    <QrCode className="w-6 h-6" />
                   </div>
-                  <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider">{v.meta}</span>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base font-heading font-bold text-ink leading-tight">{v.title}</span>
+                      <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider border ${v.badgeColor}`}>
+                        {v.badge}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider">{v.meta}</span>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => toast(`Redemption Code: ${v.code}`, { icon: "🎟️" })}
+                  className="px-3 py-2 rounded-lg bg-ink/5 hover:bg-ink/10 text-ink font-bold text-xs transition-colors flex items-center gap-1.5 shrink-0 border border-ink/5"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>{v.ctaLabel}</span>
+                </button>
               </div>
-              <button className="px-3 py-2 rounded-lg bg-ink/5 hover:bg-ink/10 text-ink font-bold text-xs transition-colors flex items-center gap-1.5 shrink-0 border border-ink/5">
-                {v.ctaIcon ?? <QrCode className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">{v.ctaLabel}</span>
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center rounded-xl border border-dashed border-ink/10 space-y-2">
+            <ShoppingBag className="w-8 h-8 text-ink-4 mx-auto" />
+            <p className="text-sm font-bold text-ink">No vouchers redeemed yet</p>
+            <p className="text-xs text-ink-4">Earn XP by completing quests on Botchain to unlock real merchandise and event passes.</p>
+          </div>
+        )}
       </section>
 
     </div>

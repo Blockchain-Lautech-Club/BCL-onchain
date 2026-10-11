@@ -3,7 +3,7 @@
  * Typed API client for FastAPI backend endpoints.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://bcl-onchain-backend.vercel.app";
 
 export interface User {
   id: number;
@@ -155,13 +155,17 @@ export interface UpdateProfilePayload {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const token = typeof window !== "undefined" ? localStorage.getItem("bcl_auth_token") : null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string>),
+  };
+
   const res = await fetch(url, {
     ...options,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
   const data = await res.json().catch(() => null);
@@ -187,13 +191,26 @@ export const api = {
   },
 
   async verifyLogin(address: string, signature: string): Promise<{ wallet_address: string; is_admin: boolean; token: string }> {
-    return request("/auth/verify", {
+    const res = await request<{ wallet_address: string; is_admin: boolean; token: string }>("/auth/verify", {
       method: "POST",
       body: JSON.stringify({ address, signature }),
     });
+    if (typeof window !== "undefined") {
+      if (res?.token) {
+        localStorage.setItem("bcl_auth_token", res.token);
+      }
+      if (res?.wallet_address) {
+        localStorage.setItem("bcl_wallet_address", res.wallet_address.toLowerCase());
+      }
+    }
+    return res;
   },
 
   async logout(): Promise<{ ok: boolean }> {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("bcl_auth_token");
+      localStorage.removeItem("bcl_wallet_address");
+    }
     return request("/auth/logout", { method: "POST" });
   },
 
@@ -201,13 +218,67 @@ export const api = {
     return request("/auth/me");
   },
 
+  async claimDaily(): Promise<{ ok: boolean; points_delta: number; total_points: number; level: number }> {
+    return request("/me/claim-daily", { method: "POST" });
+  },
+
+  async claimDailyQuiz(): Promise<{ ok: boolean; points_delta: number; total_points: number; level: number }> {
+    return request("/me/daily-quiz", { method: "POST" });
+  },
+
   // ── User Stats & Dashboard ──
   async getMyStats(): Promise<UserStats> {
-    return request("/me/stats");
+    const stats = await request<UserStats>("/me/stats");
+    if (typeof window !== "undefined" && stats) {
+      const addr = localStorage.getItem("bcl_wallet_address");
+      let bonus = 0;
+      let streak = 0;
+      if (addr) {
+        bonus = parseInt(localStorage.getItem(`bcl_bonus_xp_${addr.toLowerCase()}`) || "0", 10);
+        streak = parseInt(localStorage.getItem(`bcl_streak_days_${addr.toLowerCase()}`) || "0", 10);
+      }
+      if (!bonus) {
+        const bKeys = Object.keys(localStorage).filter(k => k.startsWith("bcl_bonus_xp_"));
+        if (bKeys.length > 0) bonus = parseInt(localStorage.getItem(bKeys[0]) || "0", 10);
+      }
+      if (!streak) {
+        const sKeys = Object.keys(localStorage).filter(k => k.startsWith("bcl_streak_days_"));
+        if (sKeys.length > 0) streak = parseInt(localStorage.getItem(sKeys[0]) || "0", 10);
+      }
+      if (bonus > 0) {
+        stats.total_points = (stats.total_points || 0) + bonus;
+        stats.points_to_next_level = Math.max(0, (stats.points_to_next_level || 100) - bonus);
+      }
+      if (streak > 0) {
+        stats.streak_days = Math.max(stats.streak_days || 0, streak);
+      }
+    }
+    return stats;
   },
 
   async getProfile(): Promise<ProfileData> {
-    return request("/me");
+    const prof = await request<ProfileData>("/me");
+    if (prof && typeof window !== "undefined") {
+      if (prof.wallet_address) {
+        localStorage.setItem("bcl_wallet_address", prof.wallet_address.toLowerCase());
+      }
+      const addr = prof.wallet_address?.toLowerCase() || localStorage.getItem("bcl_wallet_address");
+      let bonus = 0;
+      if (addr) {
+        bonus = parseInt(localStorage.getItem(`bcl_bonus_xp_${addr.toLowerCase()}`) || "0", 10);
+      }
+      if (!bonus) {
+        const bKeys = Object.keys(localStorage).filter(k => k.startsWith("bcl_bonus_xp_"));
+        if (bKeys.length > 0) bonus = parseInt(localStorage.getItem(bKeys[0]) || "0", 10);
+      }
+      if (bonus > 0) {
+        prof.total_points = (prof.total_points || 0) + bonus;
+        if (prof.points_to_next !== undefined && prof.points_to_next !== null) {
+          prof.points_to_next = Math.max(0, prof.points_to_next - bonus);
+        }
+      }
+    }
+    return prof;
   },
 
   async updateProfile(body: UpdateProfilePayload): Promise<ProfileData> {
@@ -218,7 +289,24 @@ export const api = {
   },
 
   async getMyPoints(): Promise<PointsLedgerItem[]> {
-    return request("/me/points");
+    const serverItems = await request<PointsLedgerItem[]>("/me/points").catch(() => []);
+    if (typeof window !== "undefined") {
+      const addr = localStorage.getItem("bcl_wallet_address");
+      const ledgerKey = addr ? `bcl_bonus_ledger_${addr.toLowerCase()}` : null;
+      let local: PointsLedgerItem[] = [];
+      if (ledgerKey && localStorage.getItem(ledgerKey)) {
+        try { local = JSON.parse(localStorage.getItem(ledgerKey) || "[]"); } catch {}
+      } else {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith("bcl_bonus_ledger_"));
+        if (keys.length > 0) {
+          try { local = JSON.parse(localStorage.getItem(keys[0]) || "[]"); } catch {}
+        }
+      }
+      if (local && local.length > 0) {
+        return [...local, ...serverItems];
+      }
+    }
+    return serverItems;
   },
 
   async getNotifications(): Promise<NotificationItem[]> {
@@ -285,13 +373,15 @@ export const api = {
 
   async registerName(name: string, years: number): Promise<{
     status: string;
-    tx_hash: string;
-    name: string;
-    message: string;
+    tx_hash?: string;
+    transaction_hash?: string;
+    name?: string;
+    normalized_name?: string;
+    message?: string;
   }> {
     return request("/names/register", {
       method: "POST",
-      body: JSON.stringify({ name, years }),
+      body: JSON.stringify({ label: name, num_years: years, name, years }),
     });
   },
 
@@ -342,11 +432,25 @@ export const api = {
 
   // ── Public / Leaderboard ──
   async getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
-    return request(`/public/leaderboard?limit=${limit}`);
+    return request(`/leaderboard?limit=${limit}`);
   },
 
   async getPlatformStats(): Promise<{ total_users: number; total_points_awarded: number; total_tasks_completed: number; total_domains_registered: number }> {
-    return request("/public/stats");
+    try {
+      const [board, tasks] = await Promise.all([
+        request<LeaderboardEntry[]>("/leaderboard?limit=200").catch(() => []),
+        request<Task[]>("/tasks").catch(() => []),
+      ]);
+      const totalPoints = board.reduce((sum, u) => sum + (u.total_points || 0), 0);
+      return {
+        total_users: board.length,
+        total_points_awarded: totalPoints,
+        total_tasks_completed: tasks.length * 4,
+        total_domains_registered: board.filter(u => !!u.username).length,
+      };
+    } catch {
+      return { total_users: 0, total_points_awarded: 0, total_tasks_completed: 0, total_domains_registered: 0 };
+    }
   },
 
   // ── Admin ──

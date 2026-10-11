@@ -20,13 +20,14 @@ import {
   Send,
   X,
   ExternalLink,
+  User as UserIcon,
 } from "lucide-react";
 
 function DomainsContent() {
   const searchParams = useSearchParams();
   const initialName = searchParams.get("name") || "";
 
-  const { walletAddress, connectWallet } = useAuth();
+  const { walletAddress, connectWallet, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState(initialName);
   const [years, setYears] = useState(1);
   const [isSearching, setIsSearching] = useState(false);
@@ -123,15 +124,40 @@ function DomainsContent() {
     if (!searchResult || !searchResult.available) return;
     const clean = searchResult.name.replace(".bcl", "");
 
+    if (!walletAddress) {
+      toast.error("Please connect your wallet first");
+      await connectWallet();
+      return;
+    }
+
+    if (!user) {
+      toast("Please sign the message in your wallet to authenticate", { icon: "✍️" });
+      try {
+        await connectWallet();
+      } catch {
+        return;
+      }
+      return;
+    }
+
+    if (!user.username) {
+      toast("Please create your profile first before claiming a domain", { icon: "👤" });
+      if (typeof window !== "undefined") {
+        window.location.href = "/profile?create=true";
+      }
+      return;
+    }
+
     try {
       setIsRegistering(true);
       setRegResult(null);
 
       const res = await api.registerName(clean, years);
+      const txHash = res.tx_hash || res.transaction_hash;
       setRegResult({
         success: true,
         message: res.message || `Successfully registered ${searchResult.name}!`,
-        txHash: res.tx_hash,
+        txHash,
       });
       toast.success(`${searchResult.name} registered!`);
 
@@ -323,20 +349,39 @@ function DomainsContent() {
                       </div>
                     </div>
 
-                    {walletAddress ? (
+                    {!walletAddress ? (
+                      <button
+                        onClick={connectWallet}
+                        className="w-full rounded-xl bg-ink text-page font-semibold py-2.5 text-xs transition cursor-pointer"
+                      >
+                        CONNECT WALLET TO CLAIM
+                      </button>
+                    ) : !user ? (
+                      <button
+                        onClick={connectWallet}
+                        className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold py-2.5 text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <Zap className="w-3.5 h-3.5" /> SIGN IN WITH WALLET TO CLAIM
+                      </button>
+                    ) : !user.username ? (
+                      <button
+                        onClick={() => {
+                          toast("Please create your profile first before claiming domains!", { icon: "👤" });
+                          if (typeof window !== "undefined") {
+                            window.location.href = "/profile?create=true";
+                          }
+                        }}
+                        className="w-full rounded-xl bg-accent text-surface font-bold py-2.5 text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:opacity-90"
+                      >
+                        <UserIcon className="w-3.5 h-3.5" /> CREATE PROFILE TO CLAIM DOMAIN →
+                      </button>
+                    ) : (
                       <button
                         onClick={handleRegister}
                         disabled={isRegistering}
                         className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 text-xs transition cursor-pointer disabled:opacity-40 shadow-sm"
                       >
                         {isRegistering ? "PROCESSING REGISTRATION..." : `CONFIRM & CLAIM ${searchResult.name}`}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={connectWallet}
-                        className="w-full rounded-xl bg-ink text-page font-semibold py-2.5 text-xs transition cursor-pointer"
-                      >
-                        CONNECT WALLET TO CLAIM
                       </button>
                     )}
                   </div>
