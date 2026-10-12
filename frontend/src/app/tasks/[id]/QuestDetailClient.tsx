@@ -7,13 +7,59 @@ import { api, Task, TaskSubmission } from "@/lib/api";
 import {
   CheckCircle2, Loader2, ArrowLeft, Zap, Shield, ExternalLink,
   Lock, Clock, Users, Award, ChevronRight, Copy, AlertCircle,
-  Terminal, Flame, Folder, PlayCircle, Gavel, Headset, MessageSquare, Calendar
+  Terminal, Flame, Folder, PlayCircle, Gavel, Headset, MessageSquare, Calendar,
+  Upload, Image as ImageIcon, X, Link2
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { QuestImage } from "@/components/quest/QuestImage";
 import { coverForCategory } from "@/lib/quests";
 import { getExplorerUrl } from "@/lib/contracts";
 import { LinkifiedText } from "@/components/common/LinkifiedText";
+
+const processProofImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Please upload a valid image file (PNG, JPG, WebP)"));
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      reject(new Error("Image size should be smaller than 12MB"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image file"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Failed to parse image file"));
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(reader.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 export function QuestDetailClient() {
   const params = useParams();
@@ -26,6 +72,8 @@ export function QuestDetailClient() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [evidenceInput, setEvidenceInput] = useState("");
+  const [imageProof, setImageProof] = useState<string | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   useEffect(() => {
     const fetchQuestData = async () => {
@@ -62,26 +110,60 @@ export function QuestDetailClient() {
     fetchQuestData();
   }, [id, walletAddress]);
 
+  const isInstantClaim = Boolean(
+    task &&
+      (task.verification_type === "instant" ||
+        (task.verification_type === "manual" && (task.title || "").toLowerCase().includes("welcome bonus")))
+  );
+  const isSocialQuest = Boolean(
+    task &&
+      (task.verification_type === "social_api" ||
+        /twitter|x\.com|follow|retweet|repost|like|xspace|space/i.test(`${task.title} ${task.description}`))
+  );
+  const isOnchainQuest = task?.verification_type === "onchain_tx";
+  const isNftQuest = task?.verification_type === "nft_ownership";
+
+  const socialLinkMatch = (task?.description || "").match(/https?:\/\/(x\.com|twitter\.com)\/[^\s)>]+/i);
+  const socialLink = socialLinkMatch ? socialLinkMatch[0] : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletAddress) { 
       await connectWallet(); 
       return; 
     }
-    if (!evidenceInput.trim() || !task) return;
+    if (!task) return;
+    if (!isInstantClaim && !isNftQuest && !evidenceInput.trim() && !imageProof) {
+      toast.error(isSocialQuest ? "Please upload a screenshot or provide a quote/post link" : "Please provide valid proof or reference");
+      return;
+    }
     
     setIsSubmitting(true);
     try {
-      await api.submitTask(task.id, { url: evidenceInput.trim() });
-      toast.success("Submission sent! Oracle scanning initialization...");
-      // Optimistic update — use "submitted" which is a valid status in the union
-      setSubmission({
+      const payload: Record<string, unknown> = isInstantClaim
+        ? { claim_type: "instant_bonus" }
+        : isNftQuest
+        ? { claim_type: "nft_ownership", wallet: walletAddress }
+        : {
+            url: evidenceInput.trim() || undefined,
+            image: imageProof || undefined,
+            evidence: evidenceInput.trim() || (imageProof ? "Screenshot uploaded" : "Proof submitted"),
+            verification_type: task.verification_type,
+          };
+
+      const res = await api.submitTask(task.id, payload);
+      if (res.status === "verified") {
+        toast.success(`Success! +${task.points} XP claimed instantly.`);
+      } else {
+        toast.success("Proof submitted successfully! Review initialized...");
+      }
+      setSubmission(res || {
         id: Math.random(),
         task_id: task.id,
         user_id: 0,
         wallet: walletAddress,
-        evidence: { url: evidenceInput.trim() },
-        status: "submitted",
+        evidence: payload,
+        status: isInstantClaim ? "verified" : "submitted",
         created_at: new Date().toISOString(),
       });
       await refreshUserData();
@@ -329,8 +411,35 @@ export function QuestDetailClient() {
                       You have already submitted proof for this quest. Quests are limited to one submission per builder. Your submission is in the review queue.
                     </p>
                     {submission?.evidence && (
-                      <div className="pt-1 font-mono text-[11px] text-ink-4 truncate">
-                        Evidence submitted: <span className="text-ink font-semibold">{String(submission.evidence.url || submission.evidence.link || JSON.stringify(submission.evidence))}</span>
+                      <div className="pt-2 space-y-2 border-t border-amber-500/10">
+                        {Boolean((submission.evidence as Record<string, unknown>).image) && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono uppercase text-ink-4 font-bold block">Attached Screenshot:</span>
+                            <img
+                              src={(submission.evidence as Record<string, unknown>).image as string}
+                              alt="Submitted proof screenshot"
+                              className="max-h-48 max-w-full rounded-xl border border-ink/10 object-contain bg-black/5"
+                            />
+                          </div>
+                        )}
+                        {Boolean((submission.evidence as Record<string, unknown>).url) && (
+                          <div className="font-mono text-[11px] text-ink-3 truncate">
+                            <span className="text-ink-4 uppercase text-[10px] font-bold mr-1">Link:</span>
+                            <a
+                              href={(submission.evidence as Record<string, unknown>).url as string}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent-fg hover:underline font-semibold"
+                            >
+                              {(submission.evidence as Record<string, unknown>).url as string}
+                            </a>
+                          </div>
+                        )}
+                        {!((submission.evidence as Record<string, unknown>).image || (submission.evidence as Record<string, unknown>).url) && (
+                          <div className="pt-1 font-mono text-[11px] text-ink-4 truncate">
+                            Evidence: <span className="text-ink font-semibold">{String(submission.evidence.text || submission.evidence.evidence || JSON.stringify(submission.evidence))}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -352,37 +461,165 @@ export function QuestDetailClient() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <label className="block font-mono text-[10px] text-ink uppercase font-bold tracking-wider" htmlFor="proof-url">
-                      Hosted Application, Tx Hash, or Repository URL
-                    </label>
-                    <div className="relative flex items-center">
-                      <PlayCircle className="absolute left-4 w-5 h-5 text-ink-4" />
-                      <input 
-                        id="proof-url"
-                        value={evidenceInput}
-                        onChange={(e) => setEvidenceInput(e.target.value)}
-                        className="w-full h-12 pl-12 pr-4 rounded-xl bg-ink/5 text-ink font-mono text-sm placeholder:text-ink-4/50 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
-                        placeholder="https://github.com/... or 0x..." 
-                        required 
-                        disabled={isSubmitting}
-                      />
+                  {isInstantClaim ? (
+                    <div className="space-y-4">
+                      <div className="p-4 sm:p-5 rounded-2xl bg-accent/10 border border-accent/20 space-y-2">
+                        <div className="flex items-center gap-2 text-accent-fg font-heading font-bold text-sm">
+                          <Zap className="w-4 h-4" />
+                          <span>Instant Bonus Claim</span>
+                        </div>
+                        <p className="text-xs text-ink-3 leading-relaxed">
+                          This is an instant bonus quest! No GitHub PR or external proof is required. Click below to claim +{task.points?.toLocaleString()} XP immediately into your citizen profile.
+                        </p>
+                      </div>
+                      <div className="flex justify-end pt-2 border-t border-ink/5">
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-accent text-surface font-heading font-bold text-sm hover:shadow-[0_0_25px_rgba(0,245,160,0.35)] transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-60"
+                        >
+                          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                          <span>Claim Instant Bonus (+{task.points?.toLocaleString()} XP)</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-ink/5">
-                    <span className="text-xs text-ink-4 font-medium">
-                      One submission per builder. Please confirm link validity.
-                    </span>
-                    <button 
-                      type="submit"
-                      disabled={isSubmitting || !evidenceInput.trim()}
-                      className="w-full sm:w-auto px-6 py-3 rounded-full bg-accent text-surface font-bold text-sm hover:shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                      <span>{isSubmitting ? "Submitting..." : "Verify Submission"}</span>
-                    </button>
-                  </div>
+                  ) : (
+                    <>
+                      {isSocialQuest && socialLink && (
+                        <div className="p-3.5 rounded-xl bg-ink/[0.03] border border-ink/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <span className="font-mono text-[10px] text-accent-fg font-bold uppercase tracking-wider block">Step 1: Complete Action on X</span>
+                            <span className="text-xs text-ink font-semibold">Join Space, Follow, Like, Quote, or Retweet on X</span>
+                          </div>
+                          <a
+                            href={socialLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-ink text-surface text-xs font-bold hover:opacity-90 transition-opacity shrink-0"
+                          >
+                            <span>Open on X (Twitter)</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Social Image Proof Upload Zone */}
+                      {isSocialQuest && (
+                        <div className="space-y-2">
+                          <label className="block font-mono text-[10px] text-ink uppercase font-bold tracking-wider">
+                            Upload Proof Screenshot (Follow, Space Attendance, or Like / Repost)
+                          </label>
+                          {imageProof ? (
+                            <div className="relative p-3 rounded-2xl bg-ink/[0.03] border border-ink/10 flex flex-col sm:flex-row items-center gap-3">
+                              <img
+                                src={imageProof}
+                                alt="Proof preview"
+                                className="h-28 w-auto rounded-xl object-contain border border-ink/10 bg-black/5"
+                              />
+                              <div className="flex-1 space-y-1 text-center sm:text-left">
+                                <span className="text-xs font-bold text-ink flex items-center justify-center sm:justify-start gap-1">
+                                  <CheckCircle2 className="w-4 h-4 text-accent-fg" /> Screenshot Attached
+                                </span>
+                                <span className="text-[11px] text-ink-4 block">Ready for administrator review</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setImageProof(null)}
+                                className="px-3 py-1.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs font-bold transition flex items-center gap-1 shrink-0"
+                              >
+                                <X className="w-3.5 h-3.5" /> Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="border-2 border-dashed border-ink/15 hover:border-accent/50 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition bg-ink/[0.01] hover:bg-ink/[0.03]">
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/jpg"
+                                className="hidden"
+                                disabled={isProcessingImage}
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setIsProcessingImage(true);
+                                  try {
+                                    const dataUrl = await processProofImage(file);
+                                    setImageProof(dataUrl);
+                                    toast.success("Screenshot attached successfully!");
+                                  } catch (err: unknown) {
+                                    toast.error(err instanceof Error ? err.message : "Failed to process image");
+                                  } finally {
+                                    setIsProcessingImage(false);
+                                  }
+                                }}
+                              />
+                              <div className="w-10 h-10 rounded-full bg-ink/5 flex items-center justify-center text-ink-3">
+                                {isProcessingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                              </div>
+                              <div className="text-center">
+                                <span className="text-xs font-bold text-ink block">Click or drag screenshot to upload</span>
+                                <span className="text-[10px] text-ink-4 font-mono">PNG, JPG, WebP up to 10MB</span>
+                              </div>
+                            </label>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Link / Text Proof Input */}
+                      <div className="space-y-2">
+                        <label className="block font-mono text-[10px] text-ink uppercase font-bold tracking-wider" htmlFor="proof-url">
+                          {isSocialQuest
+                            ? "Quote Tweet / Post Link or X @Handle (Optional if screenshot attached)"
+                            : isOnchainQuest
+                            ? "Bohr Testnet / Mainnet Transaction Hash"
+                            : isNftQuest
+                            ? "Connected Wallet Verification"
+                            : "Hosted Application, Tx Hash, or Repository URL"}
+                        </label>
+                        <div className="relative flex items-center">
+                          <PlayCircle className="absolute left-4 w-5 h-5 text-ink-4" />
+                          <input 
+                            id="proof-url"
+                            value={evidenceInput}
+                            onChange={(e) => setEvidenceInput(e.target.value)}
+                            className="w-full h-12 pl-12 pr-4 rounded-xl bg-ink/5 text-ink font-mono text-sm placeholder:text-ink-4/50 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
+                            placeholder={
+                              isSocialQuest
+                                ? "https://x.com/username/status/... or @your_x_handle"
+                                : isOnchainQuest
+                                ? "0x..."
+                                : isNftQuest
+                                ? walletAddress || "Connect wallet to verify"
+                                : "https://github.com/... or 0x..."
+                            }
+                            required={!isNftQuest && !isSocialQuest}
+                            disabled={isSubmitting || isNftQuest}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-ink/5">
+                        <span className="text-xs text-ink-4 font-medium">
+                          {isSocialQuest ? "Submit screenshot and/or quote tweet link." : "One submission per builder. Please confirm details."}
+                        </span>
+                        <button 
+                          type="submit"
+                          disabled={isSubmitting || (!isNftQuest && !isSocialQuest && !evidenceInput.trim()) || (isSocialQuest && !evidenceInput.trim() && !imageProof)}
+                          className="w-full sm:w-auto px-6 py-3 rounded-full bg-accent text-surface font-bold text-sm hover:shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                          <span>
+                            {isSocialQuest
+                              ? "Submit Proof for Review"
+                              : isOnchainQuest
+                              ? "Verify Tx Hash"
+                              : isNftQuest
+                              ? "Verify NFT Badge"
+                              : "Verify Submission"}
+                          </span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </form>
               )}
             </div>
@@ -462,7 +699,17 @@ export function QuestDetailClient() {
             <div className="space-y-2 pt-1 text-xs">
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-ink/5 border border-ink/5">
                 <span className="text-ink-4 uppercase font-mono font-bold text-[10px]">Verification Model</span>
-                <span className="text-ink font-bold font-mono uppercase">{task.verification_type || "Manual Review"}</span>
+                <span className="text-ink font-bold font-mono uppercase">
+                  {isInstantClaim
+                    ? "Instant Claim (Bonus)"
+                    : isSocialQuest
+                    ? "Social (X / Space)"
+                    : isOnchainQuest
+                    ? "Onchain Tx"
+                    : isNftQuest
+                    ? "NFT Ownership"
+                    : "GitHub / Manual Review"}
+                </span>
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-ink/5 border border-ink/5">
                 <span className="text-ink-4 uppercase font-mono font-bold text-[10px]">Submission Policy</span>

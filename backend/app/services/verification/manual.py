@@ -15,3 +15,11 @@ class SocialVerifier(ManualVerifier):
     """Extension point: add provider adapters (X, Discord, Telegram...) here once official API access is
     confirmed. Until then social tasks are reviewed manually. Provider adapters must verify against
     `LinkedSocialAccount` (OAuth-linked identity), never a handle the user merely typed."""
+
+
+class InstantVerifier:
+    """Instantly approves bonus, welcome, or instant-claim quests without requiring manual review."""
+
+    async def verify(self, task: Task, user: User, evidence: dict) -> VerificationResult:
+        return VerificationResult("verified", "Instant claim verified")
+

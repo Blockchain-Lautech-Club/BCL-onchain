@@ -27,7 +27,8 @@ class TaskStatus(StrEnum):
 class VerificationType(StrEnum):
     ONCHAIN_TX = "onchain_tx"          # user proves they sent a tx to a contract/function
     NFT_OWNERSHIP = "nft_ownership"    # user holds an ERC-721 from a contract
-    SOCIAL_API = "social_api"          # official-API verification (adapter; manual fallback)
+    SOCIAL_API = "social_api"          # social / x / twitter / spaces / follow / like
+    INSTANT = "instant"                # instant claim bonus / welcome reward
     MANUAL = "manual"                  # admin reviews evidence
 
 

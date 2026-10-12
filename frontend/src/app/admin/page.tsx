@@ -37,6 +37,7 @@ import {
   Sparkles,
   UserIcon,
   BadgeCheck,
+  Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -68,12 +69,19 @@ export default function AdminPage() {
     image_url: "",
     points: 100,
     verification_type: "onchain_tx" as Task["verification_type"],
+    duration_preset: "ongoing" as "ongoing" | "1d" | "3d" | "7d" | "14d" | "30d" | "custom",
+    custom_deadline: "",
     repeatable: false,
     publish: true,
   });
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
   const [togglingTaskId, setTogglingTaskId] = useState<number | null>(null);
+
+  const [editingDurationTask, setEditingDurationTask] = useState<Task | null>(null);
+  const [editDurationPreset, setEditDurationPreset] = useState<"ongoing" | "1d" | "3d" | "7d" | "14d" | "30d" | "custom">("7d");
+  const [editCustomDeadline, setEditCustomDeadline] = useState<string>("");
+  const [isUpdatingDuration, setIsUpdatingDuration] = useState(false);
 
   const [adminUsers, setAdminUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -426,7 +434,31 @@ export default function AdminPage() {
     e.preventDefault();
     try {
       setIsCreatingTask(true);
-      await api.createAdminTask({ ...newTask, image_url: newTask.image_url.trim() || undefined });
+      let deadline: string | null = null;
+      if (newTask.duration_preset === "custom" && newTask.custom_deadline) {
+        deadline = new Date(newTask.custom_deadline).toISOString();
+      } else if (newTask.duration_preset === "1d") {
+        deadline = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+      } else if (newTask.duration_preset === "3d") {
+        deadline = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString();
+      } else if (newTask.duration_preset === "7d") {
+        deadline = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+      } else if (newTask.duration_preset === "14d") {
+        deadline = new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
+      } else if (newTask.duration_preset === "30d") {
+        deadline = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+      }
+
+      await api.createAdminTask({
+        title: newTask.title,
+        description: newTask.description,
+        points: newTask.points,
+        verification_type: newTask.verification_type,
+        repeatable: newTask.repeatable,
+        publish: newTask.publish,
+        deadline: deadline || undefined,
+        image_url: newTask.image_url.trim() || undefined,
+      });
       toast.success("New quest published!");
       setNewTask({
         title: "",
@@ -434,6 +466,8 @@ export default function AdminPage() {
         image_url: "",
         points: 100,
         verification_type: "onchain_tx",
+        duration_preset: "ongoing",
+        custom_deadline: "",
         repeatable: false,
         publish: true,
       });
@@ -444,6 +478,92 @@ export default function AdminPage() {
     } finally {
       setIsCreatingTask(false);
     }
+  };
+
+  const openEditDuration = (task: Task) => {
+    setEditingDurationTask(task);
+    if (task.deadline) {
+      setEditDurationPreset("custom");
+      try {
+        const d = new Date(task.deadline);
+        const localIso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        setEditCustomDeadline(localIso);
+      } catch {
+        setEditCustomDeadline("");
+      }
+    } else {
+      setEditDurationPreset("ongoing");
+      setEditCustomDeadline("");
+    }
+  };
+
+  const handleSaveDuration = async () => {
+    if (!editingDurationTask) return;
+    try {
+      setIsUpdatingDuration(true);
+      let newDeadline: string | null = null;
+      if (editDurationPreset === "ongoing") {
+        newDeadline = null;
+      } else if (editDurationPreset === "custom") {
+        if (!editCustomDeadline) {
+          toast.error("Please pick a valid deadline date & time");
+          setIsUpdatingDuration(false);
+          return;
+        }
+        newDeadline = new Date(editCustomDeadline).toISOString();
+      } else if (editDurationPreset === "1d") {
+        newDeadline = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+      } else if (editDurationPreset === "3d") {
+        newDeadline = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString();
+      } else if (editDurationPreset === "7d") {
+        newDeadline = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+      } else if (editDurationPreset === "14d") {
+        newDeadline = new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
+      } else if (editDurationPreset === "30d") {
+        newDeadline = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+      }
+
+      await api.updateAdminTask(editingDurationTask.id, { deadline: newDeadline });
+      setTasks(tasks.map((t) => (t.id === editingDurationTask.id ? { ...t, deadline: newDeadline } : t)));
+      toast.success(newDeadline ? `Quest deadline updated` : "Quest set to ongoing (no deadline)");
+      setEditingDurationTask(null);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update quest duration");
+    } finally {
+      setIsUpdatingDuration(false);
+    }
+  };
+
+  const getDurationInfo = (deadline?: string | null) => {
+    if (!deadline) {
+      return {
+        label: "Ongoing",
+        badge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+        detail: "No expiration date set",
+      };
+    }
+    const ms = new Date(deadline).getTime() - Date.now();
+    if (ms <= 0) {
+      return {
+        label: "Expired",
+        badge: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+        detail: `Ended on ${new Date(deadline).toLocaleDateString()}`,
+      };
+    }
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    if (hours < 24) {
+      return {
+        label: `${hours}h left`,
+        badge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        detail: `Ends in ${hours} hour(s) (${new Date(deadline).toLocaleDateString()})`,
+      };
+    }
+    const days = Math.floor(hours / 24);
+    return {
+      label: `${days}d left`,
+      badge: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+      detail: `Ends in ${days} days (${new Date(deadline).toLocaleDateString()})`,
+    };
   };
 
   const handleDeleteTask = async (taskId: number, title: string) => {
@@ -715,7 +835,10 @@ export default function AdminPage() {
               {submissions.map((sub) => {
                 const evidenceObj = sub.evidence as Record<string, unknown> | undefined;
                 const txHash = sub.tx_hash || (evidenceObj?.tx_hash as string);
-                const textProof = (evidenceObj?.text as string) || (evidenceObj?.url as string);
+                const rawProof = (evidenceObj?.text as string) || (evidenceObj?.url as string) || (typeof evidenceObj?.evidence === "string" ? evidenceObj?.evidence : undefined);
+                const imageProof = (evidenceObj?.image as string) || (evidenceObj?.image_url as string) || (typeof rawProof === "string" && rawProof.startsWith("data:image/") ? rawProof : null);
+                const linkProof = (evidenceObj?.url as string) || (typeof rawProof === "string" && !rawProof.startsWith("data:image/") && (rawProof.startsWith("http://") || rawProof.startsWith("https://")) ? rawProof : null);
+                const textProof = (!imageProof && !linkProof) ? rawProof : null;
                 return (
                   <div
                     key={sub.id}
@@ -780,6 +903,31 @@ export default function AdminPage() {
                             >
                               <span>{txHash}</span>
                               <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          </div>
+                        )}
+                        {imageProof && (
+                          <div className="pt-1 pb-1 space-y-1">
+                            <span className="text-ink-4 text-[10px] font-mono uppercase font-bold block">Attached Screenshot Proof:</span>
+                            <a href={imageProof} target="_blank" rel="noreferrer" className="inline-block group relative">
+                              <img
+                                src={imageProof}
+                                alt="Submission proof screenshot"
+                                className="max-h-56 max-w-full rounded-xl border border-ink/10 object-contain bg-black/5 shadow-sm transition hover:opacity-95"
+                              />
+                              <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/80 text-white text-[10px] font-mono flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shadow">
+                                <span>Open Full Size</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </div>
+                            </a>
+                          </div>
+                        )}
+                        {linkProof && (
+                          <div className="text-ink-2 break-words flex items-center gap-1.5 flex-wrap">
+                            <span className="text-ink-4 font-medium">Link / Quote:</span>
+                            <a href={linkProof} target="_blank" rel="noreferrer" className="font-mono text-accent-fg hover:underline inline-flex items-center gap-1">
+                              <span className="truncate max-w-md">{linkProof}</span>
+                              <ExternalLink className="w-3 h-3 shrink-0" />
                             </a>
                           </div>
                         )}
@@ -909,12 +1057,48 @@ export default function AdminPage() {
                       }
                       className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none"
                     >
+                      <option value="instant">Instant Claim (Bonus / Welcome)</option>
+                      <option value="social_api">Social</option>
+                      <option value="manual">Code / GitHub</option>
                       <option value="onchain_tx">On-Chain Tx Hash</option>
                       <option value="nft_ownership">NFT Ownership</option>
-                      <option value="manual">Manual Evidence (GitHub / PR)</option>
                     </select>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <label className="block text-[11px] text-ink-3 uppercase mb-1">Quest Duration / Expiry</label>
+                    <select
+                      value={newTask.duration_preset}
+                      onChange={(e) =>
+                        setNewTask({ ...newTask, duration_preset: e.target.value as any })
+                      }
+                      className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand cursor-pointer"
+                    >
+                      <option value="ongoing">Ongoing (No Deadline)</option>
+                      <option value="1d">24 Hours (1 Day)</option>
+                      <option value="3d">3 Days</option>
+                      <option value="7d">7 Days (1 Week)</option>
+                      <option value="14d">14 Days (2 Weeks)</option>
+                      <option value="30d">30 Days (1 Month)</option>
+                      <option value="custom">Custom Date &amp; Time</option>
+                    </select>
+                  </div>
+                  {newTask.duration_preset === "custom" && (
+                    <div>
+                      <label className="block text-[11px] text-ink-3 uppercase mb-1">Custom Expiration Date &amp; Time</label>
+                      <input
+                        type="datetime-local"
+                        required
+                        value={newTask.custom_deadline}
+                        onChange={(e) => setNewTask({ ...newTask, custom_deadline: e.target.value })}
+                        className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end gap-2 pt-2 border-t border-ink/[0.06]">
                   <button
                     type="button"
@@ -944,14 +1128,36 @@ export default function AdminPage() {
               {tasks.map((task) => {
                 const isPublished = task.status === "published";
                 const isArchived = task.status === "archived";
+                const durationInfo = getDurationInfo(task.deadline);
                 return (
                   <div key={task.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] flex flex-col justify-between gap-3 shadow-sm">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] text-ink-3 uppercase font-mono font-bold">
-                            #{task.id} • {task.verification_type}
+                            #{task.id}
                           </span>
+                          <select
+                            value={task.verification_type || "manual"}
+                            onChange={async (e) => {
+                              const v = e.target.value as Task["verification_type"];
+                              try {
+                                await api.updateAdminTask(task.id, { verification_type: v });
+                                setTasks(tasks.map((t) => (t.id === task.id ? { ...t, verification_type: v } : t)));
+                                toast.success(`Quest verification set to ${v}`);
+                              } catch {
+                                toast.error("Failed to update verification method");
+                              }
+                            }}
+                            className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-ink/5 border border-ink/10 text-ink cursor-pointer focus:outline-none"
+                            title="Change verification method"
+                          >
+                            <option value="instant">Instant</option>
+                            <option value="social_api">Social</option>
+                            <option value="manual">GitHub</option>
+                            <option value="onchain_tx">Tx Hash</option>
+                            <option value="nft_ownership">NFT</option>
+                          </select>
                           <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full border ${
                             isPublished
                               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
@@ -960,6 +1166,12 @@ export default function AdminPage() {
                               : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                           }`}>
                             {task.status || "active"}
+                          </span>
+                          <span
+                            className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full border ${durationInfo.badge}`}
+                            title={durationInfo.detail}
+                          >
+                            {durationInfo.label}
                           </span>
                         </div>
                         <span className="text-xs font-bold text-accent-fg font-mono">+{task.points} PTS</span>
@@ -971,8 +1183,8 @@ export default function AdminPage() {
                     </div>
 
                     {/* Quest actions */}
-                    <div className="pt-2 border-t border-ink/[0.04] flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
+                    <div className="pt-2 border-t border-ink/[0.04] flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {isPublished ? (
                           <button
                             onClick={() => handleArchiveTask(task.id)}
@@ -990,6 +1202,14 @@ export default function AdminPage() {
                             {togglingTaskId === task.id ? "Publishing..." : "Publish"}
                           </button>
                         )}
+                        <button
+                          onClick={() => openEditDuration(task)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-ink-3 hover:text-ink bg-ink/5 hover:bg-ink/10 px-2.5 py-1 rounded-lg transition cursor-pointer"
+                          title="Set or edit quest duration"
+                        >
+                          <Clock className="w-3 h-3 text-ink-3" />
+                          <span>Duration</span>
+                        </button>
                       </div>
 
                       <button
@@ -1853,6 +2073,118 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ── EDIT QUEST DURATION MODAL ── */}
+      {editingDurationTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-ink/[0.1] bg-surface p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-brand" />
+                <h3 className="text-sm font-bold font-heading text-ink">Edit Quest Duration</h3>
+              </div>
+              <button
+                onClick={() => setEditingDurationTask(null)}
+                className="text-ink-3 hover:text-ink cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] text-ink-4 uppercase font-mono block">Target Quest</span>
+              <p className="text-xs font-bold text-ink truncate">
+                #{editingDurationTask.id} · {editingDurationTask.title}
+              </p>
+              <div className="text-[11px] text-ink-3 pt-1">
+                Current Status:{" "}
+                <span className="font-mono text-ink-2 font-medium">
+                  {editingDurationTask.deadline
+                    ? `Expires on ${new Date(editingDurationTask.deadline).toLocaleString()}`
+                    : "Ongoing (Permanent / No Expiration)"}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="block text-[11px] text-ink-3 uppercase font-medium">
+                Set Duration / Expiry Period
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: "ongoing", label: "Ongoing" },
+                  { id: "1d", label: "+24 Hours" },
+                  { id: "3d", label: "+3 Days" },
+                  { id: "7d", label: "+7 Days" },
+                  { id: "14d", label: "+14 Days" },
+                  { id: "30d", label: "+30 Days" },
+                ].map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setEditDurationPreset(preset.id as any)}
+                    className={`px-2.5 py-2 text-xs font-mono font-medium rounded-xl border transition cursor-pointer ${
+                      editDurationPreset === preset.id
+                        ? "bg-brand/10 border-brand text-brand font-bold shadow-sm"
+                        : "bg-ink/5 border-ink/10 text-ink-3 hover:text-ink hover:bg-ink/10"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setEditDurationPreset("custom")}
+                  className={`px-2.5 py-2 text-xs font-mono font-medium rounded-xl border transition cursor-pointer ${
+                    editDurationPreset === "custom"
+                      ? "bg-brand/10 border-brand text-brand font-bold shadow-sm"
+                      : "bg-ink/5 border-ink/10 text-ink-3 hover:text-ink hover:bg-ink/10"
+                  }`}
+                >
+                  Custom
+                </button>
+              </div>
+
+              {editDurationPreset === "custom" && (
+                <div className="space-y-1 pt-2 animate-in fade-in">
+                  <label className="block text-[11px] text-ink-3 uppercase font-medium">
+                    Pick Exact Deadline Date &amp; Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={editCustomDeadline}
+                    onChange={(e) => setEditCustomDeadline(e.target.value)}
+                    className="w-full bg-page border border-ink/[0.15] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-ink/[0.06]">
+              <button
+                type="button"
+                onClick={() => setEditingDurationTask(null)}
+                className="px-3.5 py-1.5 text-xs text-ink-3 hover:text-ink cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDuration}
+                disabled={isUpdatingDuration}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand hover:bg-brand-hi text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-sm"
+              >
+                {isUpdatingDuration ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Clock className="w-3.5 h-3.5" />
+                )}
+                <span>Save Quest Duration</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@ export interface QuestCardData {
   category: string;
   xp: number;
   image: string;
+  verification_type?: string;
   difficulty?: string;
   reward?: string;
   participants?: string;
@@ -76,6 +77,7 @@ export function taskToCard(t: Task): QuestCardData {
     category,
     xp: t.points,
     image: t.image_url || coverForCategory(t.category),
+    verification_type: t.verification_type,
     timer: timeLeft(t.deadline),
     status:
       state === "verified"

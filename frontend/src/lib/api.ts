@@ -24,7 +24,7 @@ export interface Task {
   category: string;
   image_url?: string | null;
   points: number;
-  verification_type: "onchain_tx" | "nft_ownership" | "social_api" | "manual";
+  verification_type: "onchain_tx" | "nft_ownership" | "social_api" | "manual" | "instant";
   requirements?: Record<string, unknown>;
   repeatable: boolean;
   status: "draft" | "published" | "archived";

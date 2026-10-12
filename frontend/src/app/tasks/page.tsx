@@ -277,22 +277,29 @@ export default function TasksPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${catColor}`}>
-                      {q.category}
-                    </span>
-                    <div className="flex items-center gap-1 text-ink-4 font-mono text-[10px] font-bold">
-                      <TrendingUp className="w-3 h-3" />
-                      <span>Skill Track</span>
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-lg font-heading font-bold text-ink leading-tight group-hover:text-accent-fg transition-colors mb-2">
-                    {q.title}
-                  </h3>
-                  <div className="text-sm text-ink-4 line-clamp-3 mb-2 leading-relaxed">
-                    <LinkifiedText text={q.description} />
-                  </div>
+                  {(() => {
+                    const isInstant = q.verification_type === "instant" || (q.verification_type === "manual" && (q.title || "").toLowerCase().includes("welcome bonus"));
+                    const isSocial = q.verification_type === "social_api" || /twitter|x\.com|follow|retweet|repost|like|xspace|space/i.test(`${q.title} ${q.description}`);
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${catColor}`}>
+                            {q.category}
+                          </span>
+                          <span className="px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase tracking-wider bg-ink/5 text-ink-3 border border-ink/5">
+                            {isInstant ? "Instant Claim" : isSocial ? "Social" : q.verification_type === "onchain_tx" ? "Onchain" : "Proof of Work"}
+                          </span>
+                        </div>
+                        
+                        <h3 className="text-lg font-heading font-bold text-ink leading-tight group-hover:text-accent-fg transition-colors mb-2">
+                          {q.title}
+                        </h3>
+                        <div className="text-sm text-ink-4 line-clamp-3 mb-2 leading-relaxed">
+                          <LinkifiedText text={q.description} />
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Footer / Actions */}
@@ -307,30 +314,42 @@ export default function TasksPage() {
                     </span>
                   </div>
 
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/tasks/${q.id}`);
-                    }}
-                    className={`w-full py-2.5 rounded-xl font-heading text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                      isCompleted 
-                        ? 'bg-accent/15 text-accent-fg border border-accent/20 hover:bg-accent/25'
-                        : isPending
-                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20 hover:bg-amber-500/25'
-                        : 'bg-ink/5 text-ink group-hover:bg-accent group-hover:text-surface'
-                    }`}
-                  >
-                    <span>
-                      {isCompleted 
-                        ? 'View Quest (Completed)' 
-                        : isPending 
-                        ? 'View Submission (In Review)' 
-                        : q.category.toLowerCase() === 'hackathon' 
-                        ? 'Register Team' 
-                        : 'Start Quest'}
-                    </span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  {(() => {
+                    const isInstant = q.verification_type === "instant" || (q.verification_type === "manual" && (q.title || "").toLowerCase().includes("welcome bonus"));
+                    const isSocial = q.verification_type === "social_api" || /twitter|x\.com|follow|retweet|repost|like|xspace|space/i.test(`${q.title} ${q.description}`);
+                    return (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/tasks/${q.id}`);
+                        }}
+                        className={`w-full py-2.5 rounded-xl font-heading text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                          isCompleted 
+                            ? 'bg-accent/15 text-accent-fg border border-accent/20 hover:bg-accent/25'
+                            : isPending
+                            ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20 hover:bg-amber-500/25'
+                            : isInstant
+                            ? 'bg-accent text-surface font-bold hover:shadow-[0_0_20px_rgba(0,245,160,0.3)]'
+                            : 'bg-ink/5 text-ink group-hover:bg-accent group-hover:text-surface'
+                        }`}
+                      >
+                        <span>
+                          {isCompleted 
+                            ? 'View Quest (Completed)' 
+                            : isPending 
+                            ? 'View Submission (In Review)' 
+                            : isInstant
+                            ? `Claim Bonus (+${q.xp} XP)`
+                            : isSocial
+                            ? 'Start Social Quest'
+                            : q.category.toLowerCase() === 'hackathon' 
+                            ? 'Register Team' 
+                            : 'Start Quest'}
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    );
+                  })()}
                 </div>
               </article>
             );

@@ -48,7 +48,10 @@ async def create_task(body: TaskCreate, admin: User = Depends(require_admin), se
 async def update_task(task_id: int, body: TaskUpdate, admin: User = Depends(require_admin),
                       session: AsyncSession = Depends(get_session)):
     task = await _task_or_404(session, task_id)
-    task = await task_service.update_task(session, admin, task, body.model_dump(exclude_unset=True))
+    changes = body.model_dump(exclude_unset=True)
+    if "deadline" in changes:
+        changes["deadline"] = task_service.parse_deadline(changes["deadline"])
+    task = await task_service.update_task(session, admin, task, changes)
     await session.commit()
     return task
 

@@ -25,13 +25,16 @@ export function CampaignDrawer({ task, onClose, onSuccess }: CampaignDrawerProps
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!task) return;
-    if (task.verification_type !== "nft_ownership" && !evidence.trim()) return;
+    const isInstant = task.verification_type === "instant" || (task.verification_type === "manual" && (task.title || "").toLowerCase().includes("welcome bonus"));
+    if (!isInstant && task.verification_type !== "nft_ownership" && !evidence.trim()) return;
 
     try {
       setIsVerifying(true);
       setResult(null);
 
-      let payload: Record<string, unknown> = { text: evidence.trim() };
+      let payload: Record<string, unknown> = isInstant
+        ? { claim_type: "instant_bonus" }
+        : { text: evidence.trim(), url: evidence.trim() };
       if (task.verification_type === "onchain_tx") {
         payload = { tx_hash: evidence.trim() };
       } else if (task.verification_type === "nft_ownership") {
@@ -123,16 +126,24 @@ export function CampaignDrawer({ task, onClose, onSuccess }: CampaignDrawerProps
             </div>
             <div className="space-y-1 flex-1">
               <div className="text-ink font-semibold">
-                {task.verification_type === "onchain_tx"
+                {task.verification_type === "instant" || (task.verification_type === "manual" && (task.title || "").toLowerCase().includes("welcome bonus"))
+                  ? "Instant Bonus Reward"
+                  : task.verification_type === "onchain_tx"
                   ? "Submit On-Chain Transaction Hash"
                   : task.verification_type === "nft_ownership"
                   ? "Hold Required Club Badge or Pass"
-                  : "Submit Proof of Attendance / Contribution Link"}
+                  : task.verification_type === "social_api"
+                  ? "Submit X Proof (Screenshot or Quote Tweet Link)"
+                  : "Submit Proof of Contribution Link"}
               </div>
               <p className="text-[11px] text-ink-3 font-sans">
-                {task.verification_type === "onchain_tx"
+                {task.verification_type === "instant" || (task.verification_type === "manual" && (task.title || "").toLowerCase().includes("welcome bonus"))
+                  ? "No proof required. Claim + points instantly to your passport."
+                  : task.verification_type === "onchain_tx"
                   ? "Enter the transaction hash of your activity on Botchain."
-                  : "We'll verify your connected wallet automatically."}
+                  : task.verification_type === "social_api"
+                  ? "Enter quote tweet link, post URL, or image proof."
+                  : "We'll verify your submission for credential issuance."}
               </p>
             </div>
           </div>
@@ -141,17 +152,31 @@ export function CampaignDrawer({ task, onClose, onSuccess }: CampaignDrawerProps
         {/* Verification Form */}
         {walletAddress ? (
           <form onSubmit={handleVerify} className="space-y-3 text-xs">
-            {task.verification_type !== "nft_ownership" ? (
+            {task.verification_type === "instant" || (task.verification_type === "manual" && (task.title || "").toLowerCase().includes("welcome bonus")) ? (
+              <div className="border border-emerald-500/20 bg-emerald-500/10 rounded-xl p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                ⚡ Instant Claim: Click below to receive +{task.points} XP directly.
+              </div>
+            ) : task.verification_type !== "nft_ownership" ? (
               <div>
                 <label className="block text-[11px] text-ink-3 uppercase font-semibold mb-1">
-                  {task.verification_type === "onchain_tx" ? "Transaction Hash" : "Proof URL / Reference"}
+                  {task.verification_type === "onchain_tx"
+                    ? "Transaction Hash"
+                    : task.verification_type === "social_api"
+                    ? "Proof: Image URL or Quote Tweet Link"
+                    : "Proof URL / Reference"}
                 </label>
                 <input
                   type="text"
                   required
                   value={evidence}
                   onChange={(e) => setEvidence(e.target.value)}
-                  placeholder={task.verification_type === "onchain_tx" ? "0x7a8b...12cd" : "https://github.com/..."}
+                  placeholder={
+                    task.verification_type === "onchain_tx"
+                      ? "0x7a8b...12cd"
+                      : task.verification_type === "social_api"
+                      ? "https://x.com/... or image link"
+                      : "https://github.com/..."
+                  }
                   className="w-full bg-page border border-ink/[0.1] rounded-lg px-3.5 py-2.5 text-xs text-ink placeholder:text-ink-5 focus:outline-none focus:border-brand font-mono"
                 />
               </div>
@@ -163,7 +188,13 @@ export function CampaignDrawer({ task, onClose, onSuccess }: CampaignDrawerProps
 
             <button
               type="submit"
-              disabled={isVerifying || (task.verification_type !== "nft_ownership" && !evidence.trim())}
+              disabled={
+                isVerifying ||
+                (task.verification_type !== "nft_ownership" &&
+                  task.verification_type !== "instant" &&
+                  !((task.verification_type === "manual" && (task.title || "").toLowerCase().includes("welcome bonus"))) &&
+                  !evidence.trim())
+              }
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand hover:bg-brand-hi py-2.5 text-xs font-bold text-white transition disabled:opacity-40 cursor-pointer shadow-lg shadow-brand/20"
             >
               {isVerifying ? (
@@ -172,7 +203,9 @@ export function CampaignDrawer({ task, onClose, onSuccess }: CampaignDrawerProps
                 <CheckCircle2 className="h-4 w-4" />
               )}
               <span>
-                {task.verification_type === "nft_ownership"
+                {task.verification_type === "instant" || (task.verification_type === "manual" && (task.title || "").toLowerCase().includes("welcome bonus"))
+                  ? `CLAIM INSTANT BONUS (+${task.points} PTS)`
+                  : task.verification_type === "nft_ownership"
                   ? "VERIFY WALLET BADGE"
                   : "VERIFY & CLAIM REWARD"}
               </span>

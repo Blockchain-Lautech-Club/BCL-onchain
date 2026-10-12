@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.models import Task, TaskSubmission, User
 from app.models.base import utcnow
-from app.models.enums import SubmissionStatus, TaskStatus
+from app.models.enums import SubmissionStatus, TaskStatus, VerificationType
 from app.services import points_service
 from app.services.audit import log_action
 from app.services.notifications import notify
@@ -41,7 +41,12 @@ async def submit(session: AsyncSession, user: User, task_id: int, evidence: dict
     await session.flush()
 
     # Verification runs server-side only; browser-supplied status is ignored.
-    result = await get_verifier(task.verification_type).verify(task, user, evidence)
+    vtype = task.verification_type
+    if vtype == VerificationType.INSTANT or (vtype == VerificationType.MANUAL and "welcome bonus" in (task.title or "").lower()):
+        verifier = get_verifier(VerificationType.INSTANT)
+    else:
+        verifier = get_verifier(vtype)
+    result = await verifier.verify(task, user, evidence)
     sub.verification_result = {"status": result.status, "reason": result.reason, **result.data}
     sub.reason = result.reason
 
