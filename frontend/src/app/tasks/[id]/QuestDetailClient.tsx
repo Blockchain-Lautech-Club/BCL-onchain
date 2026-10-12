@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { QuestImage } from "@/components/quest/QuestImage";
 import { coverForCategory } from "@/lib/quests";
 import { getExplorerUrl } from "@/lib/contracts";
+import { LinkifiedText } from "@/components/common/LinkifiedText";
 
 export function QuestDetailClient() {
   const params = useParams();
@@ -40,7 +41,18 @@ export function QuestDetailClient() {
         ]);
         setTask(taskData);
         const userSub = subsData.find(s => s.task_id === numId);
-        if (userSub) setSubmission(userSub);
+        if (userSub) {
+          setSubmission(userSub);
+        } else if (taskData.my_state && taskData.my_state !== "not_started" && taskData.my_state !== "expired") {
+          setSubmission({
+            id: 0,
+            task_id: numId,
+            wallet: walletAddress || "",
+            status: taskData.my_state as "submitted" | "under_review" | "verified" | "rejected",
+            evidence: {},
+            created_at: new Date().toISOString(),
+          });
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -166,9 +178,9 @@ export function QuestDetailClient() {
             <h1 className="text-2xl sm:text-3xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">
               {task.title}
             </h1>
-            <p className="text-sm md:text-base text-ink-4 max-w-2xl leading-relaxed">
-              {task.description}
-            </p>
+            <div className="text-sm md:text-base text-ink-4 max-w-2xl leading-relaxed">
+              <LinkifiedText text={task.description} />
+            </div>
             
             {/* Dynamic Overall Progress Meter */}
             <div className="space-y-2 pt-2 max-w-md">
@@ -206,9 +218,9 @@ export function QuestDetailClient() {
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm text-ink flex items-center gap-2 font-semibold">
-                  <Lock className="text-accent-fg w-4 h-4" /> Gas Subsidies
+                  <Lock className="text-accent-fg w-4 h-4" /> Submission Limit
                 </span>
-                <span className="font-mono text-[10px] font-bold text-accent-fg uppercase tracking-wider">BCL Sponsored</span>
+                <span className="font-mono text-[10px] font-bold text-accent-fg uppercase tracking-wider">1 Per Builder</span>
               </div>
             </div>
           </div>
@@ -259,7 +271,7 @@ export function QuestDetailClient() {
             {!isVerified && (
               <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-accent text-surface font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-surface animate-pulse" />
-                ACTIVE CHECKPOINT
+                {hasSubmitted ? "STATUS" : "ACTIVE CHECKPOINT"}
               </div>
             )}
             
@@ -271,7 +283,7 @@ export function QuestDetailClient() {
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
                   )}
-                  <h3 className="text-xl font-heading font-bold text-ink">Submit Protocol Proof of Work</h3>
+                  <h3 className="text-xl font-heading font-bold text-ink">Protocol Proof of Work</h3>
                 </div>
                 <span className="font-mono text-sm text-amber-500 font-bold">+{task.points?.toLocaleString()} XP</span>
               </div>
@@ -279,14 +291,22 @@ export function QuestDetailClient() {
               <p className="text-sm text-ink-4 leading-relaxed">
                 {isVerified 
                   ? "Your submission has been successfully processed and recorded on-chain by the oracle consensus."
+                  : isPending
+                  ? "Your proof has been submitted and is currently in the verification pipeline. Each quest can only be submitted once."
+                  : isRejected
+                  ? "Your submission for this quest has concluded. Submissions cannot be made more than once."
                   : "Deliver the production interface deployment, transaction hash, or repository link required to satisfy this quest's parameters."}
               </p>
 
               {isVerified ? (
-                <div className="mt-4 pt-4 border-t border-ink/5">
+                <div className="mt-4 pt-4 border-t border-ink/5 space-y-3">
+                  <div className="flex items-center gap-2 text-accent-fg font-heading font-bold text-sm">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Consensus Achieved • Quest Completed</span>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-[10px] text-ink-4 font-bold flex items-center gap-1 uppercase tracking-wider">
-                      <Terminal className="w-3.5 h-3.5 text-accent-fg" /> Automated CI runner confirmed
+                      <Terminal className="w-3.5 h-3.5 text-accent-fg" /> Verified & Logged
                     </span>
                     <span className="text-ink/20">•</span>
                     {submission?.tx_hash ? (
@@ -296,6 +316,38 @@ export function QuestDetailClient() {
                     ) : (
                       <span className="font-mono text-[10px] font-bold text-accent-fg uppercase tracking-wider">100% Passed</span>
                     )}
+                  </div>
+                </div>
+              ) : isPending ? (
+                <div className="mt-4 pt-4 border-t border-ink/5 space-y-3">
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 space-y-2">
+                    <div className="flex items-center gap-2 font-heading font-bold text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Submission Awaiting Review</span>
+                    </div>
+                    <p className="text-xs text-ink-3">
+                      You have already submitted proof for this quest. Quests are limited to one submission per builder. Your submission is in the review queue.
+                    </p>
+                    {submission?.evidence && (
+                      <div className="pt-1 font-mono text-[11px] text-ink-4 truncate">
+                        Evidence submitted: <span className="text-ink font-semibold">{String(submission.evidence.url || submission.evidence.link || JSON.stringify(submission.evidence))}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : isRejected ? (
+                <div className="mt-4 pt-4 border-t border-ink/5 space-y-3">
+                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 space-y-2">
+                    <div className="flex items-center gap-2 font-heading font-bold text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Submission Concluded • Verification Not Approved</span>
+                    </div>
+                    <p className="text-xs text-ink-3">
+                      {submission?.reason || "This submission did not satisfy the verification guidelines."}
+                    </p>
+                    <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-ink-4">
+                      Each quest can only be submitted once.
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -311,39 +363,26 @@ export function QuestDetailClient() {
                         value={evidenceInput}
                         onChange={(e) => setEvidenceInput(e.target.value)}
                         className="w-full h-12 pl-12 pr-4 rounded-xl bg-ink/5 text-ink font-mono text-sm placeholder:text-ink-4/50 focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
-                        placeholder="https://github.com/..." 
+                        placeholder="https://github.com/... or 0x..." 
                         required 
-                        disabled={isPending || isSubmitting}
+                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-ink/5">
                     <span className="text-xs text-ink-4 font-medium">
-                      Oracle scanner validates commits within <span className="font-bold text-ink">{"<15 seconds"}</span>.
+                      One submission per builder. Please confirm link validity.
                     </span>
                     <button 
                       type="submit"
-                      disabled={isSubmitting || isPending}
+                      disabled={isSubmitting || !evidenceInput.trim()}
                       className="w-full sm:w-auto px-6 py-3 rounded-full bg-accent text-surface font-bold text-sm hover:shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                      <span>{isSubmitting ? "Verifying..." : isPending ? "Pending Audit" : "Verify Submission"}</span>
+                      <span>{isSubmitting ? "Submitting..." : "Verify Submission"}</span>
                     </button>
                   </div>
-
-                  {isPending && (
-                    <div className="p-3 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Triggering consensus RPC verification... Validating submission hash.</span>
-                    </div>
-                  )}
-                  {isRejected && (
-                    <div className="p-3 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Verification failed. Please review guidelines and submit valid proof.</span>
-                    </div>
-                  )}
                 </form>
               )}
             </div>
@@ -410,36 +449,32 @@ export function QuestDetailClient() {
             </div>
           </div>
 
-          {/* Contenders Activity Roster */}
-          <div className="p-6 rounded-2xl bg-surface border border-ink/5 shadow-sm space-y-5">
+          {/* Protocol Specifications */}
+          <div className="p-6 rounded-2xl bg-surface border border-ink/5 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="text-lg font-heading font-bold text-ink flex items-center gap-2">
-                <Users className="text-purple-500 w-5 h-5" />
-                <span>Contender Roster</span>
+                <Terminal className="text-accent-fg w-5 h-5" />
+                <span>Quest Specifications</span>
               </h4>
-              <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-500 font-bold tracking-wider uppercase">Active</span>
-            </div>
-            <p className="text-sm text-ink-4">
-              Pioneers collaborating across campus hubs and international dev relays.
-            </p>
-            
-            <div className="flex items-center -space-x-3 overflow-hidden py-1">
-              <div className="w-10 h-10 rounded-full border-2 border-surface bg-gradient-to-br from-accent to-blue-500" />
-              <div className="w-10 h-10 rounded-full border-2 border-surface bg-gradient-to-br from-purple-500 to-pink-500" />
-              <div className="w-10 h-10 rounded-full border-2 border-surface bg-gradient-to-br from-amber-500 to-red-500" />
-              <div className="w-10 h-10 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center font-mono text-[10px] text-ink font-bold backdrop-blur-sm">
-                +42
-              </div>
+              <span className="font-mono text-[10px] px-2.5 py-1 rounded-full bg-accent/10 text-accent-fg font-bold tracking-wider uppercase">Enforced</span>
             </div>
             
-            <div className="space-y-2 pt-2 text-sm">
-              <div className="flex items-center justify-between p-2 rounded-lg bg-ink/5 border border-ink/5">
-                <span className="text-ink font-bold font-mono text-xs">campus-lead.bcl</span>
-                <span className="font-mono text-[10px] text-accent-fg font-bold uppercase">Verified 3m ago</span>
+            <div className="space-y-2 pt-1 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-ink/5 border border-ink/5">
+                <span className="text-ink-4 uppercase font-mono font-bold text-[10px]">Verification Model</span>
+                <span className="text-ink font-bold font-mono uppercase">{task.verification_type || "Manual Review"}</span>
               </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-ink/5 border border-ink/5">
-                <span className="text-ink font-bold font-mono text-xs">arch-solvers.bcl</span>
-                <span className="font-mono text-[10px] text-ink-4 font-bold uppercase">Verified 14m ago</span>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-ink/5 border border-ink/5">
+                <span className="text-ink-4 uppercase font-mono font-bold text-[10px]">Submission Policy</span>
+                <span className="text-accent-fg font-bold font-mono">1 Submission Per Builder</span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-ink/5 border border-ink/5">
+                <span className="text-ink-4 uppercase font-mono font-bold text-[10px]">XP Reward</span>
+                <span className="text-amber-500 font-bold font-mono">+{task.points?.toLocaleString()} XP</span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-ink/5 border border-ink/5">
+                <span className="text-ink-4 uppercase font-mono font-bold text-[10px]">Replay Protection</span>
+                <span className="text-purple-500 font-bold font-mono">Cryptographic Hash Check</span>
               </div>
             </div>
           </div>

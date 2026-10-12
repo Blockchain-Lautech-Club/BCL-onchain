@@ -13,6 +13,7 @@ import {
   DailyQuizCreate,
 } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
+import { LinkifiedText } from "@/components/common/LinkifiedText";
 import {
   Shield,
   Loader2,
@@ -785,7 +786,9 @@ export default function AdminPage() {
                         {textProof && (
                           <div className="text-ink-2 break-words">
                             <span className="text-ink-4 mr-1.5 font-medium">Proof:</span>
-                            <span className="font-mono">{textProof}</span>
+                            <span className="font-mono">
+                              <LinkifiedText text={textProof} />
+                            </span>
                           </div>
                         )}
                         <div className="text-[10px] text-ink-4 flex items-center justify-between">
@@ -962,7 +965,9 @@ export default function AdminPage() {
                         <span className="text-xs font-bold text-accent-fg font-mono">+{task.points} PTS</span>
                       </div>
                       <h4 className="text-sm font-bold font-heading text-ink">{task.title}</h4>
-                      <p className="text-xs text-ink-3 line-clamp-2">{task.description}</p>
+                      <div className="text-xs text-ink-3 line-clamp-2">
+                        <LinkifiedText text={task.description} />
+                      </div>
                     </div>
 
                     {/* Quest actions */}

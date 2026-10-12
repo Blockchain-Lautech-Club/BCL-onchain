@@ -9,7 +9,8 @@ from app.api.deps import is_admin
 from app.api.routes.me import mint_out
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import DailyQuiz, DomainRecord, NFTMint, PointsLedger, TaskSubmission, User
+from app.models import DailyQuiz, DomainRecord, NFTMint, PointsLedger, Task, TaskSubmission, User
+from app.models.enums import SubmissionStatus, TaskStatus
 from app.models.base import as_utc, utcnow
 from app.schemas.profile import DomainOut, LeaderboardEntry, LedgerOut, MintOut, ProfileOut
 from app.services import auth_service, domain_service, level_service
@@ -278,3 +279,25 @@ async def resolve(name: str, session: AsyncSession = Depends(get_session)):
     if rec is None or rec.status != "active" or as_utc(rec.expires_at) <= utcnow():
         raise AppError(404, "name_not_found", "Name is not registered")
     return DomainOut.model_validate(rec)
+
+
+@router.get("/platform/stats")
+async def platform_stats(session: AsyncSession = Depends(get_session)):
+    total_users = (await session.execute(select(func.count(User.id)))).scalar() or 0
+    total_points = (await session.execute(select(func.coalesce(func.sum(User.total_points), 0)))).scalar() or 0
+    total_tasks_completed = (await session.execute(
+        select(func.count(TaskSubmission.id)).where(TaskSubmission.status == SubmissionStatus.VERIFIED)
+    )).scalar() or 0
+    total_active_tasks = (await session.execute(
+        select(func.count(Task.id)).where(Task.status == TaskStatus.PUBLISHED)
+    )).scalar() or 0
+    total_domains = (await session.execute(
+        select(func.count(DomainRecord.id)).where(DomainRecord.status == "active")
+    )).scalar() or 0
+    return {
+        "total_users": total_users,
+        "total_points_awarded": total_points,
+        "total_tasks_completed": total_tasks_completed,
+        "total_active_tasks": total_active_tasks,
+        "total_domains_registered": total_domains,
+    }

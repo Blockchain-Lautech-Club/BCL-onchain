@@ -488,21 +488,32 @@ export const api = {
     return request(`/leaderboard?limit=${limit}`);
   },
 
-  async getPlatformStats(): Promise<{ total_users: number; total_points_awarded: number; total_tasks_completed: number; total_domains_registered: number }> {
+  async getPlatformStats(): Promise<{
+    total_users: number;
+    total_points_awarded: number;
+    total_tasks_completed: number;
+    total_active_tasks: number;
+    total_domains_registered: number;
+  }> {
     try {
-      const [board, tasks] = await Promise.all([
-        request<LeaderboardEntry[]>("/leaderboard?limit=200").catch(() => []),
-        request<Task[]>("/tasks").catch(() => []),
-      ]);
-      const totalPoints = board.reduce((sum, u) => sum + (u.total_points || 0), 0);
-      return {
-        total_users: board.length,
-        total_points_awarded: totalPoints,
-        total_tasks_completed: tasks.length * 4,
-        total_domains_registered: board.filter(u => !!u.username).length,
-      };
+      return await request("/platform/stats");
     } catch {
-      return { total_users: 0, total_points_awarded: 0, total_tasks_completed: 0, total_domains_registered: 0 };
+      try {
+        const [board, tasks] = await Promise.all([
+          request<LeaderboardEntry[]>("/leaderboard?limit=200").catch(() => []),
+          request<Task[]>("/tasks").catch(() => []),
+        ]);
+        const totalPoints = board.reduce((sum, u) => sum + (u.total_points || 0), 0);
+        return {
+          total_users: board.length,
+          total_points_awarded: totalPoints,
+          total_tasks_completed: 0,
+          total_active_tasks: tasks.length,
+          total_domains_registered: board.filter(u => !!u.username).length,
+        };
+      } catch {
+        return { total_users: 0, total_points_awarded: 0, total_tasks_completed: 0, total_active_tasks: 0, total_domains_registered: 0 };
+      }
     }
   },
 

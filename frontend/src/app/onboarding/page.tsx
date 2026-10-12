@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import {
@@ -33,6 +33,11 @@ export default function OnboardingPage() {
   const [selectedGuild, setSelectedGuild] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [emailInput, setEmailInput] = useState("");
+  const [platformStats, setPlatformStats] = useState<{ total_users: number; total_tasks_completed: number; total_points_awarded: number } | null>(null);
+
+  useEffect(() => {
+    api.getPlatformStats().then(s => setPlatformStats(s)).catch(() => {});
+  }, []);
   const [studentId, setStudentId] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -384,7 +389,11 @@ export default function OnboardingPage() {
 
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-3 text-center">
-        {[{ v: "1,420+", l: "Onchain Passes Minted" }, { v: "38.4K+", l: "Quests Verified" }, { v: "1.2M+", l: "XP Distributed" }].map((s) => (
+        {[
+          { v: platformStats?.total_users != null ? `${platformStats.total_users}` : "...", l: "Builders Enrolled" },
+          { v: platformStats?.total_tasks_completed != null ? `${platformStats.total_tasks_completed}` : "...", l: "Quests Verified" },
+          { v: platformStats?.total_points_awarded != null ? `${platformStats.total_points_awarded.toLocaleString()} XP` : "...", l: "XP Distributed" }
+        ].map((s) => (
           <div key={s.l} className="stat-card">
             <div className="text-lg font-extrabold text-accent-fg font-heading num-mono">{s.v}</div>
             <div className="text-[10px] text-ink-5 mt-0.5">{s.l}</div>

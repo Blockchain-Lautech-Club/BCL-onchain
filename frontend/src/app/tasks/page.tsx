@@ -5,16 +5,19 @@ import { api, Task } from "@/lib/api";
 import { taskToCard, type QuestCardData } from "@/lib/quests";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { LinkifiedText } from "@/components/common/LinkifiedText";
 import { 
   Zap, Loader2, Search, Grid3X3, List, X, 
   ChevronDown, CheckCircle2, Clock, Terminal, 
   Award, ArrowRight, Shield, Hexagon, Play, 
-  Users, TrendingUp, Cpu
+  Users, TrendingUp, Cpu, AlertCircle
 } from "lucide-react";
 
 const CATEGORIES = ["All", "Community", "Social", "Learning", "Developer", "Creator", "Events", "Hackathon", "Partner", "Beginner"];
 
 export default function TasksPage() {
+  const router = useRouter();
   const { walletAddress, connectWallet, refreshUserData, stats } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [category, setCategory] = useState("All");
@@ -232,15 +235,16 @@ export default function TasksPage() {
         <div className={`grid gap-6 ${view === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1 lg:grid-cols-2"}`}>
           {filtered.map((q) => {
             const catColor = getCategoryColor(q.category);
-            const isCompleted = false; // Add real completed check if available via API
+            const isCompleted = q.status === "complete";
+            const isPending = q.status === "submitted" || q.status === "under_review";
+            const isRejected = q.status === "rejected";
 
             return (
               <article 
                 key={q.id} 
-                className={`group relative flex flex-col justify-between rounded-2xl bg-surface border border-ink/5 p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer ${isCompleted ? 'opacity-80' : ''}`}
+                className={`group relative flex flex-col justify-between rounded-2xl bg-surface border border-ink/5 p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer ${isCompleted ? 'opacity-85' : ''}`}
                 onClick={() => {
-                  if (!walletAddress) connectWallet();
-                  else setSelectedTask(q);
+                  router.push(`/tasks/${q.id}`);
                 }}
               >
                 {q.category.toLowerCase() === 'hackathon' && (
@@ -258,17 +262,17 @@ export default function TasksPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                     
                     {/* Top Left Badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
-                      <span className={`w-1.5 h-1.5 rounded-full ${q.category.toLowerCase() === 'hackathon' ? 'bg-red-500' : 'bg-accent'}`} />
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+                      <span className={`w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-accent' : isPending ? 'bg-amber-500' : q.category.toLowerCase() === 'hackathon' ? 'bg-red-500' : 'bg-accent'}`} />
                       <span className="font-mono text-[10px] text-white font-bold uppercase tracking-wider">
-                        {q.category.toLowerCase() === 'hackathon' ? 'Advanced' : 'Active'}
+                        {isCompleted ? 'Completed' : isPending ? 'In Review' : q.category.toLowerCase() === 'hackathon' ? 'Advanced' : 'Active'}
                       </span>
                     </div>
                     
                     {/* Top Right Badge */}
                     <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono text-[10px] font-bold">
                       <Clock className="w-3 h-3" />
-                      <span>7d left</span>
+                      <span>{q.timer || "7d left"}</span>
                     </div>
                   </div>
 
@@ -286,9 +290,9 @@ export default function TasksPage() {
                   <h3 className="text-lg font-heading font-bold text-ink leading-tight group-hover:text-accent-fg transition-colors mb-2">
                     {q.title}
                   </h3>
-                  <p className="text-sm text-ink-4 line-clamp-2">
-                    {q.description}
-                  </p>
+                  <div className="text-sm text-ink-4 line-clamp-3 mb-2 leading-relaxed">
+                    <LinkifiedText text={q.description} />
+                  </div>
                 </div>
 
                 {/* Footer / Actions */}
@@ -299,12 +303,32 @@ export default function TasksPage() {
                       <span className="font-mono text-sm font-bold">+{q.xp.toLocaleString()} XP</span>
                     </div>
                     <span className="text-xs text-ink-4 font-semibold truncate max-w-[130px]">
-                      {q.category.toLowerCase() === 'hackathon' ? 'Major Reward' : 'Verification Badge'}
+                      {isCompleted ? '✓ Awarded' : q.category.toLowerCase() === 'hackathon' ? 'Major Reward' : 'Verification Badge'}
                     </span>
                   </div>
 
-                  <button className="w-full py-2.5 rounded-xl bg-ink/5 text-ink font-heading text-sm font-bold flex items-center justify-center gap-2 group-hover:bg-accent group-hover:text-surface transition-all">
-                    <span>{q.category.toLowerCase() === 'hackathon' ? 'Register Team' : 'Start Quest'}</span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/tasks/${q.id}`);
+                    }}
+                    className={`w-full py-2.5 rounded-xl font-heading text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                      isCompleted 
+                        ? 'bg-accent/15 text-accent-fg border border-accent/20 hover:bg-accent/25'
+                        : isPending
+                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20 hover:bg-amber-500/25'
+                        : 'bg-ink/5 text-ink group-hover:bg-accent group-hover:text-surface'
+                    }`}
+                  >
+                    <span>
+                      {isCompleted 
+                        ? 'View Quest (Completed)' 
+                        : isPending 
+                        ? 'View Submission (In Review)' 
+                        : q.category.toLowerCase() === 'hackathon' 
+                        ? 'Register Team' 
+                        : 'Start Quest'}
+                    </span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -356,36 +380,66 @@ export default function TasksPage() {
                 </span>
               </div>
               <h3 className="font-heading font-bold text-xl sm:text-2xl text-ink leading-tight mb-2 pr-8">{selectedTask.title}</h3>
-              <p className="text-xs sm:text-sm text-ink-4 leading-relaxed">{selectedTask.description}</p>
+              <div className="text-xs sm:text-sm text-ink-4 leading-relaxed">
+                <LinkifiedText text={selectedTask.description} />
+              </div>
             </div>
             
             <div className="flex items-center gap-2 p-2.5 sm:p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 w-fit">
               <Zap className="w-4 h-4 fill-amber-500" />
               <span className="font-mono text-xs sm:text-sm font-bold">+{selectedTask.xp.toLocaleString()} XP</span>
             </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-ink/5">
-              <div>
-                <label className="block font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider mb-1.5 sm:mb-2">
-                  Proof / Evidence URL
-                </label>
-                <input
-                  type="text"
-                  value={evidenceInput}
-                  onChange={(e) => setEvidenceInput(e.target.value)}
-                  placeholder="https://github.com/... or 0x..."
-                  className="w-full bg-ink/[0.03] border border-ink/10 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-ink placeholder:text-ink-4/60 focus:outline-none focus:border-accent/50 focus:bg-surface transition-all font-mono"
-                />
+
+            {selectedTask.status === "complete" ? (
+              <div className="p-4 rounded-xl bg-accent/10 border border-accent/20 text-accent-fg space-y-1">
+                <div className="flex items-center gap-2 font-heading font-bold text-sm">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Quest Completed</span>
+                </div>
+                <p className="text-xs text-ink-3">You have already completed this quest and received XP.</p>
               </div>
-              <button
-                type="submit"
-                disabled={isSubmitting || !evidenceInput.trim()}
-                className="w-full py-3 sm:py-3.5 rounded-full bg-ink text-surface text-xs sm:text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-ink-3 transition-colors"
-              >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-                {isSubmitting ? "Verifying..." : "Submit Proof"}
-              </button>
-            </form>
+            ) : selectedTask.status === "under_review" || selectedTask.status === "submitted" ? (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 space-y-1">
+                <div className="flex items-center gap-2 font-heading font-bold text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Submission Under Review</span>
+                </div>
+                <p className="text-xs text-ink-3">Your proof has been submitted. Quests are limited to one submission per builder.</p>
+              </div>
+            ) : selectedTask.status === "rejected" ? (
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 space-y-1">
+                <div className="flex items-center gap-2 font-heading font-bold text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>Submission Concluded</span>
+                </div>
+                <p className="text-xs text-ink-3">This quest has already been submitted and cannot be resubmitted.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-ink/5">
+                <div>
+                  <label className="block font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider mb-1.5 sm:mb-2">
+                    Proof / Evidence URL
+                  </label>
+                  <input
+                    type="text"
+                    value={evidenceInput}
+                    onChange={(e) => setEvidenceInput(e.target.value)}
+                    placeholder="https://github.com/... or 0x..."
+                    className="w-full bg-ink/[0.03] border border-ink/10 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-ink placeholder:text-ink-4/60 focus:outline-none focus:border-accent/50 focus:bg-surface transition-all font-mono"
+                    required
+                  />
+                  <span className="block text-[11px] text-ink-4 mt-1">1 submission per builder. Please ensure proof is valid.</span>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !evidenceInput.trim()}
+                  className="w-full py-3 sm:py-3.5 rounded-full bg-ink text-surface text-xs sm:text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-ink-3 transition-colors"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                  <span>{isSubmitting ? "Verifying..." : "Submit Proof"}</span>
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

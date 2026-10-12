@@ -26,10 +26,14 @@ async def submit(session: AsyncSession, user: User, task_id: int, evidence: dict
             select(TaskSubmission.status).where(TaskSubmission.task_id == task.id, TaskSubmission.user_id == user.id)
         )
     ).scalars().all()
-    if SubmissionStatus.UNDER_REVIEW in prior:
-        raise AppError(409, "already_pending", "You already have a submission awaiting review")
-    if not task.repeatable and SubmissionStatus.VERIFIED in prior:
-        raise AppError(409, "already_completed", "You already completed this task")
+    if not task.repeatable and prior:
+        if SubmissionStatus.VERIFIED in prior:
+            raise AppError(409, "already_completed", "You have already completed this quest")
+        if SubmissionStatus.UNDER_REVIEW in prior or SubmissionStatus.SUBMITTED in prior:
+            raise AppError(409, "already_pending", "You already have a submission awaiting review for this quest")
+        raise AppError(409, "already_submitted", "You have already submitted this quest. Quests can only be submitted once.")
+    if task.repeatable and (SubmissionStatus.UNDER_REVIEW in prior or SubmissionStatus.SUBMITTED in prior):
+        raise AppError(409, "already_pending", "You already have a submission awaiting review for this quest")
 
     sub = TaskSubmission(task_id=task.id, user_id=user.id, wallet=user.wallet_address, evidence=evidence,
                          status=SubmissionStatus.SUBMITTED)

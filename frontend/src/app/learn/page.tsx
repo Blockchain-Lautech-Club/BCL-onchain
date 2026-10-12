@@ -92,7 +92,7 @@ export default function LearnPage() {
               <div className="w-8 h-8 rounded-full border-2 border-surface bg-gradient-to-br from-amber-500 to-red-500" />
             </div>
             <span className="font-mono text-[10px] font-bold text-ink-4 uppercase tracking-wider">
-              <strong className="text-ink">1,420+</strong> campus builders active
+              <strong className="text-ink">Active</strong> campus builders track
             </span>
           </div>
         </div>
