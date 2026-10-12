@@ -177,57 +177,57 @@ export default function RewardsPage() {
   }
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-10">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-10 overflow-x-hidden">
 
       {/* ── Hero Telemetry & Balance Banner ─────────────────────────────────────────── */}
-      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 overflow-hidden shadow-sm">
+      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 p-4 sm:p-6 md:p-10 overflow-hidden shadow-sm">
         <div className="absolute -right-16 -top-24 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
         <div className="absolute right-1/3 -bottom-20 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 sm:gap-8">
           
           {/* Titles & Narrative */}
-          <div className="max-w-2xl flex flex-col gap-3">
+          <div className="max-w-2xl flex flex-col gap-2.5 sm:gap-3">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ink/5 text-ink w-fit shadow-sm border border-ink/5">
               <span className="w-1.5 h-1.5 rounded-full bg-accent-fg shadow-[0_0_8px_rgba(0,245,160,0.8)] animate-pulse" />
               <span className="font-mono text-[10px] uppercase font-bold tracking-wider">Treasury Synced</span>
               <span className="text-ink-4 text-[10px] font-bold">/ ERC-1155 Validated</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight break-words">
               Reward Vault & Milestones
             </h1>
-            <p className="text-sm md:text-base text-ink-4 max-w-xl leading-relaxed">
+            <p className="text-xs sm:text-sm md:text-base text-ink-4 max-w-xl leading-relaxed">
               Convert your verified on-chain effort and XP into cryptographic milestone badges. All NFTs are soulbound to your identity.
             </p>
           </div>
           
           {/* Quick Metrics HUD Card */}
-          <div className="w-full lg:w-auto shrink-0 flex flex-col sm:flex-row items-stretch gap-4 bg-surface/80 backdrop-blur-xl border border-ink/5 p-4 rounded-2xl shadow-sm">
+          <div className="w-full lg:w-auto shrink-0 flex flex-col sm:flex-row items-stretch gap-3 sm:gap-4 bg-surface/80 backdrop-blur-xl border border-ink/5 p-3.5 sm:p-4 rounded-2xl shadow-sm">
             
             {/* Total XP */}
-            <div className="flex flex-col justify-between p-4 bg-ink/[0.03] rounded-xl min-w-[170px] border border-ink/5">
+            <div className="flex flex-col justify-between p-3.5 sm:p-4 bg-ink/[0.03] rounded-xl flex-1 sm:min-w-[170px] border border-ink/5">
               <div className="flex items-center justify-between text-ink-4 mb-2">
                 <span className="font-mono text-[10px] uppercase font-bold tracking-wider">Accumulated XP</span>
                 <Zap className="w-4 h-4 text-amber-500" />
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-heading font-bold text-amber-500">{currentPoints.toLocaleString()}</span>
+                <span className="text-2xl sm:text-3xl font-heading font-bold text-amber-500">{currentPoints.toLocaleString()}</span>
                 <span className="font-mono text-[10px] text-ink-4 font-bold">BCL-XP</span>
               </div>
               <div className="flex items-center gap-1.5 mt-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-fg" />
-                <span className="font-mono text-[10px] font-bold text-accent-fg">{claimable.length} Items Eligible Now</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-fg shrink-0" />
+                <span className="font-mono text-[10px] font-bold text-accent-fg truncate">{claimable.length} Items Eligible Now</span>
               </div>
             </div>
             
             {/* Tier */}
-            <div className="flex flex-col justify-between p-4 bg-ink/[0.03] rounded-xl min-w-[190px] border border-ink/5">
+            <div className="flex flex-col justify-between p-3.5 sm:p-4 bg-ink/[0.03] rounded-xl flex-1 sm:min-w-[190px] border border-ink/5">
               <div className="flex items-center justify-between text-ink-4 mb-2">
                 <span className="font-mono text-[10px] uppercase font-bold tracking-wider">Current Tier</span>
                 <Award className="w-4 h-4 text-purple-500" />
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-heading font-bold text-ink">Level {currentLevel}</span>
+                <span className="text-2xl sm:text-3xl font-heading font-bold text-ink">Level {currentLevel}</span>
               </div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mt-2 rounded bg-ink/5 text-ink font-mono text-[10px] font-bold w-fit">
                 <Star className="w-3 h-3 text-purple-500" />
@@ -239,10 +239,10 @@ export default function RewardsPage() {
         </div>
         
         {/* Callout Pill */}
-        <div className="relative z-10 mt-8 pt-6 border-t border-ink/5 flex flex-wrap items-center justify-between gap-4">
+        <div className="relative z-10 mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-ink/5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-accent-fg shrink-0" />
-            <span className="text-sm text-ink-4">
+            <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-accent-fg shrink-0" />
+            <span className="text-xs sm:text-sm text-ink-4">
               Milestone claims permanently bind soulbound credentials to your identity.
             </span>
           </div>
@@ -257,7 +257,7 @@ export default function RewardsPage() {
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
           
           {/* Horizontal Scrollable Category Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
             {[
               { id: "all",     label: `All Milestones (${milestones.length})` },
               { id: "ready",   label: `Ready to Claim (${claimable.length})` },
@@ -266,7 +266,7 @@ export default function RewardsPage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id as "all" | "ready" | "pending")}
-                className={`shrink-0 px-5 py-2.5 rounded-full font-mono text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm ${
+                className={`shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm ${
                   tab === t.id
                     ? "bg-accent/20 text-accent-fg border border-accent/30"
                     : "bg-surface border border-ink/5 text-ink-4 hover:text-ink hover:bg-ink/5"
@@ -278,7 +278,7 @@ export default function RewardsPage() {
           </div>
           
           {/* Search & Sort Controls */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
             <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-4" />
               <input 
@@ -289,26 +289,28 @@ export default function RewardsPage() {
                 type="text" 
               />
             </div>
-            <div className="relative shrink-0">
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none bg-surface border border-ink/10 text-ink text-sm font-semibold pl-4 pr-10 py-2.5 rounded-xl cursor-pointer focus:outline-none focus:border-accent/40 shadow-inner"
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:flex-none">
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full sm:w-auto appearance-none bg-surface border border-ink/10 text-ink text-xs sm:text-sm font-semibold pl-3.5 pr-9 py-2.5 rounded-xl cursor-pointer focus:outline-none focus:border-accent/40 shadow-inner"
+                >
+                  <option value="featured">Sort: Featured</option>
+                  <option value="xp-low">XP: Low to High</option>
+                  <option value="xp-high">XP: High to Low</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-4 pointer-events-none" />
+              </div>
+              <button
+                onClick={load}
+                disabled={loading}
+                className="p-2.5 rounded-xl bg-surface border border-ink/10 text-ink-4 hover:text-ink transition-colors shadow-inner shrink-0"
+                title="Refresh"
               >
-                <option value="featured">Sort: Featured</option>
-                <option value="xp-low">XP: Low to High</option>
-                <option value="xp-high">XP: High to Low</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-4 pointer-events-none" />
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-accent-fg" : ""}`} />
+              </button>
             </div>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="p-2.5 rounded-xl bg-surface border border-ink/10 text-ink-4 hover:text-ink transition-colors shadow-inner"
-              title="Refresh"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-accent-fg" : ""}`} />
-            </button>
           </div>
         </div>
       </section>

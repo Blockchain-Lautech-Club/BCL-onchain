@@ -84,50 +84,50 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-6 sm:py-8 flex flex-col overflow-x-hidden">
       
       {/* 1. Discovery Hero & Metrics Header */}
-      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 overflow-hidden shadow-sm mb-8">
+      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 p-4 sm:p-6 md:p-10 overflow-hidden shadow-sm mb-6 sm:mb-8">
         <div className="absolute -right-16 -top-24 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-20 -bottom-24 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-8">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ink/5 text-accent-fg mb-4 shadow-sm border border-ink/5">
-              <Hexagon className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ink/5 text-accent-fg mb-3 sm:mb-4 shadow-sm border border-ink/5">
+              <Hexagon className="w-4 h-4 shrink-0" />
               <span className="font-mono text-[10px] uppercase font-bold tracking-wider">On-Chain Achievement Engine</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold text-ink tracking-tight mb-3">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-heading font-extrabold text-ink tracking-tight mb-2 sm:mb-3 break-words">
               Quests Discovery
             </h1>
-            <p className="text-sm sm:text-base text-ink-4 max-w-xl">
+            <p className="text-xs sm:text-sm md:text-base text-ink-4 max-w-xl leading-relaxed">
               Do more. Learn more. Contribute more. Earn more. Validate cryptographic mastery across decentralized campus hubs.
             </p>
           </div>
           
           {/* High-Precision Telemetry Strips */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full lg:w-auto shrink-0">
-            <div className="p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
-              <span className="font-mono text-[10px] uppercase font-bold text-ink-4 tracking-wider">Active Quests</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
+            <div className="p-3 sm:p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
+              <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold text-ink-4 tracking-wider">Active Quests</span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl font-heading font-bold text-ink">{loading ? "..." : publishedCount}</span>
-                <span className="font-mono text-[10px] text-accent-fg font-bold">+6 new</span>
+                <span className="text-xl sm:text-2xl font-heading font-bold text-ink">{loading ? "..." : publishedCount}</span>
+                <span className="font-mono text-[9px] sm:text-[10px] text-accent-fg font-bold">+6 new</span>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
-              <span className="font-mono text-[10px] uppercase font-bold text-ink-4 tracking-wider">Total XP Pool</span>
+            <div className="p-3 sm:p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
+              <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold text-ink-4 tracking-wider">Total XP Pool</span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl font-heading font-bold text-amber-500">
+                <span className="text-xl sm:text-2xl font-heading font-bold text-amber-500">
                   {loading ? "..." : totalXpPool >= 1000 ? `${(totalXpPool / 1000).toFixed(1)}K` : totalXpPool}
                 </span>
-                <span className="font-mono text-[10px] text-amber-500 font-bold">XP</span>
+                <span className="font-mono text-[9px] sm:text-[10px] text-amber-500 font-bold">XP</span>
               </div>
             </div>
-            <div className="col-span-2 sm:col-span-1 p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
-              <span className="font-mono text-[10px] uppercase font-bold text-ink-4 tracking-wider">Your Verification</span>
+            <div className="col-span-2 sm:col-span-1 p-3 sm:p-4 rounded-xl bg-ink/[0.03] border border-ink/5 flex flex-col justify-center">
+              <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold text-ink-4 tracking-wider">Your Verification</span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-2xl font-heading font-bold text-accent-fg">{loading ? "..." : `${verificationRate}%`}</span>
-                <span className="font-mono text-[10px] text-ink-4 font-bold">{verifiedCount} Done</span>
+                <span className="text-xl sm:text-2xl font-heading font-bold text-accent-fg">{loading ? "..." : `${verificationRate}%`}</span>
+                <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 font-bold">{verifiedCount} Done</span>
               </div>
             </div>
           </div>
@@ -324,24 +324,24 @@ export default function TasksPage() {
       )}
 
       {/* 4. Bottom Interactive Protocol Callout */}
-      <section className="mt-16 rounded-2xl bg-gradient-to-br from-page via-surface to-page border border-ink/5 p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm relative overflow-hidden">
+      <section className="mt-12 sm:mt-16 rounded-2xl bg-gradient-to-br from-page via-surface to-page border border-ink/5 p-5 sm:p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 shadow-sm relative overflow-hidden">
         <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-accent/10 to-transparent pointer-events-none" />
         
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10 text-center sm:text-left">
-          <div className="w-16 h-16 rounded-2xl bg-surface border border-ink/10 flex items-center justify-center text-accent-fg shrink-0 shadow-sm">
-            <Cpu className="w-8 h-8" />
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 relative z-10 text-center sm:text-left">
+          <div className="w-13 h-13 sm:w-16 sm:h-16 p-3 rounded-2xl bg-surface border border-ink/10 flex items-center justify-center text-accent-fg shrink-0 shadow-sm">
+            <Cpu className="w-7 h-7 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h4 className="text-2xl font-heading font-bold text-ink mb-2">Have a Quest or Hackathon to Sponsor?</h4>
-            <p className="text-sm text-ink-4 max-w-lg">Deploy verified task criteria and XP rewards directly to the BCL ecosystem for 4,000+ certified student developers to solve.</p>
+            <h4 className="text-xl sm:text-2xl font-heading font-bold text-ink mb-1.5 sm:mb-2">Have a Quest or Hackathon to Sponsor?</h4>
+            <p className="text-xs sm:text-sm text-ink-4 max-w-lg leading-relaxed">Deploy verified task criteria and XP rewards directly to the BCL ecosystem for 4,000+ certified student developers to solve.</p>
           </div>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto relative z-10">
-          <button className="w-full sm:w-auto px-6 py-3 rounded-full bg-surface border border-ink/10 text-ink hover:bg-ink/5 transition-all text-sm font-bold">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full md:w-auto relative z-10">
+          <button className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-full bg-surface border border-ink/10 text-ink hover:bg-ink/5 transition-all text-xs sm:text-sm font-bold">
             Read Docs
           </button>
-          <button className="w-full sm:w-auto px-6 py-3 rounded-full bg-ink text-surface hover:shadow-lg transition-all text-sm font-bold flex items-center justify-center gap-2">
+          <button className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-full bg-ink text-surface hover:shadow-lg transition-all text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
             Submit Quest RFP <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -349,33 +349,33 @@ export default function TasksPage() {
 
       {/* 5. Submit Modal */}
       {selectedTask && walletAddress && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-3xl border border-ink/10 bg-surface p-8 space-y-5 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3.5 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-ink/10 bg-surface p-5 sm:p-8 space-y-4 sm:space-y-5 shadow-2xl relative">
             <button 
               onClick={() => { setSelectedTask(null); setEvidenceInput(""); }} 
-              className="absolute top-6 right-6 text-ink-4 hover:text-ink transition-colors bg-ink/5 p-2 rounded-full"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 text-ink-4 hover:text-ink transition-colors bg-ink/5 p-2 rounded-full"
             >
               <X className="w-4 h-4" />
             </button>
             
             <div>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3">
                 <span className={`px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${getCategoryColor(selectedTask.category)}`}>
                   {selectedTask.category}
                 </span>
               </div>
-              <h3 className="font-heading font-bold text-2xl text-ink leading-tight mb-2 pr-8">{selectedTask.title}</h3>
-              <p className="text-sm text-ink-4">{selectedTask.description}</p>
+              <h3 className="font-heading font-bold text-xl sm:text-2xl text-ink leading-tight mb-2 pr-8">{selectedTask.title}</h3>
+              <p className="text-xs sm:text-sm text-ink-4 leading-relaxed">{selectedTask.description}</p>
             </div>
             
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 w-fit">
+            <div className="flex items-center gap-2 p-2.5 sm:p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 w-fit">
               <Zap className="w-4 h-4 fill-amber-500" />
-              <span className="font-mono text-sm font-bold">+{selectedTask.xp.toLocaleString()} XP</span>
+              <span className="font-mono text-xs sm:text-sm font-bold">+{selectedTask.xp.toLocaleString()} XP</span>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-ink/5">
               <div>
-                <label className="block font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider mb-2">
+                <label className="block font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider mb-1.5 sm:mb-2">
                   Proof / Evidence URL
                 </label>
                 <input
@@ -383,13 +383,13 @@ export default function TasksPage() {
                   value={evidenceInput}
                   onChange={(e) => setEvidenceInput(e.target.value)}
                   placeholder="https://github.com/... or 0x..."
-                  className="w-full bg-ink/[0.03] border border-ink/10 rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-4/60 focus:outline-none focus:border-accent/50 focus:bg-surface transition-all font-mono"
+                  className="w-full bg-ink/[0.03] border border-ink/10 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-ink placeholder:text-ink-4/60 focus:outline-none focus:border-accent/50 focus:bg-surface transition-all font-mono"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSubmitting || !evidenceInput.trim()}
-                className="w-full py-3.5 rounded-full bg-ink text-surface text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-ink-3 transition-colors"
+                className="w-full py-3 sm:py-3.5 rounded-full bg-ink text-surface text-xs sm:text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-ink-3 transition-colors"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
                 {isSubmitting ? "Verifying..." : "Submit Proof"}

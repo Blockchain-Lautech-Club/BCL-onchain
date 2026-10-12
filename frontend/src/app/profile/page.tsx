@@ -301,17 +301,17 @@ export default function ProfilePage() {
   const strokeDashoffset = circumference - (levelProgress / 100) * circumference;
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8 overflow-x-hidden">
 
       {/* 1. Breadcrumb */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 font-mono text-[10px] sm:text-xs text-ink-4 font-bold uppercase tracking-wider">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 font-mono text-[10px] sm:text-xs text-ink-4 font-bold uppercase tracking-wider truncate">
           <span>Network</span>
           <span className="text-ink/20">/</span>
-          <span className="text-accent-fg">{displayName}</span>
+          <span className="text-accent-fg truncate">{displayName}</span>
           <span className="px-2 py-0.5 rounded-full bg-ink/5 text-ink ml-2 shadow-sm border border-ink/5 hidden sm:inline-block">ERC-6551 Bound</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="w-2 h-2 rounded-full bg-accent-fg animate-ping" />
           <span className="font-mono text-[10px] text-ink-4 font-bold uppercase">Synched L2 Node</span>
         </div>
@@ -319,21 +319,21 @@ export default function ProfilePage() {
 
       {/* 1.5 Setup Profile Alert if no username */}
       {(!profile?.username && !user?.username) && (
-        <div className="relative overflow-hidden rounded-2xl bg-amber-500/10 border border-amber-500/25 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
-              <Fingerprint className="w-6 h-6" />
+        <div className="relative overflow-hidden rounded-2xl bg-amber-500/10 border border-amber-500/25 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-3.5 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+              <Fingerprint className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h2 className="text-base font-bold font-heading text-ink">Complete Your Profile Identity</h2>
-              <p className="text-xs text-ink-3 mt-0.5">
+              <h2 className="text-sm sm:text-base font-bold font-heading text-ink">Complete Your Profile Identity</h2>
+              <p className="text-[11px] sm:text-xs text-ink-3 mt-0.5 leading-relaxed">
                 Choose a unique username to activate your citizen passport, earn XP points, and claim .bcl domains.
               </p>
             </div>
           </div>
           <button
             onClick={() => setIsEditing(true)}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-accent text-surface font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md hover:opacity-90 shrink-0"
+            className="w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-full bg-accent text-surface font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md hover:opacity-90 shrink-0"
           >
             <Edit3 className="w-4 h-4" /> Set Username Now
           </button>
@@ -341,7 +341,7 @@ export default function ProfilePage() {
       )}
 
       {/* 2. Hero Passport Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl bg-surface border border-ink/5 p-4 sm:p-6 md:p-10 shadow-sm">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
 
@@ -717,19 +717,19 @@ export default function ProfilePage() {
 
       {/* ── Edit Profile Modal ──────────────────────────────────────────── */}
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-3xl border border-ink/10 bg-surface p-8 space-y-6 shadow-2xl relative my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3.5 sm:p-4 animate-in fade-in overflow-y-auto">
+          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-ink/10 bg-surface p-4 sm:p-8 space-y-5 sm:space-y-6 shadow-2xl relative my-auto">
 
             {/* Header */}
-            <div className="flex items-center gap-3 border-b border-ink/5 pb-4">
-              <div className="w-10 h-10 rounded-xl bg-ink/5 flex items-center justify-center text-ink">
-                <Edit3 className="w-5 h-5" />
+            <div className="flex items-center gap-3 border-b border-ink/5 pb-4 pr-10">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-ink/5 flex items-center justify-center text-ink shrink-0">
+                <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h3 className="text-xl font-bold font-heading text-ink">Edit Sovereign Identity</h3>
-                <p className="text-xs text-ink-4 mt-0.5">Your profile is stored onchain and synced across the ecosystem.</p>
+              <div className="min-w-0">
+                <h3 className="text-lg sm:text-xl font-bold font-heading text-ink truncate">Edit Sovereign Identity</h3>
+                <p className="text-[11px] sm:text-xs text-ink-4 mt-0.5 truncate">Your profile is stored onchain and synced across the ecosystem.</p>
               </div>
-              <button onClick={() => setIsEditing(false)} className="absolute top-8 right-8 text-ink-4 hover:text-ink bg-ink/5 p-2 rounded-full transition-colors">
+              <button onClick={() => setIsEditing(false)} className="absolute top-4 right-4 sm:top-6 sm:right-6 text-ink-4 hover:text-ink bg-ink/5 p-2 rounded-full transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>

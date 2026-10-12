@@ -166,87 +166,89 @@ export default function LeaderboardPage() {
   const percentile = myEntry ? Math.max(1, Math.round((myEntry.rank / totalMembers) * 100)) : 0;
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-10">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-6 sm:py-8 flex flex-col gap-8 sm:gap-10 overflow-x-hidden">
       
       {/* 1. Header Section */}
-      <section className="relative z-10 pt-4">
+      <section className="relative z-10 pt-2 sm:pt-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface border border-ink/5 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-accent-fg animate-pulse" />
-              <span className="font-mono text-[10px] text-accent-fg font-bold uppercase tracking-wider">Season 02: Genesis Acceleration • Active</span>
+          <div className="space-y-2 sm:space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface border border-ink/5 shadow-sm max-w-full">
+              <span className="w-2 h-2 rounded-full bg-accent-fg animate-pulse shrink-0" />
+              <span className="font-mono text-[10px] text-accent-fg font-bold uppercase tracking-wider truncate">Season 02: Genesis Acceleration • Active</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">BCL Onchain Leaderboard</h1>
-            <p className="text-sm md:text-base text-ink-4 leading-relaxed max-w-xl">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight break-words">BCL Onchain Leaderboard</h1>
+            <p className="text-xs sm:text-sm md:text-base text-ink-4 leading-relaxed max-w-xl">
               Recognizing consistent builders, creators, researchers, and campus ambassadors across the LAUTECH ecosystem.
             </p>
           </div>
           
           {/* Telemetry Pill */}
-          <div className="flex items-center gap-4 bg-surface border border-ink/5 px-6 py-4 rounded-2xl shadow-sm">
-            <div className="text-right">
+          <div className="flex items-center justify-between sm:justify-start gap-4 bg-surface border border-ink/5 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-sm w-full sm:w-auto">
+            <div className="text-left sm:text-right">
               <p className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider">Ecosystem Pool</p>
-              <p className="text-xl font-heading font-bold text-accent-fg">14,250 BCL</p>
+              <p className="text-lg sm:text-xl font-heading font-bold text-accent-fg">14,250 BCL</p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-ink/5 flex items-center justify-center text-accent-fg shadow-inner border border-ink/5">
-              <Trophy className="w-6 h-6" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-ink/5 flex items-center justify-center text-accent-fg shadow-inner border border-ink/5 shrink-0">
+              <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
         </div>
 
         {/* User Current Standing Pinned Banner */}
         {walletAddress && myEntry && (
-          <div className="mt-8 rounded-2xl bg-surface border border-ink/5 p-6 shadow-sm relative overflow-hidden">
+          <div className="mt-6 sm:mt-8 rounded-2xl bg-surface border border-ink/5 p-4 sm:p-6 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-accent/10 to-transparent pointer-events-none" />
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 sm:gap-6 relative z-10">
               
-              <div className="flex items-center gap-4">
-                <div className="relative">
+              <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 w-full sm:w-auto">
+                <div className="relative shrink-0">
                   {renderAvatar(
                     myEntry.avatar_url || (walletAddress && myEntry.wallet_address.toLowerCase() === walletAddress.toLowerCase() ? user?.avatar_url : null),
                     myEntry.username || myEntry.wallet_address,
-                    "w-14 h-14 text-2xl",
+                    "w-12 h-12 sm:w-14 sm:h-14 text-xl sm:text-2xl",
                     "from-purple-600 to-blue-700"
                   )}
-                  <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent text-surface flex items-center justify-center font-mono text-[10px] font-bold border-2 border-surface">
+                  <span className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-accent text-surface flex items-center justify-center font-mono text-[9px] sm:text-[10px] font-bold border-2 border-surface">
                     {myEntry.level}
                   </span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg font-heading font-bold text-ink">{myDomain || myEntry.bcl_domain || myEntry.username || `${myEntry.wallet_address.slice(0, 6)}…${myEntry.wallet_address.slice(-4)}`}</span>
-                    <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                    <span className="text-base sm:text-lg font-heading font-bold text-ink truncate max-w-[200px] sm:max-w-none">
+                      {myDomain || myEntry.bcl_domain || myEntry.username || `${myEntry.wallet_address.slice(0, 6)}…${myEntry.wallet_address.slice(-4)}`}
+                    </span>
+                    <CheckCircle2 className="w-4 h-4 text-accent-fg shrink-0" />
                     {(myDomain || myEntry.bcl_domain || myEntry.username?.endsWith(".bcl")) && (
-                      <span className="px-2 py-0.5 rounded-full bg-accent/15 text-accent-fg font-mono text-[10px] font-bold border border-accent/25">.bcl</span>
+                      <span className="px-1.5 py-0.2 rounded-full bg-accent/15 text-accent-fg font-mono text-[9px] font-bold border border-accent/25 shrink-0">.bcl</span>
                     )}
-                    <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent-fg font-mono text-[10px] font-bold">You</span>
+                    <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent-fg font-mono text-[9px] font-bold shrink-0">You</span>
                   </div>
-                  <p className="text-xs text-ink-4">Level {myEntry.level} Pioneer • Ecosystem Contributor</p>
+                  <p className="text-[11px] sm:text-xs text-ink-4 truncate">Level {myEntry.level} Pioneer • Ecosystem Contributor</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full lg:w-auto flex-1 max-w-2xl mx-auto">
-                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
-                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Current Rank</span>
-                  <span className="text-xl font-heading text-accent-fg font-bold">#{myEntry.rank}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full lg:w-auto flex-1 max-w-2xl mx-auto">
+                <div className="bg-ink/[0.03] border border-ink/5 px-3 sm:px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-0.5 sm:mb-1">Current Rank</span>
+                  <span className="text-lg sm:text-xl font-heading text-accent-fg font-bold">#{myEntry.rank}</span>
                 </div>
-                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
-                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Total XP</span>
-                  <span className="text-xl font-heading text-ink font-bold">{myEntry.total_points.toLocaleString()}</span>
+                <div className="bg-ink/[0.03] border border-ink/5 px-3 sm:px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-0.5 sm:mb-1">Total XP</span>
+                  <span className="text-lg sm:text-xl font-heading text-ink font-bold">{myEntry.total_points.toLocaleString()}</span>
                 </div>
-                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
-                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Streak Status</span>
-                  <span className="text-xl font-heading text-amber-500 font-bold flex items-center gap-1">{stats?.streak_days ?? 0}d <Flame className="w-4 h-4"/></span>
+                <div className="bg-ink/[0.03] border border-ink/5 px-3 sm:px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-0.5 sm:mb-1">Streak</span>
+                  <span className="text-lg sm:text-xl font-heading text-amber-500 font-bold flex items-center gap-1">{stats?.streak_days ?? 0}d <Flame className="w-3.5 h-3.5"/></span>
                 </div>
-                <div className="bg-ink/[0.03] border border-ink/5 px-4 py-2 rounded-xl">
-                  <span className="font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-1">Percentile</span>
-                  <span className="text-xl font-heading text-purple-500 font-bold">Top {percentile}%</span>
+                <div className="bg-ink/[0.03] border border-ink/5 px-3 sm:px-4 py-2 rounded-xl">
+                  <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 uppercase font-bold tracking-wider block mb-0.5 sm:mb-1">Percentile</span>
+                  <span className="text-lg sm:text-xl font-heading text-purple-500 font-bold">Top {percentile}%</span>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto shrink-0 justify-between lg:justify-end">
-                <Link href="/tasks" className="px-6 py-3 rounded-full bg-accent text-surface font-bold text-sm hover:shadow-[0_0_20px_rgba(0,245,160,0.3)] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shrink-0">
-                  <Zap className="w-4 h-4" /> Push Rank with Quests
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
+                <Link href="/tasks" className="btn-green px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-xs sm:text-sm font-bold flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 shadow-md">
+                  <Zap className="w-4 h-4 shrink-0" /> Push Rank with Quests
                 </Link>
               </div>
             </div>
@@ -258,41 +260,41 @@ export default function LeaderboardPage() {
       {loading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent-fg" /></div>
       ) : top3.length > 0 ? (
-        <section className="py-8">
-          <div className="flex flex-col md:flex-row items-end justify-center gap-6 pt-10">
+        <section className="py-4 sm:py-8">
+          <div className="flex flex-col md:flex-row items-stretch md:items-end justify-center gap-6 pt-6 sm:pt-10">
             
             {/* #2 Silver */}
             {silver && (
-              <div className="w-full md:w-1/3 order-2 md:order-1 bg-surface border border-ink/5 rounded-2xl p-6 relative shadow-sm flex flex-col items-center text-center transform transition-transform hover:-translate-y-1">
-                <div className="absolute -top-6 w-12 h-12 rounded-full bg-surface border border-ink/10 flex items-center justify-center shadow-sm">
-                  <span className="text-xl font-heading text-ink font-bold">#2</span>
+              <div className="w-full md:w-1/3 order-2 md:order-1 bg-surface border border-ink/5 rounded-2xl p-5 sm:p-6 relative shadow-sm flex flex-col items-center text-center transform transition-transform hover:-translate-y-1">
+                <div className="absolute -top-5 sm:-top-6 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-surface border border-ink/10 flex items-center justify-center shadow-sm">
+                  <span className="text-lg sm:text-xl font-heading text-ink font-bold">#2</span>
                 </div>
                 <div className="mt-4 relative">
                   {renderAvatar(
                     silver.avatar_url || (walletAddress && silver.wallet_address.toLowerCase() === walletAddress.toLowerCase() ? user?.avatar_url : null),
                     silver.username || silver.wallet_address,
-                    "w-20 h-20 text-3xl",
+                    "w-16 h-16 sm:w-20 sm:h-20 text-2xl sm:text-3xl",
                     "from-slate-400 to-slate-600"
                   )}
-                  <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{silver.level}</span>
+                  <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[9px] sm:text-[10px] font-bold">L{silver.level}</span>
                 </div>
                 <div className="mt-3">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span className="text-lg font-heading text-ink font-bold">{silverDisplayName}</span>
-                    <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    <span className="text-base sm:text-lg font-heading text-ink font-bold">{silverDisplayName}</span>
+                    <CheckCircle2 className="w-4 h-4 text-accent-fg shrink-0" />
                     {silverDisplayName.endsWith(".bcl") && (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25">.bcl</span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25 shrink-0">.bcl</span>
                     )}
                   </div>
                 </div>
-                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
+                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-4 sm:mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
                   <div>
-                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
-                    <span className="text-lg font-heading text-ink font-bold">{silver.total_points.toLocaleString()}</span>
+                    <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
+                    <span className="text-base sm:text-lg font-heading text-ink font-bold">{silver.total_points.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
-                    <span className="text-lg font-heading text-accent-fg font-bold">Silver</span>
+                    <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
+                    <span className="text-base sm:text-lg font-heading text-accent-fg font-bold">Silver</span>
                   </div>
                 </div>
               </div>
@@ -300,39 +302,39 @@ export default function LeaderboardPage() {
 
             {/* #1 Gold */}
             {gold && (
-              <div className="w-full md:w-1/3 order-1 md:order-2 bg-surface border border-amber-500/20 rounded-2xl p-8 relative shadow-lg flex flex-col items-center text-center -mt-6 transform transition-transform hover:-translate-y-2">
+              <div className="w-full md:w-1/3 order-1 md:order-2 bg-surface border border-amber-500/20 rounded-2xl p-6 sm:p-8 relative shadow-lg flex flex-col items-center text-center mt-0 md:-mt-6 transform transition-transform hover:-translate-y-2">
                 <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent rounded-2xl pointer-events-none" />
-                <div className="absolute -top-8 w-16 h-16 rounded-full bg-amber-500 text-white flex flex-col items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.4)] border-4 border-surface">
-                  <Crown className="w-5 h-5 -mb-1" />
-                  <span className="text-xl font-heading font-bold leading-none">#1</span>
+                <div className="absolute -top-6 sm:-top-8 w-13 h-13 sm:w-16 sm:h-16 p-2 rounded-full bg-amber-500 text-white flex flex-col items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.4)] border-4 border-surface">
+                  <Crown className="w-4 h-4 sm:w-5 sm:h-5 -mb-0.5 sm:-mb-1" />
+                  <span className="text-lg sm:text-xl font-heading font-bold leading-none">#1</span>
                 </div>
                 <div className="mt-4 relative">
                   {renderAvatar(
                     gold.avatar_url || (walletAddress && gold.wallet_address.toLowerCase() === walletAddress.toLowerCase() ? user?.avatar_url : null),
                     gold.username || gold.wallet_address,
-                    "w-24 h-24 text-4xl shadow-xl shadow-amber-500/20",
+                    "w-20 h-20 sm:w-24 sm:h-24 text-3xl sm:text-4xl shadow-xl shadow-amber-500/20",
                     "from-amber-400 to-amber-600"
                   )}
-                  <span className="absolute bottom-0 right-1 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{gold.level}</span>
+                  <span className="absolute bottom-0 right-1 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[9px] sm:text-[10px] font-bold">L{gold.level}</span>
                 </div>
                 <div className="mt-4">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span className="text-2xl font-heading text-ink font-bold tracking-tight">{goldDisplayName}</span>
-                    <CheckCircle2 className="w-5 h-5 text-amber-500" />
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    <span className="text-xl sm:text-2xl font-heading text-ink font-bold tracking-tight">{goldDisplayName}</span>
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />
                     {goldDisplayName.endsWith(".bcl") && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">.bcl</span>
+                      <span className="px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30 shrink-0">.bcl</span>
                     )}
                   </div>
-                  <span className="inline-block mt-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold uppercase tracking-wider">Apex Contributor</span>
+                  <span className="inline-block mt-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Apex Contributor</span>
                 </div>
-                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-4 mt-6 grid grid-cols-2 gap-2 text-center shadow-inner">
+                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3.5 sm:p-4 mt-5 sm:mt-6 grid grid-cols-2 gap-2 text-center shadow-inner">
                   <div>
-                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
-                    <span className="text-xl font-heading text-amber-500 font-bold">{gold.total_points.toLocaleString()}</span>
+                    <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
+                    <span className="text-lg sm:text-xl font-heading text-amber-500 font-bold">{gold.total_points.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
-                    <span className="text-xl font-heading text-ink font-bold">Gold</span>
+                    <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
+                    <span className="text-lg sm:text-xl font-heading text-ink font-bold">Gold</span>
                   </div>
                 </div>
               </div>
@@ -340,36 +342,36 @@ export default function LeaderboardPage() {
 
             {/* #3 Bronze */}
             {bronze && (
-              <div className="w-full md:w-1/3 order-3 bg-surface border border-ink/5 rounded-2xl p-6 relative shadow-sm flex flex-col items-center text-center transform transition-transform hover:-translate-y-1">
-                <div className="absolute -top-6 w-12 h-12 rounded-full bg-surface border border-ink/10 flex items-center justify-center shadow-sm">
-                  <span className="text-xl font-heading text-orange-500 font-bold">#3</span>
+              <div className="w-full md:w-1/3 order-3 bg-surface border border-ink/5 rounded-2xl p-5 sm:p-6 relative shadow-sm flex flex-col items-center text-center transform transition-transform hover:-translate-y-1">
+                <div className="absolute -top-5 sm:-top-6 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-surface border border-ink/10 flex items-center justify-center shadow-sm">
+                  <span className="text-lg sm:text-xl font-heading text-orange-500 font-bold">#3</span>
                 </div>
                 <div className="mt-4 relative">
                   {renderAvatar(
                     bronze.avatar_url || (walletAddress && bronze.wallet_address.toLowerCase() === bronze.wallet_address.toLowerCase() ? user?.avatar_url : null),
                     bronze.username || bronze.wallet_address,
-                    "w-20 h-20 text-3xl",
+                    "w-16 h-16 sm:w-20 sm:h-20 text-2xl sm:text-3xl",
                     "from-orange-400 to-red-500"
                   )}
-                  <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[10px] font-bold">L{bronze.level}</span>
+                  <span className="absolute bottom-0 right-0 px-2 py-0.5 rounded-full bg-surface border border-ink/10 text-ink-4 font-mono text-[9px] sm:text-[10px] font-bold">L{bronze.level}</span>
                 </div>
                 <div className="mt-3">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span className="text-lg font-heading text-ink font-bold">{bronzeDisplayName}</span>
-                    <CheckCircle2 className="w-4 h-4 text-accent-fg" />
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    <span className="text-base sm:text-lg font-heading text-ink font-bold">{bronzeDisplayName}</span>
+                    <CheckCircle2 className="w-4 h-4 text-accent-fg shrink-0" />
                     {bronzeDisplayName.endsWith(".bcl") && (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25">.bcl</span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25 shrink-0">.bcl</span>
                     )}
                   </div>
                 </div>
-                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
+                <div className="w-full bg-ink/[0.03] border border-ink/5 rounded-xl p-3 mt-4 sm:mt-5 grid grid-cols-2 gap-2 text-center shadow-inner">
                   <div>
-                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
-                    <span className="text-lg font-heading text-ink font-bold">{bronze.total_points.toLocaleString()}</span>
+                    <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 block uppercase font-bold mb-1">Total XP</span>
+                    <span className="text-base sm:text-lg font-heading text-ink font-bold">{bronze.total_points.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
-                    <span className="text-lg font-heading text-orange-500 font-bold">Bronze</span>
+                    <span className="font-mono text-[9px] sm:text-[10px] text-ink-4 block uppercase font-bold mb-1">Rank</span>
+                    <span className="text-base sm:text-lg font-heading text-orange-500 font-bold">Bronze</span>
                   </div>
                 </div>
               </div>
@@ -441,54 +443,94 @@ export default function LeaderboardPage() {
               const isMe = Boolean(walletAddress && entry.wallet_address.toLowerCase() === walletAddress.toLowerCase());
               const displayName = getDisplayName(entry, isMe, myDomain);
               return (
-                <div key={entry.rank} className={`grid grid-cols-1 lg:grid-cols-12 gap-4 items-center px-6 lg:px-8 py-5 hover:bg-ink/[0.02] transition-colors relative ${isMe ? "bg-accent/[0.03]" : ""}`}>
+                <div key={entry.rank} className={`px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 lg:py-5 hover:bg-ink/[0.02] transition-colors relative ${isMe ? "bg-accent/[0.03]" : ""}`}>
                   {isMe && <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-fg" />}
                   
-                  {/* Rank */}
-                  <div className="flex items-center justify-between lg:col-span-1">
-                    <span className="text-xl font-heading font-bold text-ink">#{entry.rank}</span>
-                  </div>
+                  {/* Desktop Layout: 12-col grid */}
+                  <div className="hidden lg:grid grid-cols-12 gap-4 items-center">
+                    {/* Rank */}
+                    <div className="col-span-1">
+                      <span className="text-xl font-heading font-bold text-ink">#{entry.rank}</span>
+                    </div>
 
-                  {/* Citizen */}
-                  <div className="lg:col-span-5 flex items-center gap-4">
-                    {renderAvatar(
-                      entry.avatar_url || (isMe ? user?.avatar_url : null),
-                      displayName,
-                      "w-10 h-10 text-lg",
-                      "from-slate-600 to-slate-800"
-                    )}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-base font-heading font-bold text-ink truncate">{displayName}</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg shrink-0" />
-                        {displayName.endsWith(".bcl") && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25">
-                            .bcl
-                          </span>
-                        )}
-                        {isMe && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-accent/10 text-accent-fg ml-1">You</span>}
+                    {/* Citizen */}
+                    <div className="col-span-5 flex items-center gap-4 min-w-0">
+                      {renderAvatar(
+                        entry.avatar_url || (isMe ? user?.avatar_url : null),
+                        displayName,
+                        "w-10 h-10 text-lg",
+                        "from-slate-600 to-slate-800"
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-base font-heading font-bold text-ink truncate">{displayName}</span>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg shrink-0" />
+                          {displayName.endsWith(".bcl") && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25 shrink-0">
+                              .bcl
+                            </span>
+                          )}
+                          {isMe && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-accent/10 text-accent-fg ml-1 shrink-0">You</span>}
+                        </div>
+                        <span className="font-mono text-[10px] text-ink-4 block truncate">{entry.wallet_address.slice(0, 10)}...{entry.wallet_address.slice(-4)}</span>
                       </div>
-                      <span className="font-mono text-[10px] text-ink-4 block truncate">{entry.wallet_address.slice(0, 10)}...{entry.wallet_address.slice(-4)}</span>
+                    </div>
+
+                    {/* Level */}
+                    <div className="col-span-2 flex items-center justify-center">
+                      <span className="px-3 py-1 rounded-full bg-ink/5 font-mono text-[11px] font-bold text-ink">L{entry.level}</span>
+                    </div>
+
+                    {/* XP */}
+                    <div className="col-span-2 flex items-center justify-end">
+                      <span className="text-lg font-heading font-bold text-ink">{entry.total_points.toLocaleString()}</span>
+                    </div>
+
+                    {/* Action */}
+                    <div className="col-span-2 flex items-center justify-end">
+                      <button className="px-4 py-2 rounded-xl bg-ink/5 hover:bg-ink/10 text-ink text-xs font-bold transition-colors">
+                        Passport
+                      </button>
                     </div>
                   </div>
 
-                  {/* Level */}
-                  <div className="flex items-center justify-between lg:justify-center lg:col-span-2">
-                    <span className="lg:hidden text-xs text-ink-4 font-bold uppercase">Level:</span>
-                    <span className="px-3 py-1 rounded-full bg-ink/5 font-mono text-[11px] font-bold text-ink">L{entry.level}</span>
-                  </div>
+                  {/* Mobile Layout: Compact, single-scan row */}
+                  <div className="lg:hidden flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <span className="text-sm sm:text-base font-heading font-extrabold text-ink min-w-[28px] shrink-0">
+                        #{entry.rank}
+                      </span>
+                      {renderAvatar(
+                        entry.avatar_url || (isMe ? user?.avatar_url : null),
+                        displayName,
+                        "w-9 h-9 sm:w-10 sm:h-10 text-base",
+                        "from-slate-600 to-slate-800"
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-heading font-bold text-ink truncate">{displayName}</span>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg shrink-0" />
+                          {displayName.endsWith(".bcl") && (
+                            <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-accent/15 text-accent-fg border border-accent/25 shrink-0">
+                              .bcl
+                            </span>
+                          )}
+                          {isMe && <span className="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase bg-accent/10 text-accent-fg shrink-0">You</span>}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-[10px] text-ink-4 truncate">{entry.wallet_address.slice(0, 6)}...{entry.wallet_address.slice(-4)}</span>
+                          <span className="text-ink-4 text-[9px]">•</span>
+                          <span className="font-mono text-[10px] font-bold text-accent-fg">L{entry.level}</span>
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* XP */}
-                  <div className="flex items-center justify-between lg:justify-end lg:col-span-2">
-                    <span className="lg:hidden text-xs text-ink-4 font-bold uppercase">XP:</span>
-                    <span className="text-lg font-heading font-bold text-ink">{entry.total_points.toLocaleString()}</span>
-                  </div>
-
-                  {/* Action */}
-                  <div className="flex items-center justify-end lg:col-span-2">
-                    <button className="px-4 py-2 rounded-xl bg-ink/5 hover:bg-ink/10 text-ink text-xs font-bold transition-colors">
-                      Passport
-                    </button>
+                    <div className="flex flex-col items-end shrink-0 pl-1">
+                      <span className="text-sm sm:text-base font-heading font-bold text-ink num-mono">{entry.total_points.toLocaleString()} XP</span>
+                      <button className="mt-1 px-2.5 py-1 rounded-lg bg-ink/5 hover:bg-ink/10 text-ink text-[10px] font-bold transition-colors">
+                        Passport
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
