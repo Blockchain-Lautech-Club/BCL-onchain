@@ -34,6 +34,8 @@ import {
   Edit3,
   Calendar,
   Sparkles,
+  UserIcon,
+  BadgeCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -69,6 +71,8 @@ export default function AdminPage() {
     publish: true,
   });
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
+  const [togglingTaskId, setTogglingTaskId] = useState<number | null>(null);
 
   const [adminUsers, setAdminUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -441,6 +445,48 @@ export default function AdminPage() {
     }
   };
 
+  const handleDeleteTask = async (taskId: number, title: string) => {
+    if (!confirm(`Are you sure you want to permanently delete quest #${taskId} ("${title}")? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      setDeletingTaskId(taskId);
+      await api.deleteAdminTask(taskId);
+      toast.success(`Quest #${taskId} deleted successfully`);
+      await loadTasks();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete quest");
+    } finally {
+      setDeletingTaskId(null);
+    }
+  };
+
+  const handleArchiveTask = async (taskId: number) => {
+    try {
+      setTogglingTaskId(taskId);
+      await api.archiveAdminTask(taskId);
+      toast.success(`Quest #${taskId} archived`);
+      await loadTasks();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to archive quest");
+    } finally {
+      setTogglingTaskId(null);
+    }
+  };
+
+  const handlePublishTask = async (taskId: number) => {
+    try {
+      setTogglingTaskId(taskId);
+      await api.publishAdminTask(taskId);
+      toast.success(`Quest #${taskId} published`);
+      await loadTasks();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to publish quest");
+    } finally {
+      setTogglingTaskId(null);
+    }
+  };
+
   const handleAdjustPointsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustPointsModal) return;
@@ -675,14 +721,53 @@ export default function AdminPage() {
                     className="surface-card rounded-2xl p-5 border border-ink/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-4"
                   >
                     <div className="space-y-2 max-w-xl">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-bold text-ink text-sm">Submission #{sub.id}</span>
                         <span className="text-ink-4">•</span>
-                        <span className="text-xs text-ink-3">Quest ID #{sub.task_id}</span>
+                        <span className="text-xs text-ink-3">
+                          {sub.task_title ? `${sub.task_title} (Quest #${sub.task_id})` : `Quest ID #${sub.task_id}`}
+                        </span>
                         <span className="text-ink-4">•</span>
-                        <span className="text-ink-2 truncate font-mono text-[11px]">{sub.wallet}</span>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/25 text-accent-fg font-mono text-xs font-semibold">
+                          <UserIcon className="w-3 h-3 shrink-0" />
+                          <span>
+                            {sub.username ? `${sub.username}.bcl` : sub.wallet ? `${sub.wallet.slice(0, 6)}…${sub.wallet.slice(-4)}` : `User #${sub.user_id ?? "Unknown"}`}
+                          </span>
+                        </div>
                       </div>
-                      <div className="bg-page p-3 rounded-lg border border-ink/[0.06] space-y-1.5 text-xs font-sans">
+                      <div className="bg-page p-3 rounded-lg border border-ink/[0.06] space-y-2 text-xs font-sans">
+                        {/* Submitter Info Row */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-ink/[0.06]">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-ink-4 font-semibold text-[11px] uppercase tracking-wider">Submitter:</span>
+                            {sub.username && (
+                              <span className="font-bold text-ink flex items-center gap-1 bg-surface px-2 py-0.5 rounded border border-ink/5 text-xs">
+                                <span>{sub.username}.bcl</span>
+                                <BadgeCheck className="w-3.5 h-3.5 text-accent-fg shrink-0" />
+                              </span>
+                            )}
+                            {sub.wallet ? (
+                              <span className="font-mono text-ink-2 text-xs select-all bg-surface px-2 py-0.5 rounded border border-ink/5">
+                                {sub.wallet}
+                              </span>
+                            ) : sub.user_id ? (
+                              <span className="font-mono text-ink-3 text-xs">User ID: #{sub.user_id}</span>
+                            ) : null}
+                          </div>
+                          {sub.wallet && (
+                            <a
+                              href={getExplorerUrl(sub.wallet, "address")}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-accent-fg hover:underline inline-flex items-center gap-1 text-[11px] font-mono shrink-0"
+                              title="View submitter on Botchain explorer"
+                            >
+                              <span>View Wallet</span>
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                            </a>
+                          )}
+                        </div>
+
                         {txHash && (
                           <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 text-xs">
                             <span className="text-ink-4 font-sans">Tx:</span>
@@ -699,12 +784,13 @@ export default function AdminPage() {
                         )}
                         {textProof && (
                           <div className="text-ink-2 break-words">
-                            <span className="text-ink-4 mr-1.5">Proof:</span>
-                            {textProof}
+                            <span className="text-ink-4 mr-1.5 font-medium">Proof:</span>
+                            <span className="font-mono">{textProof}</span>
                           </div>
                         )}
-                        <div className="text-[10px] text-ink-4">
-                          Received: {new Date(sub.created_at).toLocaleString()}
+                        <div className="text-[10px] text-ink-4 flex items-center justify-between">
+                          <span>Received: {new Date(sub.created_at).toLocaleString()}</span>
+                          {sub.user_id && <span className="font-mono text-ink-5">UID: #{sub.user_id}</span>}
                         </div>
                       </div>
                     </div>
@@ -852,18 +938,72 @@ export default function AdminPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tasks.map((task) => (
-                <div key={task.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-ink-3 uppercase font-mono">
-                      #{task.id} • {task.verification_type}
-                    </span>
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">+{task.points} PTS</span>
+              {tasks.map((task) => {
+                const isPublished = task.status === "published";
+                const isArchived = task.status === "archived";
+                return (
+                  <div key={task.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] flex flex-col justify-between gap-3 shadow-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-ink-3 uppercase font-mono font-bold">
+                            #{task.id} • {task.verification_type}
+                          </span>
+                          <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full border ${
+                            isPublished
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                              : isArchived
+                              ? "bg-ink/5 text-ink-4 border-ink/10"
+                              : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                          }`}>
+                            {task.status || "active"}
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-accent-fg font-mono">+{task.points} PTS</span>
+                      </div>
+                      <h4 className="text-sm font-bold font-heading text-ink">{task.title}</h4>
+                      <p className="text-xs text-ink-3 line-clamp-2">{task.description}</p>
+                    </div>
+
+                    {/* Quest actions */}
+                    <div className="pt-2 border-t border-ink/[0.04] flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {isPublished ? (
+                          <button
+                            onClick={() => handleArchiveTask(task.id)}
+                            disabled={togglingTaskId === task.id}
+                            className="text-[11px] font-semibold text-ink-3 hover:text-ink bg-ink/5 hover:bg-ink/10 px-2.5 py-1 rounded-lg transition cursor-pointer disabled:opacity-50"
+                          >
+                            {togglingTaskId === task.id ? "Archiving..." : "Archive"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handlePublishTask(task.id)}
+                            disabled={togglingTaskId === task.id}
+                            className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg transition cursor-pointer disabled:opacity-50"
+                          >
+                            {togglingTaskId === task.id ? "Publishing..." : "Publish"}
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteTask(task.id, task.title)}
+                        disabled={deletingTaskId === task.id}
+                        className="flex items-center gap-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1 rounded-lg transition cursor-pointer disabled:opacity-50"
+                        title="Permanently delete quest"
+                      >
+                        {deletingTaskId === task.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                        <span>Delete Quest</span>
+                      </button>
+                    </div>
                   </div>
-                  <h4 className="text-sm font-bold font-heading text-ink">{task.title}</h4>
-                  <p className="text-xs text-ink-3 line-clamp-2">{task.description}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

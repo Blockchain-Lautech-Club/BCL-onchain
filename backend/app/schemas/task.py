@@ -69,6 +69,10 @@ class SubmissionOut(BaseModel):
 
     id: int
     task_id: int
+    task_title: str | None = None
+    user_id: int | None = None
+    wallet: str | None = None
+    username: str | None = None
     status: str
     reason: str | None
     evidence: dict

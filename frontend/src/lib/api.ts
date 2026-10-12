@@ -35,8 +35,10 @@ export interface Task {
 export interface TaskSubmission {
   id: number;
   task_id: number;
-  user_id: number;
-  wallet: string;
+  task_title?: string;
+  user_id?: number;
+  wallet?: string;
+  username?: string;
   evidence: Record<string, unknown>;
   status: "submitted" | "under_review" | "verified" | "rejected";
   reason?: string;
@@ -529,6 +531,10 @@ export const api = {
 
   async archiveAdminTask(taskId: number): Promise<Task> {
     return request(`/admin/tasks/${taskId}/archive`, { method: "POST" });
+  },
+
+  async deleteAdminTask(taskId: number): Promise<{ ok: boolean; deleted_id: number; title: string }> {
+    return request(`/admin/tasks/${taskId}`, { method: "DELETE" });
   },
 
   async getAdminSubmissions(status = "under_review"): Promise<TaskSubmission[]> {

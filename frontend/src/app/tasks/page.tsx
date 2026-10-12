@@ -303,15 +303,6 @@ export default function TasksPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-ink-4 font-mono text-[10px] font-bold mb-4">
-                    <div className="flex items-center -space-x-2">
-                      <span className="w-6 h-6 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center text-[8px] text-ink">U1</span>
-                      <span className="w-6 h-6 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center text-[8px] text-accent-fg">U2</span>
-                      <span className="w-6 h-6 rounded-full border-2 border-surface bg-ink/10 flex items-center justify-center text-[8px] text-purple-500">U3</span>
-                    </div>
-                    <span>342 Joined</span>
-                  </div>
-
                   <button className="w-full py-2.5 rounded-xl bg-ink/5 text-ink font-heading text-sm font-bold flex items-center justify-center gap-2 group-hover:bg-accent group-hover:text-surface transition-all">
                     <span>{q.category.toLowerCase() === 'hackathon' ? 'Register Team' : 'Start Quest'}</span>
                     <ArrowRight className="w-4 h-4" />

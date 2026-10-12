@@ -41,15 +41,21 @@ export function NavbarClient() {
     }
   }, [walletAddress, pathname, router]);
 
-  // Close profile popup on outside click
+  // Close menus on route change
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    setMobileOpen(false);
+    setProfileOpen(false);
+  }, [pathname]);
+
+  // Close profile popup on outside click/tap
+  useEffect(() => {
+    function handleClickOutside(e: Event) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
   }, []);
 
   const shortAddr = walletAddress
@@ -98,7 +104,7 @@ export function NavbarClient() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.3)] border-b border-ink/[0.06] w-full overflow-x-hidden">
+    <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.3)] border-b border-ink/[0.06] w-full">
       <div className="h-16 sm:h-20 max-w-[1400px] mx-auto px-3 sm:px-6 md:px-8 lg:px-12 flex items-center justify-between gap-2 sm:gap-4">
 
         {/* ── Logo → always goes to landing page ─────────────────────────── */}
@@ -183,8 +189,17 @@ export function NavbarClient() {
               {/* ── User avatar + profile popup ────────────────────────── */}
               <div className="relative" ref={profileRef}>
                 <button
-                  onClick={() => setProfileOpen(prev => !prev)}
-                  className="flex items-center gap-1.5 sm:gap-2 bg-ink/[0.04] border border-ink/[0.06] p-0.5 sm:pl-1 sm:pr-2.5 sm:py-1 rounded-full hover:bg-ink/[0.08] transition-colors"
+                  onClick={() => {
+                    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                      setProfileOpen(false);
+                      setMobileOpen(prev => !prev);
+                    } else {
+                      setMobileOpen(false);
+                      setProfileOpen(prev => !prev);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 sm:gap-2 bg-ink/[0.04] border border-ink/[0.06] p-0.5 sm:pl-1 sm:pr-2.5 sm:py-1 rounded-full hover:bg-ink/[0.08] transition-colors cursor-pointer"
+                  aria-label="User profile"
                 >
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-ink/10 shrink-0">
                     {user?.avatar_url ? (
@@ -201,12 +216,12 @@ export function NavbarClient() {
                     {displayName}
                   </span>
                   <BadgeCheck className="hidden xs:block w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-fg shrink-0" />
-                  <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-ink-4 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`hidden lg:block w-3 sm:w-3.5 sm:h-3.5 text-ink-4 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
                 </button>
 
-                {/* Popup */}
+                {/* Desktop Popup (Only shown on lg+ screens to prevent mobile obstruction) */}
                 {profileOpen && (
-                  <div className="absolute right-0 top-[calc(100%+10px)] w-72 rounded-2xl bg-surface border border-ink/10 shadow-2xl shadow-black/30 overflow-hidden z-50">
+                  <div className="hidden lg:block absolute right-0 top-[calc(100%+10px)] w-72 rounded-2xl bg-surface border border-ink/10 shadow-2xl shadow-black/30 overflow-hidden z-50">
 
                     {/* Header */}
                     <div className="px-4 py-4 border-b border-ink/5 bg-ink/[0.02]">
@@ -338,8 +353,11 @@ export function NavbarClient() {
 
           {/* Mobile hamburger */}
           <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden w-9 h-9 rounded-full bg-ink/[0.04] border border-ink/[0.06] flex items-center justify-center text-ink-3"
+            onClick={() => {
+              setProfileOpen(false);
+              setMobileOpen(prev => !prev);
+            }}
+            className="lg:hidden w-9 h-9 rounded-full bg-ink/[0.04] border border-ink/[0.06] flex items-center justify-center text-ink-3 hover:text-ink transition cursor-pointer"
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
           >
             {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -349,57 +367,131 @@ export function NavbarClient() {
 
       {/* ── Mobile Dropdown ─────────────────────────────────────────────── */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-ink/[0.06] bg-surface/95 backdrop-blur-xl px-4 py-3 space-y-1 shadow-xl">
+        <div className="lg:hidden border-t border-ink/[0.06] bg-surface/98 backdrop-blur-2xl px-4 py-4 space-y-2 shadow-2xl max-h-[calc(100vh-4.5rem)] overflow-y-auto">
 
-          {NAV_LINKS.map(({ href, label, icon: Icon }) => {
-            const resolvedHref = resolveHref(href);
-            return (
-              <Link
-                key={label}
-                href={resolvedHref}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                  isActive(href)
-                    ? "bg-accent/10 text-accent-fg"
-                    : "text-ink-3 hover:text-ink hover:bg-ink/[0.04]"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            );
-          })}
+          {/* User Profile Card inside mobile drawer */}
+          {walletAddress && (
+            <div className="p-3 rounded-2xl bg-ink/[0.03] border border-ink/[0.08] space-y-2.5 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center shrink-0 overflow-hidden border border-ink/10">
+                  {user?.avatar_url ? (
+                    user.avatar_url.startsWith("http") || user.avatar_url.startsWith("/") || user.avatar_url.startsWith("data:") ? (
+                      <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-base select-none leading-none">{user.avatar_url}</span>
+                    )
+                  ) : (
+                    <User className="w-5 h-5 text-surface" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-ink text-sm truncate">{user?.username || shortAddr}</span>
+                    <BadgeCheck className="w-4 h-4 text-accent-fg shrink-0" />
+                  </div>
+                  {user?.bcl_domain ? (
+                    <div className="flex items-center gap-1 text-[11px] font-mono text-accent-fg font-semibold mt-0.5">
+                      <Globe2 className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{user.bcl_domain}</span>
+                    </div>
+                  ) : (
+                    <Link
+                      href="/domains"
+                      onClick={() => setMobileOpen(false)}
+                      className="text-[11px] font-mono text-accent-fg/80 hover:text-accent-fg hover:underline font-medium flex items-center gap-1 mt-0.5"
+                    >
+                      <Globe2 className="w-3 h-3 shrink-0" />
+                      Claim .bcl domain →
+                    </Link>
+                  )}
+                  <span className="font-mono text-[10px] text-ink-4 truncate block mt-0.5">{shortAddr}</span>
+                </div>
+              </div>
 
-          <Link
-            href="/profile"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-ink-3 hover:text-ink hover:bg-ink/[0.04] transition"
-          >
-            <User className="w-4 h-4" />
-            Profile
-          </Link>
+              {/* Mobile XP Progress bar */}
+              <div className="flex flex-col gap-1 pt-1.5 border-t border-ink/[0.04]">
+                <div className="flex items-center justify-between font-mono text-[10px] font-bold uppercase tracking-wider">
+                  <span className="text-ink-4">L{level} Pioneer</span>
+                  <span className="text-accent-fg">{totalXp.toLocaleString()} XP</span>
+                </div>
+                <div className="w-full bg-ink/10 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-accent h-full rounded-full shadow-[0_0_6px_rgba(0,245,160,0.6)]"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="border-t border-ink/5 pt-2 mt-2 space-y-1">
+          {/* Navigation Links */}
+          <div className="space-y-1">
+            {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+              const resolvedHref = resolveHref(href);
+              return (
+                <Link
+                  key={label}
+                  href={resolvedHref}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    isActive(href)
+                      ? "bg-accent/10 text-accent-fg font-bold"
+                      : "text-ink-3 hover:text-ink hover:bg-ink/[0.04]"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+
+            <Link
+              href="/profile"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-ink-3 hover:text-ink hover:bg-ink/[0.04] transition"
+            >
+              <User className="w-4 h-4 shrink-0" />
+              <span>Profile</span>
+            </Link>
+          </div>
+
+          {/* Mobile Footer Actions */}
+          <div className="border-t border-ink/5 pt-3 mt-2 space-y-2">
             {walletAddress ? (
               <>
-                <div className="px-3 py-2 font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider">
-                  {shortAddr}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleCopyAddress}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-ink bg-ink/[0.04] hover:bg-ink/[0.08] transition cursor-pointer"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-ink-4" />
+                    <span>Copy Addr</span>
+                  </button>
+                  <a
+                    href={`https://scan.bohr.life/address/${walletAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-ink bg-ink/[0.04] hover:bg-ink/[0.08] transition"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-ink-4" />
+                    <span>Explorer</span>
+                  </a>
                 </div>
                 <button
                   onClick={() => { setMobileOpen(false); handleDisconnect(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 transition cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  Disconnect Wallet
+                  <span>Disconnect Wallet</span>
                 </button>
               </>
             ) : (
               <button
                 onClick={() => { setMobileOpen(false); connectWallet(); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 mt-1 rounded-xl text-sm font-bold bg-accent text-surface hover:shadow-[0_0_16px_rgba(0,245,160,0.3)] transition"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 mt-1 rounded-xl text-sm font-bold bg-accent text-surface hover:shadow-[0_0_16px_rgba(0,245,160,0.3)] transition cursor-pointer"
               >
                 <Wallet className="w-4 h-4" />
-                Connect Wallet
+                <span>Connect Wallet</span>
               </button>
             )}
           </div>

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import AuditLog, DailyQuiz, LevelConfig, NFTMint, Role, Task, TaskSubmission, User
+from app.models import AuditLog, DailyQuiz, LevelConfig, NFTMint, PointsLedger, Role, Task, TaskSubmission, User
 from app.models.enums import MintStatus, RoleName, SubmissionStatus, TaskStatus
 from app.schemas.admin import LevelConfigIn, PointsAdjustment, RoleChange
 from app.schemas.quiz import DailyQuizCreate, DailyQuizOut, DailyQuizUpdate
@@ -67,12 +67,43 @@ async def archive_task(task_id: int, admin: User = Depends(require_admin), sessi
     return task
 
 
+@router.delete("/tasks/{task_id}")
+async def delete_task(task_id: int, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    task = await _task_or_404(session, task_id)
+    # Unlink nullable points ledger references
+    await session.execute(update(PointsLedger).where(PointsLedger.source_task_id == task.id).values(source_task_id=None))
+    # Delete associated task submissions
+    await session.execute(delete(TaskSubmission).where(TaskSubmission.task_id == task.id))
+    # Delete the task
+    task_title = task.title
+    await session.delete(task)
+    await log_action(session, admin, "task.delete", "task", task_id, {"title": task_title})
+    await session.commit()
+    return {"ok": True, "deleted_id": task_id, "title": task_title}
+
+
+
 # ---- submissions / manual review
 @router.get("/submissions", response_model=list[SubmissionOut])
 async def submissions(status: SubmissionStatus = SubmissionStatus.UNDER_REVIEW, limit: int = Query(100, le=500),
                       session: AsyncSession = Depends(get_session)):
-    q = select(TaskSubmission).where(TaskSubmission.status == status).order_by(TaskSubmission.id).limit(limit)
-    return (await session.execute(q)).scalars().all()
+    q = (
+        select(TaskSubmission, User.username, User.wallet_address, Task.title)
+        .outerjoin(User, TaskSubmission.user_id == User.id)
+        .outerjoin(Task, TaskSubmission.task_id == Task.id)
+        .where(TaskSubmission.status == status)
+        .order_by(TaskSubmission.id)
+        .limit(limit)
+    )
+    rows = (await session.execute(q)).all()
+    out = []
+    for sub, username, wallet_address, task_title in rows:
+        item = SubmissionOut.model_validate(sub)
+        item.username = username
+        item.wallet = sub.wallet or wallet_address
+        item.task_title = task_title
+        out.append(item)
+    return out
 
 
 @router.post("/submissions/{submission_id}/review", response_model=SubmissionOut)
