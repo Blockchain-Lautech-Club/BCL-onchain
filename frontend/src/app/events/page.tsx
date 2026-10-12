@@ -2,100 +2,75 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, Task } from "@/lib/api";
+import { api, Task, CommunityEvent } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import {
   Calendar, MapPin, Users, Zap, Clock, ArrowRight,
-  Loader2, Bell, Radio, ExternalLink, CheckCircle2,
+  Loader2, Bell, Radio, ExternalLink, CheckCircle2, Shield,
 } from "lucide-react";
 
-// ── Static upcoming events (no backend events model yet) ──────────────────
-// These mirror the dashboard's Upcoming Events widget from the design.
-const UPCOMING_EVENTS = [
+// Fallback events if server has not responded yet
+const FALLBACK_EVENTS: CommunityEvent[] = [
   {
-    id: "e1",
-    date: "Sept 10 · 18:00 WAT",
+    id: 1,
+    title: "BCL Friday Tech Space: Navigating Web3 Careers",
+    description: "Join our weekly live audio space on X with leading builders, founders, and devs across Ethereum, Base, and L2 ecosystems.",
+    event_type: "X Space",
+    mode: "Online · X Spaces",
+    location_url: "https://x.com/i/spaces",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+    xp_reward: 100,
+    registered_count: 610,
+    is_live: true,
+    status: "live",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 2,
     title: "Foundry Masterclass: Gas Optimization",
     description: "Live code-along with Senior EVM Auditor. Deep dive into storage packing, batching patterns, and Yul assembly for gas efficiency.",
-    xp: 150,
-    type: "Workshop",
-    typeCls: "badge-blue",
-    registered: 56,
-    mode: "Online · X Spaces",
-    cta: "RSVP Now",
-    ctaCls: "btn-green",
-    live: false,
+    event_type: "Workshop",
+    mode: "Online · Discord Stage",
+    location_url: "https://discord.gg/blockchain-lautech",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(),
+    xp_reward: 150,
+    registered_count: 56,
+    is_live: false,
+    status: "upcoming",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
   {
-    id: "e2",
-    date: "Oct 02 · 14:00 WAT",
-    title: "Confluence Hackathon Showcase",
-    description: "Final project demos from all competing teams at the BCL Confluence Hackathon. Campus Auditorium + Live Streaming.",
-    xp: 300,
-    type: "Hackathon",
-    typeCls: "badge-amber",
-    registered: 240,
+    id: 3,
+    title: "Confluence Hackathon Showcase & Demo Day",
+    description: "Final project demos from all competing teams at the BCL Confluence Hackathon. Campus Auditorium + live global streaming.",
+    event_type: "Hackathon",
     mode: "Hybrid · Auditorium & Stream",
-    cta: "RSVP Now",
-    ctaCls: "btn-green",
-    live: false,
+    location_url: "https://youtube.com",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
+    xp_reward: 300,
+    registered_count: 240,
+    is_live: false,
+    status: "upcoming",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
   {
-    id: "e3",
-    date: "Oct 10 · 19:00 WAT",
-    title: "BCL Friday Tech Space: Navigating Web3 Careers",
-    description: "Join our live audio session on X Spaces with founders from leading Ethereum and Layer-2 development teams.",
-    xp: 100,
-    type: "X Space",
-    typeCls: "badge-purple",
-    registered: 610,
-    mode: "Online · X Spaces",
-    cta: "Set Reminder",
-    ctaCls: "btn-outline",
-    live: true,
-  },
-  {
-    id: "e4",
-    date: "Oct 17 · 10:00 WAT",
-    title: "ZK Workshop: Intro to Noir & Barretenberg",
-    description: "Hands-on session building your first ZK circuit with Noir. Covers constraint systems, proof generation, and on-chain verification.",
-    xp: 250,
-    type: "Workshop",
-    typeCls: "badge-blue",
-    registered: 42,
-    mode: "Online · Discord Stage",
-    cta: "RSVP Now",
-    ctaCls: "btn-green",
-    live: false,
-  },
-  {
-    id: "e5",
-    date: "Oct 24 · 16:00 WAT",
-    title: "Cohort 04 Onboarding & Identity Claim Sprint",
-    description: "New members claim their .bcl handles, link student IDs, and get assigned to guild tracks. Mentors available onsite.",
-    xp: 200,
-    type: "Onboarding",
-    typeCls: "badge-green",
-    registered: 188,
-    mode: "Hybrid · Campus Lab",
-    cta: "Register",
-    ctaCls: "btn-green",
-    live: false,
-  },
-  {
-    id: "e6",
-    date: "Nov 05 · 18:00 WAT",
-    title: "DeFi Deep Dive: AMM Invariants & Flash Loans",
-    description: "Mathematical analysis of Uniswap v3, Curve, and Balancer invariant systems. Includes a live exploit demo on a fork.",
-    xp: 200,
-    type: "Seminar",
-    typeCls: "badge-blue",
-    registered: 73,
-    mode: "Online · Discord Stage",
-    cta: "RSVP Now",
-    ctaCls: "btn-outline",
-    live: false,
+    id: 4,
+    title: "Product Design & UX Sprint for Web3 Apps",
+    description: "Interactive session on wallet connection flows, transaction signing heuristics, and onboarding UX for non-technical users.",
+    event_type: "Workshop",
+    mode: "Online · Google Meet",
+    location_url: "https://meet.google.com",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
+    xp_reward: 120,
+    registered_count: 85,
+    is_live: false,
+    status: "upcoming",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
 ];
 
@@ -106,65 +81,123 @@ const PAST_EVENTS = [
   { title: "Web3 Product Design Jam", date: "Jun 30", attendees: 145, xp: 200, poap: true },
 ];
 
-// ── Page ──────────────────────────────────────────────────────────────────
+const FILTERS = ["All", "Workshop", "Hackathon", "X Space", "Seminar", "Onboarding", "Meetup"];
+
+function getEventTypeBadge(type: string): string {
+  switch (type?.toLowerCase()) {
+    case "workshop":
+      return "badge-blue";
+    case "hackathon":
+      return "badge-amber";
+    case "x space":
+      return "badge-purple";
+    case "onboarding":
+      return "badge-green";
+    case "seminar":
+      return "badge-blue";
+    default:
+      return "badge-purple";
+  }
+}
+
+function parseEventDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) {
+      return { month: "TBA", day: "--", time: "", display: dateStr };
+    }
+    const month = d.toLocaleDateString("en-US", { month: "short" });
+    const day = d.getDate().toString();
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return { month, day, time, display: `${month} ${day} · ${time}` };
+  } catch {
+    return { month: "TBA", day: "--", time: "", display: dateStr };
+  }
+}
+
 export default function EventsPage() {
-  const { walletAddress } = useAuth();
+  const { walletAddress, isAdmin } = useAuth();
+  const [events, setEvents] = useState<CommunityEvent[]>(FALLBACK_EVENTS);
   const [eventTasks, setEventTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rsvpd, setRsvpd] = useState<Set<string>>(new Set());
+  const [rsvpingId, setRsvpingId] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState("All");
 
   useEffect(() => {
-    // Pull tasks tagged as Events from the backend
-    api.getTasks().then((d) => {
-      const all = d || [];
-      setEventTasks(all.filter((t) =>
-        t.category?.toLowerCase() === "events" || t.category?.toLowerCase() === "event"
-      ));
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    let isMounted = true;
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [fetchedEvents, fetchedTasks] = await Promise.allSettled([
+          api.getEvents(walletAddress || undefined),
+          api.getTasks(),
+        ]);
 
-  useEffect(() => {
-    if (walletAddress) {
-      const saved = localStorage.getItem(`bcl_rsvps_${walletAddress}`);
-      if (saved) {
-        try {
-          setRsvpd(new Set(JSON.parse(saved)));
-        } catch {}
+        if (isMounted && fetchedEvents.status === "fulfilled" && fetchedEvents.value && fetchedEvents.value.length > 0) {
+          setEvents(fetchedEvents.value);
+        }
+
+        if (isMounted && fetchedTasks.status === "fulfilled" && fetchedTasks.value) {
+          setEventTasks(
+            fetchedTasks.value.filter(
+              (t) => t.category?.toLowerCase() === "events" || t.category?.toLowerCase() === "event"
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load events page data:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
   }, [walletAddress]);
 
-  const handleRsvp = (eventId: string, title: string) => {
+  const handleRsvp = async (ev: CommunityEvent) => {
     if (!walletAddress) {
       toast.error("Connect your wallet to RSVP");
       return;
     }
-    setRsvpd((prev) => {
-      const next = new Set(prev);
-      if (next.has(eventId)) {
-        next.delete(eventId);
-        toast("RSVP removed");
+
+    try {
+      setRsvpingId(ev.id);
+      const res = await api.rsvpEvent(ev.id);
+      setEvents((prev) =>
+        prev.map((item) =>
+          item.id === ev.id
+            ? {
+                ...item,
+                is_rsvpd: true,
+                registered_count: res.registered_count || item.registered_count + (res.already_registered ? 0 : 1),
+              }
+            : item
+        )
+      );
+
+      if (res.already_registered) {
+        toast("You are already registered for this event!");
       } else {
-        next.add(eventId);
-        toast.success(`RSVP confirmed for "${title}"! Notification set.`);
+        toast.success(`RSVP confirmed for "${ev.title}"! Notification set.`);
       }
-      localStorage.setItem(`bcl_rsvps_${walletAddress}`, JSON.stringify(Array.from(next)));
-      return next;
-    });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to RSVP");
+    } finally {
+      setRsvpingId(null);
+    }
   };
 
-  const liveEvents  = UPCOMING_EVENTS.filter((e) => e.live);
-  const upcomingFiltered = UPCOMING_EVENTS.filter((e) => {
+  const liveEvents = events.filter((e) => e.is_live && e.status !== "cancelled");
+  const upcomingFiltered = events.filter((e) => {
+    if (e.is_live || e.status === "cancelled" || e.status === "concluded") return false;
     if (activeFilter === "All") return true;
-    return e.type === activeFilter;
+    return e.event_type?.toLowerCase() === activeFilter.toLowerCase();
   });
-
-  const FILTERS = ["All", "Workshop", "Hackathon", "X Space", "Seminar", "Onboarding"];
 
   return (
     <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-5 sm:py-6 space-y-6 sm:space-y-8 overflow-x-hidden">
-
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="relative rounded-2xl bg-gradient-to-br from-subtle to-page border border-accent/15 px-4 sm:px-6 py-6 sm:py-8 overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern opacity-60" />
@@ -178,12 +211,24 @@ export default function EventsPage() {
               <span className="text-accent-fg">COHORT 04 ACTIVE</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-ink mb-1">
-              Events & Community Sessions
+              Events &amp; Community Sessions
             </h1>
             <p className="text-sm text-ink-4 max-w-xl">
               Workshops, X Spaces, hackathons, and campus buildathons. Attend, earn XP, and collect
               attendance POAPs verified on-chain.
             </p>
+
+            {isAdmin && (
+              <div className="mt-3">
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent/15 hover:bg-accent/25 text-accent-fg text-xs font-bold border border-accent/25 transition shadow-sm"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Admin: Set / Host Community Events &amp; Spaces &rarr;</span>
+                </Link>
+              </div>
+            )}
           </div>
           <div className="stat-card shrink-0 w-full sm:w-auto min-w-0 sm:min-w-[140px]">
             <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">XP This Month</div>
@@ -194,35 +239,47 @@ export default function EventsPage() {
       </div>
 
       {/* ── Live Now banner ─────────────────────────────────────── */}
-      {liveEvents.map((ev) => (
-        <div key={ev.id} className="rounded-2xl bg-gradient-to-r from-red-950/40 to-surface border border-red-500/25 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 relative">
-              <Radio className="w-5 h-5 text-red-400" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">● LIVE NOW</span>
-                <span className="text-[10px] text-ink-5">· {ev.date}</span>
-                <span className="xp-tag text-[10px]">+{ev.xp} XP</span>
-              </div>
-              <div className="font-heading font-bold text-sm text-ink">{ev.title}</div>
-              <div className="text-xs text-ink-4 mt-0.5 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> {ev.mode}
-              </div>
-            </div>
-          </div>
-          <a
-            href="https://twitter.com/i/spaces"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-green flex items-center gap-1.5 px-5 py-2.5 text-sm font-bold shrink-0"
+      {liveEvents.map((ev) => {
+        const dateInfo = parseEventDate(ev.event_date);
+        return (
+          <div
+            key={ev.id}
+            className="rounded-2xl bg-gradient-to-r from-red-950/40 to-surface border border-red-500/25 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
           >
-            <ExternalLink className="w-3.5 h-3.5" /> Join Space Now
-          </a>
-        </div>
-      ))}
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 relative">
+                <Radio className="w-5 h-5 text-red-400" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">● LIVE NOW</span>
+                  <span className="text-[10px] text-ink-5">· {dateInfo.display}</span>
+                  <span className="xp-tag text-[10px]">+{ev.xp_reward} XP</span>
+                </div>
+                <div className="font-heading font-bold text-sm text-ink">{ev.title}</div>
+                <div className="text-xs text-ink-4 mt-0.5 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> {ev.mode}
+                </div>
+              </div>
+            </div>
+            {ev.location_url ? (
+              <a
+                href={ev.location_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-green flex items-center gap-1.5 px-5 py-2.5 text-sm font-bold shrink-0"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Join Session Now
+              </a>
+            ) : (
+              <span className="text-xs font-bold text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
+                In Progress
+              </span>
+            )}
+          </div>
+        );
+      })}
 
       {/* ── Upcoming Events ─────────────────────────────────────── */}
       <section className="space-y-4">
@@ -233,7 +290,7 @@ export default function EventsPage() {
               <button
                 key={f}
                 onClick={() => setActiveFilter(f)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                   activeFilter === f
                     ? "bg-accent/15 text-accent-fg border border-accent/25"
                     : "text-ink-5 hover:text-ink border border-transparent hover:border-border-subtle"
@@ -245,71 +302,98 @@ export default function EventsPage() {
           </div>
         </div>
 
-        <div className="space-y-3">
-          {upcomingFiltered.map((ev) => {
-            const isRsvpd = rsvpd.has(ev.id);
-            return (
-              <div key={ev.id} className="surface-card rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                {/* Date column */}
-                <div className="w-16 shrink-0 text-center hidden sm:block">
-                  <div className="text-[10px] text-ink-5 uppercase font-bold">
-                    {ev.date.split(" · ")[0].split(" ")[0]}
-                  </div>
-                  <div className="text-2xl font-extrabold font-heading text-ink num-mono leading-none">
-                    {ev.date.split(" ")[1]}
-                  </div>
-                  <div className="text-[10px] text-ink-5">{ev.date.split("·")[1]?.trim()}</div>
-                </div>
+        {loading && events.length === 0 ? (
+          <div className="surface-card rounded-xl p-8 text-center text-xs text-ink-4 flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-accent-fg" />
+            <span>Loading community events...</span>
+          </div>
+        ) : upcomingFiltered.length === 0 ? (
+          <div className="surface-card rounded-xl p-8 text-center text-xs text-ink-4">
+            No upcoming events found for &quot;{activeFilter}&quot;. Check back soon or tune into our weekly spaces!
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {upcomingFiltered.map((ev) => {
+              const isRsvpd = ev.is_rsvpd;
+              const dateInfo = parseEventDate(ev.event_date);
+              const badgeClass = getEventTypeBadge(ev.event_type);
 
-                {/* Divider */}
-                <div className="hidden sm:block w-px h-14 bg-border-subtle shrink-0" />
-
-                {/* Main content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                    <span className={ev.typeCls}>{ev.type}</span>
-                    <span className="text-[10px] text-ink-5 sm:hidden">{ev.date}</span>
-                    <span className="xp-tag flex items-center gap-1 text-[10px]">
-                      <Zap className="w-2.5 h-2.5" />+{ev.xp} XP
-                    </span>
+              return (
+                <div key={ev.id} className="surface-card rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                  {/* Date column */}
+                  <div className="w-16 shrink-0 text-center hidden sm:block">
+                    <div className="text-[10px] text-ink-5 uppercase font-bold">
+                      {dateInfo.month}
+                    </div>
+                    <div className="text-2xl font-extrabold font-heading text-ink num-mono leading-none">
+                      {dateInfo.day}
+                    </div>
+                    <div className="text-[10px] text-ink-5">{dateInfo.time}</div>
                   </div>
-                  <h3 className="font-heading font-bold text-sm text-ink mb-1">{ev.title}</h3>
-                  <p className="text-xs text-ink-4 leading-relaxed line-clamp-2">{ev.description}</p>
-                  <div className="flex items-center gap-4 mt-2 text-[10px] text-ink-5">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {ev.mode}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" /> {ev.registered} RSVP'd
-                    </span>
+
+                  {/* Divider */}
+                  <div className="hidden sm:block w-px h-14 bg-border-subtle shrink-0" />
+
+                  {/* Main content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className={badgeClass}>{ev.event_type}</span>
+                      <span className="text-[10px] text-ink-5 sm:hidden">{dateInfo.display}</span>
+                      <span className="xp-tag flex items-center gap-1 text-[10px]">
+                        <Zap className="w-2.5 h-2.5" />+{ev.xp_reward} XP
+                      </span>
+                    </div>
+                    <h3 className="font-heading font-bold text-sm text-ink mb-1">{ev.title}</h3>
+                    <p className="text-xs text-ink-4 leading-relaxed line-clamp-2">{ev.description}</p>
+                    <div className="flex items-center gap-4 mt-2 text-[10px] text-ink-5">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> {ev.mode}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" /> {ev.registered_count || 0} RSVP&apos;d
+                      </span>
+                      {ev.location_url && (
+                        <a
+                          href={ev.location_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-accent-fg hover:underline"
+                        >
+                          <ExternalLink className="w-2.5 h-2.5" /> Space / Venue Link
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CTA */}
+                  <div className="shrink-0">
+                    {isRsvpd ? (
+                      <button
+                        disabled
+                        className="btn-outline flex items-center gap-1.5 px-4 py-2 text-xs font-bold opacity-90 cursor-default"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg" /> RSVP&apos;d
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRsvp(ev)}
+                        disabled={rsvpingId === ev.id}
+                        className="btn-green flex items-center gap-1.5 px-4 py-2 text-xs font-bold cursor-pointer disabled:opacity-50"
+                      >
+                        {rsvpingId === ev.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Calendar className="w-3.5 h-3.5" />
+                        )}
+                        <span>RSVP Now</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                {/* CTA */}
-                <div className="shrink-0">
-                  {isRsvpd ? (
-                    <button
-                      onClick={() => handleRsvp(ev.id, ev.title)}
-                      className="btn-outline flex items-center gap-1.5 px-4 py-2 text-xs font-bold"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-accent-fg" /> RSVP'd
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleRsvp(ev.id, ev.title)}
-                      className={`${ev.ctaCls} flex items-center gap-1.5 px-4 py-2 text-xs font-bold`}
-                    >
-                      {ev.cta === "Set Reminder"
-                        ? <><Bell className="w-3.5 h-3.5" /> {ev.cta}</>
-                        : <><Calendar className="w-3.5 h-3.5" /> {ev.cta}</>
-                      }
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* ── Event quests from backend ─────────────────────────────── */}
@@ -346,12 +430,6 @@ export default function EventsPage() {
             ))}
           </div>
         </section>
-      )}
-
-      {loading && (
-        <div className="flex items-center gap-2 text-ink-5 text-sm py-4">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading event quests…
-        </div>
       )}
 
       {/* ── Past Events ──────────────────────────────────────────── */}

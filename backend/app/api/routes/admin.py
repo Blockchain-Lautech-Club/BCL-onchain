@@ -7,9 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import AuditLog, DailyQuiz, LevelConfig, NFTMint, PointsLedger, Role, Task, TaskSubmission, User
+from app.models import AuditLog, DailyQuiz, Event, LevelConfig, NFTMint, PointsLedger, Role, Task, TaskSubmission, User
+from app.models.base import as_utc
 from app.models.enums import MintStatus, RoleName, SubmissionStatus, TaskStatus
 from app.schemas.admin import LevelConfigIn, PointsAdjustment, RoleChange
+from app.schemas.event import EventCreate, EventOut, EventUpdate
 from app.schemas.quiz import DailyQuizCreate, DailyQuizOut, DailyQuizUpdate
 from app.schemas.task import ReviewRequest, SubmissionOut, TaskCreate, TaskOut, TaskUpdate
 from app.services import level_service, points_service, submission_service, task_service
@@ -284,4 +286,53 @@ async def delete_quiz(quiz_id: int, admin: User = Depends(require_admin), sessio
     await log_action(session, admin, "quiz.delete", "daily_quiz", quiz_id)
     await session.commit()
     return {"ok": True, "deleted": quiz_id}
+
+
+# ---- community events & x spaces
+@router.post("/events", response_model=EventOut, status_code=201)
+async def create_event(body: EventCreate, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    event = Event(
+        title=body.title,
+        description=body.description,
+        event_type=body.event_type,
+        mode=body.mode,
+        location_url=body.location_url,
+        event_date=as_utc(body.event_date),
+        xp_reward=body.xp_reward,
+        is_live=body.is_live,
+        status=body.status,
+        created_by=admin.id,
+    )
+    session.add(event)
+    await session.flush()
+    await log_action(session, admin, "event.create", "event", event.id, {"title": event.title})
+    await session.commit()
+    return event
+
+
+@router.patch("/events/{event_id}", response_model=EventOut)
+async def update_event(event_id: int, body: EventUpdate, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    event = await session.get(Event, event_id)
+    if event is None:
+        raise AppError(404, "event_not_found", "Event not found")
+    data = body.model_dump(exclude_unset=True)
+    if "event_date" in data and data["event_date"] is not None:
+        data["event_date"] = as_utc(data["event_date"])
+    for k, v in data.items():
+        setattr(event, k, v)
+    await log_action(session, admin, "event.update", "event", event_id, data)
+    await session.commit()
+    return event
+
+
+@router.delete("/events/{event_id}")
+async def delete_event(event_id: int, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    event = await session.get(Event, event_id)
+    if event is None:
+        raise AppError(404, "event_not_found", "Event not found")
+    await session.delete(event)
+    await log_action(session, admin, "event.delete", "event", event_id)
+    await session.commit()
+    return {"ok": True, "deleted": event_id}
+
 

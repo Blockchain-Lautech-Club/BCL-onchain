@@ -5,13 +5,14 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import cast, Date as SADate, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import is_admin
+from app.api.deps import is_admin, get_optional_user, get_current_user
 from app.api.routes.me import mint_out
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import DailyQuiz, DomainRecord, NFTMint, PointsLedger, Task, TaskSubmission, User
+from app.models import DailyQuiz, DomainRecord, Event, EventRSVP, NFTMint, PointsLedger, Task, TaskSubmission, User
 from app.models.enums import SubmissionStatus, TaskStatus
 from app.models.base import as_utc, utcnow
+from app.schemas.event import EventOut, EventRSVPOut
 from app.schemas.profile import DomainOut, LeaderboardEntry, LedgerOut, MintOut, ProfileOut
 from app.services import auth_service, domain_service, level_service
 
@@ -301,3 +302,118 @@ async def platform_stats(session: AsyncSession = Depends(get_session)):
         "total_active_tasks": total_active_tasks,
         "total_domains_registered": total_domains,
     }
+
+
+@router.get("/events", response_model=list[EventOut])
+async def list_events(wallet: str | None = None, session: AsyncSession = Depends(get_session),
+                      user: User | None = Depends(get_optional_user)):
+    user_wallet = user.wallet_address if user else wallet
+    if user_wallet:
+        user_wallet = auth_service.normalize_address(user_wallet)
+
+    stmt = select(Event).where(Event.status != "cancelled").order_by(Event.is_live.desc(), Event.event_date.asc())
+    events = (await session.execute(stmt)).scalars().all()
+    if not events:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        initial = [
+            Event(
+                title="BCL Friday Tech Space: Navigating Web3 Careers",
+                description="Join our live audio session on X Spaces with founders and mentors from leading Layer-2 development teams.",
+                event_type="X Space",
+                mode="Online · X Spaces",
+                location_url="https://x.com/blockchainlaut1?s=11",
+                event_date=now + timedelta(days=2),
+                xp_reward=100,
+                registered_count=610,
+                is_live=True,
+                status="live",
+            ),
+            Event(
+                title="Confluence Hackathon Showcase & Project Demos",
+                description="Final project demos from all competing teams at the BCL Confluence Hackathon. Campus Auditorium + Live Streaming.",
+                event_type="Hackathon",
+                mode="Hybrid · Auditorium & Stream",
+                location_url="https://x.com/blockchainlaut1?s=11",
+                event_date=now + timedelta(days=7),
+                xp_reward=300,
+                registered_count=240,
+                is_live=False,
+                status="upcoming",
+            ),
+            Event(
+                title="Foundry Masterclass: Gas Optimization & Storage Packing",
+                description="Live code-along with Senior EVM Auditor. Deep dive into storage packing, batching patterns, and Yul assembly for gas efficiency.",
+                event_type="Workshop",
+                mode="Online · X Spaces",
+                location_url="https://x.com/blockchainlaut1?s=11",
+                event_date=now + timedelta(days=12),
+                xp_reward=150,
+                registered_count=85,
+                is_live=False,
+                status="upcoming",
+            ),
+            Event(
+                title="Product Design & UX for Web3 Apps Sprint",
+                description="Design interactive dApp interfaces, design systems in Figma, and build intuitive user flows for decentralized applications.",
+                event_type="Workshop",
+                mode="Online · Discord Stage",
+                location_url="https://discord.gg",
+                event_date=now + timedelta(days=18),
+                xp_reward=200,
+                registered_count=52,
+                is_live=False,
+                status="upcoming",
+            ),
+        ]
+        session.add_all(initial)
+        await session.commit()
+        events = (await session.execute(stmt)).scalars().all()
+
+    rsvpd_event_ids: set[int] = set()
+    if user_wallet:
+        rsvps = (await session.execute(
+            select(EventRSVP.event_id).where(EventRSVP.wallet_address == user_wallet)
+        )).scalars().all()
+        rsvpd_event_ids = set(rsvps)
+
+    result = []
+    for ev in events:
+        out = EventOut.model_validate(ev)
+        out.is_rsvpd = ev.id in rsvpd_event_ids
+        result.append(out)
+    return result
+
+
+@router.post("/events/{event_id}/rsvp", response_model=EventRSVPOut)
+async def rsvp_event(event_id: int, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    event = await session.get(Event, event_id)
+    if event is None or event.status == "cancelled":
+        raise AppError(404, "event_not_found", "Event not found")
+
+    existing = await session.scalar(
+        select(EventRSVP).where(EventRSVP.event_id == event.id, EventRSVP.user_id == user.id)
+    )
+    if existing:
+        return EventRSVPOut(
+            ok=True,
+            event_id=event.id,
+            registered_count=event.registered_count,
+            already_registered=True,
+        )
+
+    rsvp = EventRSVP(
+        event_id=event.id,
+        user_id=user.id,
+        wallet_address=user.wallet_address,
+    )
+    session.add(rsvp)
+    event.registered_count += 1
+    await session.commit()
+    return EventRSVPOut(
+        ok=True,
+        event_id=event.id,
+        registered_count=event.registered_count,
+        already_registered=False,
+    )
+

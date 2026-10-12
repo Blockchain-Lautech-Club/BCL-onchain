@@ -11,6 +11,7 @@ import {
   Milestone,
   DailyQuiz,
   DailyQuizCreate,
+  CommunityEvent,
 } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 import { LinkifiedText } from "@/components/common/LinkifiedText";
@@ -38,10 +39,12 @@ import {
   UserIcon,
   BadgeCheck,
   Clock,
+  Radio,
+  MapPin,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-type TabType = "submissions" | "manage_tasks" | "daily_quiz" | "users" | "milestones" | "mints" | "audit";
+type TabType = "submissions" | "manage_tasks" | "events" | "daily_quiz" | "users" | "milestones" | "mints" | "audit";
 
 interface AuditLog {
   id: number;
@@ -66,6 +69,7 @@ export default function AdminPage() {
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
+    category: "Community",
     image_url: "",
     points: 100,
     verification_type: "onchain_tx" as Task["verification_type"],
@@ -82,6 +86,26 @@ export default function AdminPage() {
   const [editDurationPreset, setEditDurationPreset] = useState<"ongoing" | "1d" | "3d" | "7d" | "14d" | "30d" | "custom">("7d");
   const [editCustomDeadline, setEditCustomDeadline] = useState<string>("");
   const [isUpdatingDuration, setIsUpdatingDuration] = useState(false);
+
+  const [events, setEvents] = useState<CommunityEvent[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    event_type: "Workshop",
+    mode: "Online · X Spaces",
+    location_url: "",
+    event_date: "",
+    xp_reward: 100,
+    is_live: false,
+    status: "upcoming" as "upcoming" | "live" | "concluded" | "cancelled",
+  });
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<number | null>(null);
+  const [togglingEventLiveId, setTogglingEventLiveId] = useState<number | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CommunityEvent | null>(null);
+  const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
 
   const [adminUsers, setAdminUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -149,6 +173,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (activeTab === "submissions") loadSubmissions();
     if (activeTab === "manage_tasks") loadTasks();
+    if (activeTab === "events") loadEvents();
     if (activeTab === "daily_quiz") loadQuizzes();
     if (activeTab === "users") loadUsers();
     if (activeTab === "milestones") loadMilestones();
@@ -179,6 +204,19 @@ export default function AdminPage() {
       setTasks([]);
     } finally {
       setLoadingTasks(false);
+    }
+  }
+
+  async function loadEvents() {
+    try {
+      setLoadingEvents(true);
+      const data = await api.getEvents();
+      setEvents(data || []);
+    } catch (err) {
+      console.error("Failed to load events:", err);
+      setEvents([]);
+    } finally {
+      setLoadingEvents(false);
     }
   }
 
@@ -452,6 +490,7 @@ export default function AdminPage() {
       await api.createAdminTask({
         title: newTask.title,
         description: newTask.description,
+        category: newTask.category,
         points: newTask.points,
         verification_type: newTask.verification_type,
         repeatable: newTask.repeatable,
@@ -463,6 +502,7 @@ export default function AdminPage() {
       setNewTask({
         title: "",
         description: "",
+        category: "Community",
         image_url: "",
         points: 100,
         verification_type: "onchain_tx",
@@ -605,6 +645,96 @@ export default function AdminPage() {
       toast.error(err instanceof Error ? err.message : "Failed to publish quest");
     } finally {
       setTogglingTaskId(null);
+    }
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEvent.title.trim() || !newEvent.event_date) {
+      toast.error("Please provide title and event date/time");
+      return;
+    }
+    try {
+      setIsCreatingEvent(true);
+      await api.createAdminEvent({
+        ...newEvent,
+        event_date: new Date(newEvent.event_date).toISOString(),
+      });
+      toast.success("Community event published!");
+      setNewEvent({
+        title: "",
+        description: "",
+        event_type: "Workshop",
+        mode: "Online · X Spaces",
+        location_url: "",
+        event_date: "",
+        xp_reward: 100,
+        is_live: false,
+        status: "upcoming",
+      });
+      setShowCreateEventModal(false);
+      await loadEvents();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create event");
+    } finally {
+      setIsCreatingEvent(false);
+    }
+  };
+
+  const handleUpdateEventSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent || !editingEvent.title.trim() || !editingEvent.event_date) return;
+    try {
+      setIsUpdatingEvent(true);
+      await api.updateAdminEvent(editingEvent.id, {
+        title: editingEvent.title,
+        description: editingEvent.description,
+        event_type: editingEvent.event_type,
+        mode: editingEvent.mode,
+        location_url: editingEvent.location_url || undefined,
+        event_date: new Date(editingEvent.event_date).toISOString(),
+        xp_reward: editingEvent.xp_reward,
+        is_live: editingEvent.is_live,
+        status: editingEvent.status,
+      });
+      toast.success("Event updated!");
+      setEditingEvent(null);
+      await loadEvents();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update event");
+    } finally {
+      setIsUpdatingEvent(false);
+    }
+  };
+
+  const handleToggleLiveEvent = async (ev: CommunityEvent) => {
+    try {
+      setTogglingEventLiveId(ev.id);
+      const nextLive = !ev.is_live;
+      await api.updateAdminEvent(ev.id, {
+        is_live: nextLive,
+        status: nextLive ? "live" : "upcoming",
+      });
+      toast.success(nextLive ? `"${ev.title}" is now LIVE!` : "Live status turned off");
+      await loadEvents();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to toggle live status");
+    } finally {
+      setTogglingEventLiveId(null);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: number, title: string) => {
+    if (!confirm(`Delete event "${title}"? This cannot be undone.`)) return;
+    try {
+      setDeletingEventId(eventId);
+      await api.deleteAdminEvent(eventId);
+      toast.success("Event deleted");
+      await loadEvents();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete event");
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -777,6 +907,7 @@ export default function AdminPage() {
           {[
             { id: "submissions", label: "Review Queue", icon: ListOrdered },
             { id: "manage_tasks", label: "Quests", icon: PlusCircle },
+            { id: "events", label: "Events & Spaces", icon: Calendar },
             { id: "daily_quiz", label: "Daily Quiz", icon: Terminal },
             { id: "users", label: "Users & Moderation", icon: Users },
             { id: "milestones", label: "Milestones", icon: Award },
@@ -993,7 +1124,7 @@ export default function AdminPage() {
 
           {showCreateModal && (
             <div className="surface-card rounded-2xl p-6 border border-brand/30 bg-surface space-y-4 animate-in fade-in">
-              <h3 className="text-sm font-bold font-heading text-ink">Create New Builder Quest</h3>
+              <h3 className="text-sm font-bold font-heading text-ink">Create New Ecosystem Quest</h3>
               <form onSubmit={handleCreateTask} className="space-y-4 text-xs font-sans">
                 <div>
                   <label className="block text-[11px] text-ink-3 uppercase mb-1">Quest Title</label>
@@ -1002,18 +1133,18 @@ export default function AdminPage() {
                     required
                     value={newTask.title}
                     onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    placeholder="e.g. Deploy Counter Contract on Testnet"
+                    placeholder="e.g. Design BCL Infographic, Write Research Thread, or Deploy Contract"
                     className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Description &amp; Criteria</label>
+                  <label className="block text-[11px] text-ink-3 uppercase mb-1">Description &amp; Deliverables</label>
                   <textarea
                     rows={3}
                     required
                     value={newTask.description}
                     onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    placeholder="Instructions, contract parameters, or GitHub requirements..."
+                    placeholder="Instructions, deliverables (e.g. Figma link, research article, screenshot proof, or GitHub repo)..."
                     className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                   />
                 </div>
@@ -1035,7 +1166,25 @@ export default function AdminPage() {
                     />
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[11px] text-ink-3 uppercase mb-1">Track / Guild</label>
+                    <select
+                      value={newTask.category}
+                      onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.1] rounded-lg px-3 py-2 text-xs text-ink focus:outline-none"
+                    >
+                      <option value="Community">Community &amp; Growth</option>
+                      <option value="Design">Design &amp; Creative</option>
+                      <option value="Content">Content &amp; Writing</option>
+                      <option value="Social">Social / X Action</option>
+                      <option value="DeFi">DeFi &amp; Analytics</option>
+                      <option value="Developer">Engineering &amp; Code</option>
+                      <option value="Learning">Learning &amp; Academy</option>
+                      <option value="Events">Campus Events</option>
+                      <option value="Hackathon">Hackathon</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-[11px] text-ink-3 uppercase mb-1">Points Value</label>
                     <input
@@ -1225,6 +1374,354 @@ export default function AdminPage() {
                         )}
                         <span>Delete Quest</span>
                       </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: COMMUNITY EVENTS & SPACES ── */}
+      {activeTab === "events" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink/[0.06] pb-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-ink">Community Events, Workshops &amp; X Spaces</span>
+              <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-mono font-bold text-brand">
+                {events.length} Events Configured
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadEvents}
+                disabled={loadingEvents}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink/[0.08] hover:bg-ink/[0.04] text-ink-3 hover:text-ink cursor-pointer"
+              >
+                <RefreshCw className={`h-3 w-3 ${loadingEvents ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={() => setShowCreateEventModal((prev) => !prev)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold cursor-pointer shadow-md shadow-brand/20"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span>{showCreateEventModal ? "Close Form" : "Set / Host New Event"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Create Event Card Form */}
+          {showCreateEventModal && (
+            <div className="p-5 rounded-2xl bg-surface border border-brand/30 shadow-lg shadow-brand/5 space-y-4 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-brand/10 text-brand">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-ink">Schedule New Community Event or X Space</h3>
+                    <p className="text-[11px] text-ink-3">Add upcoming sessions for club members to RSVP and earn XP</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateEventModal(false)}
+                  className="text-ink-3 hover:text-ink p-1 rounded-lg hover:bg-ink/5"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateEvent} className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                      Event Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. BCL Friday Tech Space #24: Building on L2s"
+                      value={newEvent.title}
+                      onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3.5 py-2.5 text-xs text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                        Event Type
+                      </label>
+                      <select
+                        value={newEvent.event_type}
+                        onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
+                        className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2.5 text-xs text-ink focus:outline-none focus:border-brand"
+                      >
+                        <option value="Workshop">Workshop</option>
+                        <option value="X Space">X Space</option>
+                        <option value="Hackathon">Hackathon</option>
+                        <option value="Seminar">Seminar</option>
+                        <option value="Meetup">Meetup</option>
+                        <option value="Onboarding">Onboarding</option>
+                        <option value="General">General</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                        Format / Mode
+                      </label>
+                      <select
+                        value={newEvent.mode}
+                        onChange={(e) => setNewEvent({ ...newEvent, mode: e.target.value })}
+                        className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2.5 text-xs text-ink focus:outline-none focus:border-brand"
+                      >
+                        <option value="Online · X Spaces">Online · X Spaces</option>
+                        <option value="Online · Discord Stage">Online · Discord Stage</option>
+                        <option value="Hybrid">Hybrid</option>
+                        <option value="In-Person (Campus Lab)">In-Person (Campus Lab)</option>
+                        <option value="Google Meet">Google Meet</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                      Date &amp; Time <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={newEvent.event_date}
+                      onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3.5 py-2.5 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                      Location / Space URL
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://x.com/i/spaces/... or discord invite"
+                      value={newEvent.location_url}
+                      onChange={(e) => setNewEvent({ ...newEvent, location_url: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3.5 py-2.5 text-xs text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                      XP Reward
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={25}
+                      value={newEvent.xp_reward}
+                      onChange={(e) => setNewEvent({ ...newEvent, xp_reward: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3.5 py-2.5 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                    Description &amp; Highlights
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Briefly describe agenda, speakers, tracks covered, or what attendees will learn..."
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3.5 py-2 text-xs text-ink placeholder:text-ink-4 focus:outline-none focus:border-brand resize-none"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-ink/[0.06]">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newEvent.is_live}
+                      onChange={(e) =>
+                        setNewEvent({
+                          ...newEvent,
+                          is_live: e.target.checked,
+                          status: e.target.checked ? "live" : "upcoming",
+                        })
+                      }
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 text-red-500" />
+                      Mark this event as LIVE NOW immediately
+                    </span>
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateEventModal(false)}
+                      className="px-4 py-2 text-xs text-ink-3 hover:text-ink cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingEvent}
+                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-brand hover:bg-brand-hi text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-md shadow-brand/20"
+                    >
+                      {isCreatingEvent ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Calendar className="w-3.5 h-3.5" />
+                      )}
+                      <span>Publish Event</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Events List */}
+          {loadingEvents ? (
+            <div className="p-8 text-center text-xs text-ink-3 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-brand" />
+              <span>Loading community events...</span>
+            </div>
+          ) : events.length === 0 ? (
+            <div className="p-8 text-center text-xs text-ink-3 bg-surface border border-ink/[0.08] rounded-2xl">
+              No events scheduled yet. Click &quot;Set / Host New Event&quot; above to create one.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {events.map((ev) => {
+                const eventDate = new Date(ev.event_date);
+                const formattedDate = !isNaN(eventDate.getTime())
+                  ? eventDate.toLocaleString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : ev.event_date;
+
+                return (
+                  <div
+                    key={ev.id}
+                    className={`p-4 rounded-2xl bg-surface border transition flex flex-col justify-between gap-3 ${
+                      ev.is_live
+                        ? "border-red-500/40 shadow-md shadow-red-500/10 ring-1 ring-red-500/20"
+                        : "border-ink/[0.08] hover:border-ink/[0.16]"
+                    }`}
+                  >
+                    <div>
+                      {/* Top Badges */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {ev.is_live && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                              LIVE NOW
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-brand/10 text-brand border border-brand/20">
+                            {ev.event_type}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium text-ink-3 bg-ink/5 border border-ink/10 flex items-center gap-1">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {ev.mode}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                          +{ev.xp_reward} XP
+                        </span>
+                      </div>
+
+                      {/* Title & Desc */}
+                      <h4 className="text-sm font-bold text-ink leading-snug">{ev.title}</h4>
+                      {ev.description && (
+                        <div className="text-xs text-ink-3 mt-1.5 line-clamp-2">
+                          <LinkifiedText text={ev.description} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metadata & Actions */}
+                    <div className="pt-3 border-t border-ink/[0.06] space-y-3">
+                      <div className="flex items-center justify-between text-[11px] text-ink-3 font-mono">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-brand" />
+                          {formattedDate}
+                        </span>
+                        <span className="text-ink font-bold">
+                          {ev.registered_count || 0} RSVPs
+                        </span>
+                      </div>
+
+                      {ev.location_url && (
+                        <a
+                          href={ev.location_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-[11px] text-brand hover:underline font-medium truncate"
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{ev.location_url}</span>
+                        </a>
+                      )}
+
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLiveEvent(ev)}
+                          disabled={togglingEventLiveId === ev.id}
+                          className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg transition cursor-pointer disabled:opacity-50 ${
+                            ev.is_live
+                              ? "bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25"
+                              : "bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/25"
+                          }`}
+                        >
+                          {togglingEventLiveId === ev.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Radio className="w-3 h-3" />
+                          )}
+                          <span>{ev.is_live ? "End Live" : "Set Live Now"}</span>
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingEvent(ev)}
+                            className="flex items-center gap-1 text-[11px] font-medium text-ink-3 hover:text-ink bg-ink/5 hover:bg-ink/10 px-2 py-1 rounded-lg transition cursor-pointer"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEvent(ev.id, ev.title)}
+                            disabled={deletingEventId === ev.id}
+                            className="flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-lg transition cursor-pointer disabled:opacity-50"
+                          >
+                            {deletingEventId === ev.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3" />
+                            )}
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -2185,6 +2682,202 @@ export default function AdminPage() {
                 <span>Save Quest Duration</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: EDIT COMMUNITY EVENT ── */}
+      {editingEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-surface border border-ink/[0.12] rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-brand/10 text-brand">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-ink">Edit Community Event / Space</h3>
+                  <p className="text-[11px] text-ink-3">#{editingEvent.id} · {editingEvent.title}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingEvent(null)}
+                className="text-ink-3 hover:text-ink p-1 rounded-lg hover:bg-ink/5"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateEventSubmit} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-ink-3 uppercase">Event Title</label>
+                <input
+                  type="text"
+                  required
+                  value={editingEvent.title}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                  className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Type</label>
+                  <select
+                    value={editingEvent.event_type}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, event_type: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  >
+                    <option value="Workshop">Workshop</option>
+                    <option value="X Space">X Space</option>
+                    <option value="Hackathon">Hackathon</option>
+                    <option value="Seminar">Seminar</option>
+                    <option value="Meetup">Meetup</option>
+                    <option value="Onboarding">Onboarding</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Mode</label>
+                  <select
+                    value={editingEvent.mode}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, mode: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  >
+                    <option value="Online · X Spaces">Online · X Spaces</option>
+                    <option value="Online · Discord Stage">Online · Discord Stage</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="In-Person (Campus Lab)">In-Person (Campus Lab)</option>
+                    <option value="Google Meet">Google Meet</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Status</label>
+                  <select
+                    value={editingEvent.status}
+                    onChange={(e) =>
+                      setEditingEvent({
+                        ...editingEvent,
+                        status: e.target.value as "upcoming" | "live" | "concluded" | "cancelled",
+                        is_live: e.target.value === "live" ? true : editingEvent.is_live,
+                      })
+                    }
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  >
+                    <option value="upcoming">upcoming</option>
+                    <option value="live">live</option>
+                    <option value="concluded">concluded</option>
+                    <option value="cancelled">cancelled</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">XP Reward</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={25}
+                    value={editingEvent.xp_reward}
+                    onChange={(e) =>
+                      setEditingEvent({ ...editingEvent, xp_reward: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-ink-3 uppercase">Date &amp; Time</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={
+                    editingEvent.event_date
+                      ? (() => {
+                          const d = new Date(editingEvent.event_date);
+                          if (isNaN(d.getTime())) return "";
+                          const pad = (n: number) => n.toString().padStart(2, "0");
+                          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        })()
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setEditingEvent({
+                      ...editingEvent,
+                      event_date: e.target.value ? new Date(e.target.value).toISOString() : "",
+                    })
+                  }
+                  className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-ink-3 uppercase">Space / Venue URL</label>
+                <input
+                  type="url"
+                  placeholder="https://x.com/i/spaces/..."
+                  value={editingEvent.location_url || ""}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, location_url: e.target.value })}
+                  className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-ink-3 uppercase">Description</label>
+                <textarea
+                  rows={3}
+                  value={editingEvent.description || ""}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                  className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand resize-none"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+                <input
+                  type="checkbox"
+                  checked={editingEvent.is_live}
+                  onChange={(e) =>
+                    setEditingEvent({
+                      ...editingEvent,
+                      is_live: e.target.checked,
+                      status: e.target.checked ? "live" : editingEvent.status,
+                    })
+                  }
+                  className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-red-500" />
+                  Mark as LIVE NOW
+                </span>
+              </label>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-ink/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setEditingEvent(null)}
+                  className="px-3.5 py-1.5 text-xs text-ink-3 hover:text-ink cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingEvent}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand hover:bg-brand-hi text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {isUpdatingEvent ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

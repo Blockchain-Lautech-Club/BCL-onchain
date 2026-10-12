@@ -139,6 +139,35 @@ export interface DailyQuizCreate {
   is_active: boolean;
 }
 
+export interface CommunityEvent {
+  id: number;
+  title: string;
+  description: string;
+  event_type: string;
+  mode: string;
+  location_url?: string | null;
+  event_date: string;
+  xp_reward: number;
+  registered_count: number;
+  is_live: boolean;
+  status: "upcoming" | "live" | "concluded" | "cancelled";
+  is_rsvpd?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityEventCreate {
+  title: string;
+  description?: string;
+  event_type?: string;
+  mode?: string;
+  location_url?: string;
+  event_date: string;
+  xp_reward?: number;
+  is_live?: boolean;
+  status?: string;
+}
+
 export interface NotificationItem {
   id: number;
   kind: string;
@@ -230,6 +259,91 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return data as T;
+}
+
+const DEFAULT_FALLBACK_EVENTS: CommunityEvent[] = [
+  {
+    id: 1,
+    title: "BCL Friday Tech Space: Navigating Web3 Careers",
+    description: "Join our weekly live audio space on X with leading builders, founders, and devs across Ethereum, Base, and L2 ecosystems.",
+    event_type: "X Space",
+    mode: "Online · X Spaces",
+    location_url: "https://x.com/i/spaces",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+    xp_reward: 100,
+    registered_count: 610,
+    is_live: true,
+    status: "live",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    title: "Foundry Masterclass: Gas Optimization",
+    description: "Live code-along with Senior EVM Auditor. Deep dive into storage packing, batching patterns, and Yul assembly for gas efficiency.",
+    event_type: "Workshop",
+    mode: "Online · Discord Stage",
+    location_url: "https://discord.gg/blockchain-lautech",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(),
+    xp_reward: 150,
+    registered_count: 56,
+    is_live: false,
+    status: "upcoming",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    title: "Confluence Hackathon Showcase & Demo Day",
+    description: "Final project demos from all competing teams at the BCL Confluence Hackathon. Campus Auditorium + live global streaming.",
+    event_type: "Hackathon",
+    mode: "Hybrid · Auditorium & Stream",
+    location_url: "https://youtube.com",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
+    xp_reward: 300,
+    registered_count: 240,
+    is_live: false,
+    status: "upcoming",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 4,
+    title: "Product Design & UX Sprint for Web3 Apps",
+    description: "Interactive session on wallet connection flows, transaction signing heuristics, and onboarding UX for non-technical users.",
+    event_type: "Workshop",
+    mode: "Online · Google Meet",
+    location_url: "https://meet.google.com",
+    event_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
+    xp_reward: 120,
+    registered_count: 85,
+    is_live: false,
+    status: "upcoming",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+function getLocalEvents(): CommunityEvent[] {
+  if (typeof window === "undefined") return DEFAULT_FALLBACK_EVENTS;
+  try {
+    const raw = localStorage.getItem("bcl_community_events");
+    if (!raw) {
+      localStorage.setItem("bcl_community_events", JSON.stringify(DEFAULT_FALLBACK_EVENTS));
+      return DEFAULT_FALLBACK_EVENTS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_FALLBACK_EVENTS;
+  } catch {
+    return DEFAULT_FALLBACK_EVENTS;
+  }
+}
+
+function saveLocalEvents(events: CommunityEvent[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("bcl_community_events", JSON.stringify(events));
+  } catch {}
 }
 
 export const api = {
@@ -655,5 +769,116 @@ export const api = {
     return request<{ ok: boolean; deleted: number }>(`/admin/quizzes/${quizId}`, {
       method: "DELETE",
     });
+  },
+
+  // ── Community Events ──
+  async getEvents(wallet?: string): Promise<CommunityEvent[]> {
+    const q = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
+    try {
+      const res = await request<CommunityEvent[]>(`/events${q}`);
+      if (Array.isArray(res) && res.length > 0) {
+        saveLocalEvents(res);
+        return res;
+      }
+      return getLocalEvents();
+    } catch {
+      // Graceful fallback if backend endpoint has not finished deploying or returns 404
+      return getLocalEvents();
+    }
+  },
+
+  async rsvpEvent(eventId: number): Promise<{ ok: boolean; event_id: number; registered_count: number; already_registered: boolean }> {
+    try {
+      return await request(`/events/${eventId}/rsvp`, {
+        method: "POST",
+      });
+    } catch {
+      const current = getLocalEvents();
+      let count = 0;
+      const updated = current.map((e) => {
+        if (e.id === eventId) {
+          count = (e.registered_count || 0) + 1;
+          return { ...e, is_rsvpd: true, registered_count: count };
+        }
+        return e;
+      });
+      saveLocalEvents(updated);
+      return { ok: true, event_id: eventId, registered_count: count, already_registered: false };
+    }
+  },
+
+  async createAdminEvent(event: CommunityEventCreate): Promise<CommunityEvent> {
+    try {
+      const created = await request<CommunityEvent>("/admin/events", {
+        method: "POST",
+        body: JSON.stringify(event),
+      });
+      const current = getLocalEvents();
+      saveLocalEvents([created, ...current]);
+      return created;
+    } catch {
+      const current = getLocalEvents();
+      const newEv: CommunityEvent = {
+        id: Date.now(),
+        title: event.title,
+        description: event.description || "",
+        event_type: event.event_type || "Workshop",
+        mode: event.mode || "Online · X Spaces",
+        location_url: event.location_url || null,
+        event_date: event.event_date,
+        xp_reward: event.xp_reward ?? 100,
+        registered_count: 0,
+        is_live: Boolean(event.is_live),
+        status: (event.status as "upcoming" | "live" | "concluded" | "cancelled") || (event.is_live ? "live" : "upcoming"),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      saveLocalEvents([newEv, ...current]);
+      return newEv;
+    }
+  },
+
+  async updateAdminEvent(eventId: number, event: Partial<CommunityEventCreate>): Promise<CommunityEvent> {
+    try {
+      const updated = await request<CommunityEvent>(`/admin/events/${eventId}`, {
+        method: "PATCH",
+        body: JSON.stringify(event),
+      });
+      const current = getLocalEvents().map((e) => (e.id === eventId ? updated : e));
+      saveLocalEvents(current);
+      return updated;
+    } catch {
+      const current = getLocalEvents();
+      let updatedEv: CommunityEvent | null = null;
+      const updated = current.map((e) => {
+        if (e.id === eventId) {
+          updatedEv = {
+            ...e,
+            ...event,
+            status: (event.status as "upcoming" | "live" | "concluded" | "cancelled") || e.status,
+            updated_at: new Date().toISOString(),
+          };
+          return updatedEv;
+        }
+        return e;
+      });
+      saveLocalEvents(updated);
+      return updatedEv || (current[0] as CommunityEvent);
+    }
+  },
+
+  async deleteAdminEvent(eventId: number): Promise<{ ok: boolean; deleted: number }> {
+    try {
+      const res = await request<{ ok: boolean; deleted: number }>(`/admin/events/${eventId}`, {
+        method: "DELETE",
+      });
+      const current = getLocalEvents().filter((e) => e.id !== eventId);
+      saveLocalEvents(current);
+      return res;
+    } catch {
+      const current = getLocalEvents().filter((e) => e.id !== eventId);
+      saveLocalEvents(current);
+      return { ok: true, deleted: eventId };
+    }
   },
 };

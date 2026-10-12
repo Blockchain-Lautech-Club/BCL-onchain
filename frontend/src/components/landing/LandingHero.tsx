@@ -25,7 +25,8 @@ import {
   Hexagon,
   Network,
   Fingerprint,
-  Loader2
+  Loader2,
+  FileText
 } from "lucide-react";
 import { LinkifiedText } from "@/components/common/LinkifiedText";
 import { useAuth } from "@/context/AuthContext";
@@ -101,7 +102,7 @@ export function LandingHero() {
             </h1>
 
             <p className="text-sm sm:text-base text-ink-3 leading-relaxed max-w-xl">
-              Complete quests, earn XP, collect achievements, unlock rewards, and build your sovereign, verifiable builder identity in the Blockchain Community LAUTECH ecosystem.
+              Complete quests, earn XP, collect achievements, unlock rewards, and build your sovereign Web3 identity across design, writing, community growth, development, and research.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 w-full sm:w-auto">
@@ -129,7 +130,7 @@ export function LandingHero() {
                   {platformStats?.total_domains_registered 
                     ? `${platformStats.total_domains_registered} Registered .bcl Handles` 
                     : platformStats?.total_users 
-                    ? `${platformStats.total_users} Builders Enrolled` 
+                    ? `${platformStats.total_users} Contributors Enrolled` 
                     : "Zero-Gas Sovereign Identity"}
                 </span>
                 <span className="text-[10px] text-accent-fg truncate">Decentralized campus identity</span>
@@ -302,7 +303,7 @@ export function LandingHero() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {[
             { num: "01", title: "Claim Your Identity", desc: "Reserve your unique yourname.bcl subdomain with zero gas fees. Pair your student ID and EVM wallet securely.", icon: IdCard, link: "Mint Identity pass", color: "text-accent-fg" },
-            { num: "02", title: "Complete Quests", desc: "Solve algorithmic tasks, push commits to BCL GitHub repos, attend campus hack nights, or host developer spaces.", icon: Terminal, link: "Explore open bounties", color: "text-purple-500" },
+            { num: "02", title: "Complete Quests", desc: "Design graphics, write deep-dive threads, host community spaces, test protocols, or push code commits.", icon: Layers, link: "Explore open bounties", color: "text-purple-500" },
             { num: "03", title: "Earn XP & Badges", desc: "Receive verifiable soulbound badges directly to your identity. Watch your global tier ascend dynamically onchain.", icon: Award, link: "Verify badge ledger", color: "text-amber-500" },
             { num: "04", title: "Unlock Rewards", desc: "Convert hard-earned XP into ecosystem grants, hardware stipends, international summit sponsorships, and exclusive swag.", icon: Gift, link: "View rewards vault", color: "text-blue-500" }
           ].map((step, i) => (
@@ -332,9 +333,10 @@ export function LandingHero() {
           </div>
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none w-full max-w-full">
             <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-ink text-surface text-xs font-bold whitespace-nowrap">All Quests</button>
-            <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Beginner</button>
+            <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Community</button>
+            <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Design</button>
+            <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Content</button>
             <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Developer</button>
-            <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Governance</button>
           </div>
         </div>
 
@@ -448,8 +450,9 @@ export function LandingHero() {
           <div className="space-y-2.5 sm:space-y-3">
             {[
               { name: "Smart Contracts & Protocols", desc: "Solidity & Cairo Bounties", icon: Terminal, color: "text-accent-fg", bg: "bg-accent/20", cat: "Developer" },
-              { name: "Product Design & UX", desc: "Interface & Web3 Systems", icon: Palette, color: "text-purple-500", bg: "bg-purple-500/20", cat: "Creator" },
-              { name: "DevRel, Media & Community", desc: "Outreach & Education", icon: Megaphone, color: "text-amber-500", bg: "bg-amber-500/20", cat: "Community" },
+              { name: "Product Design & UX", desc: "Interface & Web3 Systems", icon: Palette, color: "text-purple-500", bg: "bg-purple-500/20", cat: "Design" },
+              { name: "Content, Research & Threads", desc: "Deep Dives, Articles & Guides", icon: FileText, color: "text-blue-500", bg: "bg-blue-500/20", cat: "Content" },
+              { name: "Media, Spaces & Community", desc: "Outreach & Campus Engagement", icon: Megaphone, color: "text-amber-500", bg: "bg-amber-500/20", cat: "Community" },
             ].map((guild, i) => (
               <div key={i} className="p-3 sm:p-4 rounded-xl border border-ink/5 bg-ink/5 flex items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
@@ -501,7 +504,7 @@ export function LandingHero() {
         <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6 sm:gap-10">
           <div className="flex flex-col text-left max-w-xl">
             <span className="text-xs font-bold font-mono text-accent-fg uppercase tracking-wider mb-2 sm:mb-3">// Ready to leave your mark?</span>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-ink mb-3 sm:mb-4">Claim your verified .bcl name and kickstart your builder portfolio today.</h2>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-ink mb-3 sm:mb-4">Claim your verified .bcl name and kickstart your Web3 portfolio today.</h2>
             <p className="text-xs sm:text-sm text-ink-3 leading-relaxed">Instant onboarding in 30 seconds. Connect your university email or EVM wallet to reserve credentials before global mint caps close.</p>
           </div>
           

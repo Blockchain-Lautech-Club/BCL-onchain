@@ -365,7 +365,7 @@ export function QuestDetailClient() {
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
                   )}
-                  <h3 className="text-xl font-heading font-bold text-ink">Protocol Proof of Work</h3>
+                  <h3 className="text-xl font-heading font-bold text-ink">Proof of Contribution</h3>
                 </div>
                 <span className="font-mono text-sm text-amber-500 font-bold">+{task.points?.toLocaleString()} XP</span>
               </div>
@@ -377,7 +377,7 @@ export function QuestDetailClient() {
                   ? "Your proof has been submitted and is currently in the verification pipeline. Each quest can only be submitted once."
                   : isRejected
                   ? "Your submission for this quest has concluded. Submissions cannot be made more than once."
-                  : "Deliver the production interface deployment, transaction hash, or repository link required to satisfy this quest's parameters."}
+                  : "Deliver the required proof—such as a Figma file, article or tweet thread, transaction hash, screenshot, or repository link—to satisfy this quest."}
               </p>
 
               {isVerified ? (
@@ -408,7 +408,7 @@ export function QuestDetailClient() {
                       <span>Submission Awaiting Review</span>
                     </div>
                     <p className="text-xs text-ink-3">
-                      You have already submitted proof for this quest. Quests are limited to one submission per builder. Your submission is in the review queue.
+                      You have already submitted proof for this quest. Quests are limited to one submission per contributor. Your submission is in the review queue.
                     </p>
                     {submission?.evidence && (
                       <div className="pt-2 space-y-2 border-t border-amber-500/10">
@@ -573,7 +573,7 @@ export function QuestDetailClient() {
                             ? "Bohr Testnet / Mainnet Transaction Hash"
                             : isNftQuest
                             ? "Connected Wallet Verification"
-                            : "Hosted Application, Tx Hash, or Repository URL"}
+                            : "Deliverable Link (Figma, Article, Thread, or Repo URL)"}
                         </label>
                         <div className="relative flex items-center">
                           <PlayCircle className="absolute left-4 w-5 h-5 text-ink-4" />
@@ -589,7 +589,7 @@ export function QuestDetailClient() {
                                 ? "0x..."
                                 : isNftQuest
                                 ? walletAddress || "Connect wallet to verify"
-                                : "https://github.com/... or 0x..."
+                                : "https://figma.com/..., https://mirror.xyz/..., or https://github.com/..."
                             }
                             required={!isNftQuest && !isSocialQuest}
                             disabled={isSubmitting || isNftQuest}
@@ -599,7 +599,7 @@ export function QuestDetailClient() {
                       
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-ink/5">
                         <span className="text-xs text-ink-4 font-medium">
-                          {isSocialQuest ? "Submit screenshot and/or quote tweet link." : "One submission per builder. Please confirm details."}
+                          {isSocialQuest ? "Submit screenshot and/or quote tweet link." : "One submission per contributor. Please confirm details."}
                         </span>
                         <button 
                           type="submit"
@@ -644,7 +644,7 @@ export function QuestDetailClient() {
                   {!isVerified && (
                     <div className="pt-2">
                       <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5" /> Unlocks automatically upon successful submission of Proof of Work
+                        <Lock className="w-3.5 h-3.5" /> Unlocks automatically upon successful verification of deliverable
                       </span>
                     </div>
                   )}

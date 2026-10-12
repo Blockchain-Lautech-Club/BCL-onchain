@@ -14,7 +14,7 @@ import {
   Users, TrendingUp, Cpu, AlertCircle
 } from "lucide-react";
 
-const CATEGORIES = ["All", "Community", "Social", "Learning", "Developer", "Creator", "Events", "Hackathon", "Partner", "Beginner"];
+const CATEGORIES = ["All", "Community", "Social", "Design", "Content", "DeFi", "Developer", "Learning", "Events", "Hackathon"];
 
 export default function TasksPage() {
   const router = useRouter();
@@ -104,7 +104,7 @@ export default function TasksPage() {
               Quests Discovery
             </h1>
             <p className="text-xs sm:text-sm md:text-base text-ink-4 max-w-xl leading-relaxed">
-              Do more. Learn more. Contribute more. Earn more. Validate cryptographic mastery across decentralized campus hubs.
+              Learn, create, and contribute across Web3 — from design and writing to development, community growth, and research.
             </p>
           </div>
           
@@ -423,7 +423,7 @@ export default function TasksPage() {
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Submission Under Review</span>
                 </div>
-                <p className="text-xs text-ink-3">Your proof has been submitted. Quests are limited to one submission per builder.</p>
+                <p className="text-xs text-ink-3">Your proof has been submitted. Quests are limited to one submission per contributor.</p>
               </div>
             ) : selectedTask.status === "rejected" ? (
               <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 space-y-1">
@@ -437,17 +437,17 @@ export default function TasksPage() {
               <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-ink/5">
                 <div>
                   <label className="block font-mono text-[10px] text-ink-4 uppercase font-bold tracking-wider mb-1.5 sm:mb-2">
-                    Proof / Evidence URL
+                    Proof / Deliverable URL
                   </label>
                   <input
                     type="text"
                     value={evidenceInput}
                     onChange={(e) => setEvidenceInput(e.target.value)}
-                    placeholder="https://github.com/... or 0x..."
+                    placeholder="https://figma.com/..., https://mirror.xyz/..., or https://github.com/..."
                     className="w-full bg-ink/[0.03] border border-ink/10 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-ink placeholder:text-ink-4/60 focus:outline-none focus:border-accent/50 focus:bg-surface transition-all font-mono"
                     required
                   />
-                  <span className="block text-[11px] text-ink-4 mt-1">1 submission per builder. Please ensure proof is valid.</span>
+                  <span className="block text-[11px] text-ink-4 mt-1">1 submission per contributor. Please ensure deliverable is valid.</span>
                 </div>
                 <button
                   type="submit"
