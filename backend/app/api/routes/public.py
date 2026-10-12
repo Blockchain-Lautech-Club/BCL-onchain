@@ -10,12 +10,13 @@ from app.api.routes.me import mint_out
 from app.core.config import settings
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import DailyQuiz, DomainRecord, Event, EventRSVP, Milestone, NFTMint, PointsLedger, Task, TaskSubmission, User
+from app.models import DailyQuiz, DomainRecord, Event, EventRSVP, MarketReward, MarketRedemption, Milestone, NFTMint, PointsLedger, Task, TaskSubmission, User
 from app.models.enums import SubmissionStatus, TaskStatus
 from app.models.base import as_utc, utcnow
 from app.schemas.event import EventOut, EventRSVPOut
+from app.schemas.market import MarketRewardOut, MarketRedemptionOut
 from app.schemas.profile import DomainOut, LeaderboardEntry, LedgerOut, MintOut, ProfileOut
-from app.services import auth_service, domain_service, level_service
+from app.services import auth_service, domain_service, level_service, points_service
 
 router = APIRouter(tags=["public"])
 
@@ -428,4 +429,169 @@ async def rsvp_event(event_id: int, user: User = Depends(get_current_user), sess
         registered_count=event.registered_count,
         already_registered=False,
     )
+
+
+# ── Market Rewards & Redemptions ──────────────────────────────────────────
+
+DEFAULT_INITIAL_REWARDS = [
+    {
+        "title": "Exclusive BCL Cyber Hoodie",
+        "description": "Heavyweight custom oversized black hoodie with embroidered BCL Onchain identity patch and cryptographic NFC tag.",
+        "category": "Merchandise & Swag",
+        "xp_cost": 2500,
+        "badge": "Physical Swag",
+        "badge_color": "accent",
+        "meta_info": "Batch 02 • 12/50 left",
+        "min_level": 1,
+        "stock": 50,
+        "cta_label": "Redeem Hoodie",
+        "image_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuBPG5V-58RHghQ_Ij9_GYpdJxHHnfpUTK41--uNFfn8Wop5GIjCev2ogiaiP8F1-EesM6jUSo7trNm0JXE5YUYSwo-hlncZMXkB8aPBIy7lAzEQPfrcgmYJP8p6FwLFkVynB074Mtv6wqeDwgjBNE84492XYamFpRdGqwMHxSHvvbsv2m2Z3Tg1vyppZMM9FwBc7ETec-WYZvRH8e1rgY3LQSRRAB36DvgTwXoIdHRXKuyihl428Fwg",
+    },
+    {
+        "title": "1-on-1 Protocol & Career Review Session",
+        "description": "60-minute deep architectural audit, design critique, and career roadmap conducted by Senior Web3 Ecosystem Leads.",
+        "category": "Mentorship & Career",
+        "xp_cost": 3000,
+        "badge": "Mentorship",
+        "badge_color": "purple",
+        "meta_info": "Base & EVM Ecosystem Mentors",
+        "min_level": 1,
+        "stock": 10,
+        "cta_label": "Book Mentorship Session",
+        "image_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuBwTaEOONZD0rUjqDVtE3bbIQndZFIqHqIEi616m9s_f3zaUUd__qKt3cEWURPGHM7SVCE3FJ4xheDlKw-350uomIkmM2RISPzk8VO9UsUjv1b7GJy8cRBFoaTUYKfceYPnvKu4jqA17ybDl60fIxTKp8npH4VGBK__ZNSje5avWVi1CxjlFuZxsBmNC9lLMw4pWUVAULR4rkwRBM9NC9Q7ftiHaAuhZ78_HXNc6hm26641hm4tzKcs",
+    },
+    {
+        "title": "Devcon Global Travel Sponsorship Raffle",
+        "description": "Entry ticket to an all-expenses-paid travel and conference lodging sponsorship pass representing the BCL community.",
+        "category": "Event Passes & VIP",
+        "xp_cost": 1500,
+        "badge": "Grant & Travel",
+        "badge_color": "amber",
+        "meta_info": "184 Entries Pooled",
+        "min_level": 1,
+        "stock": 100,
+        "cta_label": "Redeem Ticket",
+        "image_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuA1mbOr3CKK1eEGlT2o71KCacB9kcNs4L-425yLw2rlo1vuZV2Ws06eAs8ojh7OG4YItC4v-_3rXH1tHla4dd6kEZ4h5JjnkwcVZsJRimaBO5twh3Ch-icMGzxthUa69NSS_PwOoe7RJJUbbeohiFf4UVBu4TPe8IgvW9qvUO_37SmQSWB_XquROwU7dZSAQWRusGjrEm8JefMac1MXequPgC1fuTsd08LsYWXU0rRBCpj4yWTGyTWd",
+    },
+    {
+        "title": "Ledger Nano X: BCL Edition",
+        "description": "Precision laser-engraved cryptographic hardware wallet loaded with bespoke campus firmware badges and key backup cards.",
+        "category": "Hardware & Tools",
+        "xp_cost": 4000,
+        "badge": "Hardware",
+        "badge_color": "ink",
+        "meta_info": "Level 15+ Required",
+        "min_level": 15,
+        "stock": 15,
+        "cta_label": "Redeem Hardware Wallet",
+        "image_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuAkS7RxkQ4Dhy-YH1-MtHmZcXcq-sEd9nt-bJouSAfFPy5tppvt3r_pmBp5mzbCxA-uP_ebhZeKX-OQEQKDrUEB54eEKs9OzDUAESwEshlsTtZDFgqtzQ_BdlwUbpDJByw7wpZYLzSYMrfQCUTD0TtjEs6qCzHnohtC0alTJBIeGYCJMP4dJWwktAX5VbZoG1_4rCR9dXjxXDjhPxhxQGizUvASTXg-6HTAKcbFDzz4vP6zWwDcozqv",
+    },
+    {
+        "title": "BCL Annual Summit VIP Pass",
+        "description": "Priority seating, speaker green-room networking access, catered VIP lunch, and official swag kit at the 2025 Summit.",
+        "category": "Event Passes & VIP",
+        "xp_cost": 800,
+        "badge": "Event VIP",
+        "badge_color": "accent",
+        "meta_info": "Instant Issuance",
+        "min_level": 1,
+        "stock": 200,
+        "cta_label": "Redeem VIP Pass",
+        "image_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuBxlgqTstIPJvueW_TBRq1HchuPr9B9H2Mt6iBb98NNwIpGStemGwRLaa0LdXuSLK1LdYHKLNLDOI1bdevQwCEUUmNG02HBlLrIRn91vs5IH2OaymWzgt5xhEajC5uaDcQ9hkqW1t1tR1S6X03aMix28_so8VztDWlCpuU8Vetzmyma3rVAxteMK1VRGOohNy8QoC3TSLp9nZ_vm_t55kXSmD7FPNaUkHHUa_ZqOVfh5S6cFMTGvFT9",
+    },
+    {
+        "title": "Web3 Talent Fast-Track Pipeline",
+        "description": "Direct talent interview and submission pipeline with partner protocols bypassing standard applicant screenings.",
+        "category": "Mentorship & Career",
+        "xp_cost": 2200,
+        "badge": "Career",
+        "badge_color": "purple",
+        "meta_info": "3 Partner Protocols",
+        "min_level": 1,
+        "stock": 25,
+        "cta_label": "Submit for Placement",
+        "image_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuDjWbingXG3fUwE8cGNxKKfZT6SuCbDp3KqWQ51enIB6PkgN_3rrTPagqPLXWFA5Q4bKb26cgrTHJGT85C-Xf22rpfQ45DYCOCF6rKFTunDvsqtYGMCd3inLo0bv-CXDpUKWUhjkI7DdhD5UPHlrp6BaiwZE1yLD5WlMFHCHx4E1t16hlustIe37dmvmQTp5t4HuFktGQEowBzvMlgPCH2Jl9vnL2Zogu9pFdZvUXPLB0r47edkRBB4",
+    },
+]
+
+
+@router.get("/market/rewards", response_model=list[MarketRewardOut])
+async def get_market_rewards(session: AsyncSession = Depends(get_session)):
+    rewards = (await session.execute(
+        select(MarketReward).where(MarketReward.is_active.is_(True)).order_by(MarketReward.id.asc())
+    )).scalars().all()
+
+    if not rewards:
+        # Seed default items if table is empty
+        for item in DEFAULT_INITIAL_REWARDS:
+            reward = MarketReward(**item)
+            session.add(reward)
+        await session.commit()
+        rewards = (await session.execute(
+            select(MarketReward).where(MarketReward.is_active.is_(True)).order_by(MarketReward.id.asc())
+        )).scalars().all()
+
+    return rewards
+
+
+@router.get("/market/vouchers", response_model=list[MarketRedemptionOut])
+async def get_my_vouchers(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    vouchers = (await session.execute(
+        select(MarketRedemption).where(MarketRedemption.user_id == user.id).order_by(MarketRedemption.id.desc())
+    )).scalars().all()
+    return vouchers
+
+
+@router.post("/market/rewards/{reward_id}/redeem", response_model=MarketRedemptionOut)
+async def redeem_market_reward(
+    reward_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    import uuid
+    reward = await session.get(MarketReward, reward_id)
+    if not reward or not reward.is_active:
+        raise AppError(404, "reward_not_found", "Market reward not found or inactive")
+
+    if user.total_points < reward.xp_cost:
+        raise AppError(400, "insufficient_xp", f"Insufficient XP. Need {reward.xp_cost} XP but you have {user.total_points} XP")
+
+    if reward.min_level > 1 and user.level < reward.min_level:
+        raise AppError(400, "level_required", f"Level {reward.min_level} required to redeem this reward")
+
+    if reward.stock is not None:
+        if reward.stock <= 0:
+            raise AppError(400, "out_of_stock", "This reward is currently out of stock")
+        reward.stock -= 1
+
+    # Generate unique voucher code
+    code = f"BCL-{uuid.uuid4().hex[:4].upper()}-{uuid.uuid4().hex[:4].upper()}"
+
+    redemption = MarketRedemption(
+        reward_id=reward.id,
+        user_id=user.id,
+        wallet_address=user.wallet_address,
+        reward_title=reward.title,
+        xp_cost=reward.xp_cost,
+        voucher_code=code,
+        status="redeemed",
+    )
+    session.add(redemption)
+
+    # Deduct XP via points ledger
+    ledger_entry = PointsLedger(
+        user_id=user.id,
+        wallet=user.wallet_address,
+        points_delta=-reward.xp_cost,
+        reason=f"Market redemption: {reward.title} (Code: {code})",
+        idempotency_key=f"redeem:{code}",
+    )
+    session.add(ledger_entry)
+    user.total_points -= reward.xp_cost
+    await level_service.sync_user_level(session, user)
+
+    await session.commit()
+    await session.refresh(redemption)
+    return redemption
+
 

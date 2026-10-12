@@ -7,11 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import AuditLog, DailyQuiz, Event, LevelConfig, NFTMint, PointsLedger, Role, Task, TaskSubmission, User
+from app.models import AuditLog, DailyQuiz, Event, LevelConfig, MarketReward, MarketRedemption, NFTMint, PointsLedger, Role, Task, TaskSubmission, User
 from app.models.base import as_utc
 from app.models.enums import MintStatus, RoleName, SubmissionStatus, TaskStatus
 from app.schemas.admin import LevelConfigIn, PointsAdjustment, RoleChange
 from app.schemas.event import EventCreate, EventOut, EventUpdate
+from app.schemas.market import MarketRewardCreate, MarketRewardOut, MarketRewardUpdate
 from app.schemas.quiz import DailyQuizCreate, DailyQuizOut, DailyQuizUpdate
 from app.schemas.task import ReviewRequest, SubmissionOut, TaskCreate, TaskOut, TaskUpdate
 from app.services import level_service, points_service, submission_service, task_service
@@ -334,5 +335,47 @@ async def delete_event(event_id: int, admin: User = Depends(require_admin), sess
     await log_action(session, admin, "event.delete", "event", event_id)
     await session.commit()
     return {"ok": True, "deleted": event_id}
+
+
+# ---- market rewards
+@router.get("/market/rewards", response_model=list[MarketRewardOut])
+async def admin_list_market_rewards(session: AsyncSession = Depends(get_session)):
+    stmt = select(MarketReward).order_by(MarketReward.id.asc())
+    return (await session.execute(stmt)).scalars().all()
+
+
+@router.post("/market/rewards", response_model=MarketRewardOut, status_code=201)
+async def admin_create_market_reward(body: MarketRewardCreate, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    reward = MarketReward(**body.model_dump())
+    session.add(reward)
+    await session.flush()
+    await log_action(session, admin, "market_reward.create", "market_reward", reward.id, {"title": reward.title})
+    await session.commit()
+    return reward
+
+
+@router.patch("/market/rewards/{reward_id}", response_model=MarketRewardOut)
+async def admin_update_market_reward(reward_id: int, body: MarketRewardUpdate, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    reward = await session.get(MarketReward, reward_id)
+    if reward is None:
+        raise AppError(404, "reward_not_found", "Market reward not found")
+    data = body.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(reward, k, v)
+    await log_action(session, admin, "market_reward.update", "market_reward", reward_id, data)
+    await session.commit()
+    return reward
+
+
+@router.delete("/market/rewards/{reward_id}")
+async def admin_delete_market_reward(reward_id: int, admin: User = Depends(require_admin), session: AsyncSession = Depends(get_session)):
+    reward = await session.get(MarketReward, reward_id)
+    if reward is None:
+        raise AppError(404, "reward_not_found", "Market reward not found")
+    await session.delete(reward)
+    await log_action(session, admin, "market_reward.delete", "market_reward", reward_id)
+    await session.commit()
+    return {"ok": True, "deleted": reward_id}
+
 
 

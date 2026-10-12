@@ -171,6 +171,49 @@ export interface CommunityEventCreate {
   status?: string;
 }
 
+export interface MarketReward {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  xp_cost: number;
+  badge: string;
+  badge_color: string;
+  meta_info?: string | null;
+  image_url?: string | null;
+  min_level: number;
+  stock?: number | null;
+  is_active: boolean;
+  cta_label: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MarketRewardCreate {
+  title: string;
+  description?: string;
+  category?: string;
+  xp_cost: number;
+  badge?: string;
+  badge_color?: string;
+  meta_info?: string | null;
+  image_url?: string | null;
+  min_level?: number;
+  stock?: number | null;
+  is_active?: boolean;
+  cta_label?: string;
+}
+
+export interface MarketRedemption {
+  id: number;
+  reward_id?: number | null;
+  reward_title: string;
+  xp_cost: number;
+  voucher_code: string;
+  status: string;
+  created_at: string;
+}
+
 export interface NotificationItem {
   id: number;
   kind: string;
@@ -346,6 +389,121 @@ function saveLocalEvents(events: CommunityEvent[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem("bcl_community_events", JSON.stringify(events));
+  } catch {}
+}
+
+const DEFAULT_FALLBACK_MARKET_REWARDS: MarketReward[] = [
+  {
+    id: 1,
+    title: "Exclusive BCL Cyber Hoodie",
+    description: "Heavyweight custom oversized black hoodie with embroidered BCL Onchain identity patch and cryptographic NFC tag.",
+    category: "Merchandise & Swag",
+    xp_cost: 2500,
+    badge: "Physical Swag",
+    badge_color: "accent",
+    meta_info: "Batch 02 • 12/50 left",
+    min_level: 1,
+    stock: 50,
+    is_active: true,
+    cta_label: "Redeem Hoodie",
+    image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBPG5V-58RHghQ_Ij9_GYpdJxHHnfpUTK41--uNFfn8Wop5GIjCev2ogiaiP8F1-EesM6jUSo7trNm0JXE5YUYSwo-hlncZMXkB8aPBIy7lAzEQPfrcgmYJP8p6FwLFkVynB074Mtv6wqeDwgjBNE84492XYamFpRdGqwMHxSHvvbsv2m2Z3Tg1vyppZMM9FwBc7ETec-WYZvRH8e1rgY3LQSRRAB36DvgTwXoIdHRXKuyihl428Fwg",
+  },
+  {
+    id: 2,
+    title: "1-on-1 Protocol & Career Review Session",
+    description: "60-minute deep architectural audit, design critique, and career roadmap conducted by Senior Web3 Ecosystem Leads.",
+    category: "Mentorship & Career",
+    xp_cost: 3000,
+    badge: "Mentorship",
+    badge_color: "purple",
+    meta_info: "Base & EVM Ecosystem Mentors",
+    min_level: 1,
+    stock: 10,
+    is_active: true,
+    cta_label: "Book Mentorship Session",
+    image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBwTaEOONZD0rUjqDVtE3bbIQndZFIqHqIEi616m9s_f3zaUUd__qKt3cEWURPGHM7SVCE3FJ4xheDlKw-350uomIkmM2RISPzk8VO9UsUjv1b7GJy8cRBFoaTUYKfceYPnvKu4jqA17ybDl60fIxTKp8npH4VGBK__ZNSje5avWVi1CxjlFuZxsBmNC9lLMw4pWUVAULR4rkwRBM9NC9Q7ftiHaAuhZ78_HXNc6hm26641hm4tzKcs",
+  },
+  {
+    id: 3,
+    title: "Devcon Global Travel Sponsorship Raffle",
+    description: "Entry ticket to an all-expenses-paid travel and conference lodging sponsorship pass representing the BCL community.",
+    category: "Event Passes & VIP",
+    xp_cost: 1500,
+    badge: "Grant & Travel",
+    badge_color: "amber",
+    meta_info: "184 Entries Pooled",
+    min_level: 1,
+    stock: 100,
+    is_active: true,
+    cta_label: "Redeem Ticket",
+    image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuA1mbOr3CKK1eEGlT2o71KCacB9kcNs4L-425yLw2rlo1vuZV2Ws06eAs8ojh7OG4YItC4v-_3rXH1tHla4dd6kEZ4h5JjnkwcVZsJRimaBO5twh3Ch-icMGzxthUa69NSS_PwOoe7RJJUbbeohiFf4UVBu4TPe8IgvW9qvUO_37SmQSWB_XquROwU7dZSAQWRusGjrEm8JefMac1MXequPgC1fuTsd08LsYWXU0rRBCpj4yWTGyTWd",
+  },
+  {
+    id: 4,
+    title: "Ledger Nano X: BCL Edition",
+    description: "Precision laser-engraved cryptographic hardware wallet loaded with bespoke campus firmware badges and key backup cards.",
+    category: "Hardware & Tools",
+    xp_cost: 4000,
+    badge: "Hardware",
+    badge_color: "ink",
+    meta_info: "Level 15+ Required",
+    min_level: 15,
+    stock: 15,
+    is_active: true,
+    cta_label: "Redeem Hardware Wallet",
+    image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAkS7RxkQ4Dhy-YH1-MtHmZcXcq-sEd9nt-bJouSAfFPy5tppvt3r_pmBp5mzbCxA-uP_ebhZeKX-OQEQKDrUEB54eEKs9OzDUAESwEshlsTtZDFgqtzQ_BdlwUbpDJByw7wpZYLzSYMrfQCUTD0TtjEs6qCzHnohtC0alTJBIeGYCJMP4dJWwktAX5VbZoG1_4rCR9dXjxXDjhPxhxQGizUvASTXg-6HTAKcbFDzz4vP6zWwDcozqv",
+  },
+  {
+    id: 5,
+    title: "BCL Annual Summit VIP Pass",
+    description: "Priority seating, speaker green-room networking access, catered VIP lunch, and official swag kit at the 2025 Summit.",
+    category: "Event Passes & VIP",
+    xp_cost: 800,
+    badge: "Event VIP",
+    badge_color: "accent",
+    meta_info: "Instant Issuance",
+    min_level: 1,
+    stock: 200,
+    is_active: true,
+    cta_label: "Redeem VIP Pass",
+    image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBxlgqTstIPJvueW_TBRq1HchuPr9B9H2Mt6iBb98NNwIpGStemGwRLaa0LdXuSLK1LdYHKLNLDOI1bdevQwCEUUmNG02HBlLrIRn91vs5IH2OaymWzgt5xhEajC5uaDcQ9hkqW1t1tR1S6X03aMix28_so8VztDWlCpuU8Vetzmyma3rVAxteMK1VRGOohNy8QoC3TSLp9nZ_vm_t55kXSmD7FPNaUkHHUa_ZqOVfh5S6cFMTGvFT9",
+  },
+  {
+    id: 6,
+    title: "Web3 Talent Fast-Track Pipeline",
+    description: "Direct talent interview and submission pipeline with partner protocols bypassing standard applicant screenings.",
+    category: "Mentorship & Career",
+    xp_cost: 2200,
+    badge: "Career",
+    badge_color: "purple",
+    meta_info: "3 Partner Protocols",
+    min_level: 1,
+    stock: 25,
+    is_active: true,
+    cta_label: "Submit for Placement",
+    image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuDjWbingXG3fUwE8cGNxKKfZT6SuCbDp3KqWQ51enIB6PkgN_3rrTPagqPLXWFA5Q4bKb26cgrTHJGT85C-Xf22rpfQ45DYCOCF6rKFTunDvsqtYGMCd3inLo0bv-CXDpUKWUhjkI7DdhD5UPHlrp6BaiwZE1yLD5WlMFHCHx4E1t16hlustIe37dmvmQTp5t4HuFktGQEowBzvMlgPCH2Jl9vnL2Zogu9pFdZvUXPLB0r47edkRBB4",
+  },
+];
+
+function getLocalMarketRewards(): MarketReward[] {
+  if (typeof window === "undefined") return DEFAULT_FALLBACK_MARKET_REWARDS;
+  try {
+    const raw = localStorage.getItem("bcl_market_rewards");
+    if (!raw) {
+      localStorage.setItem("bcl_market_rewards", JSON.stringify(DEFAULT_FALLBACK_MARKET_REWARDS));
+      return DEFAULT_FALLBACK_MARKET_REWARDS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_FALLBACK_MARKET_REWARDS;
+  } catch {
+    return DEFAULT_FALLBACK_MARKET_REWARDS;
+  }
+}
+
+function saveLocalMarketRewards(rewards: MarketReward[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("bcl_market_rewards", JSON.stringify(rewards));
   } catch {}
 }
 
@@ -888,6 +1046,170 @@ export const api = {
       const current = getLocalEvents().filter((e) => e.id !== eventId);
       saveLocalEvents(current);
       return { ok: true, deleted: eventId };
+    }
+  },
+
+  // ── Market Rewards & Vouchers ──
+  async getMarketRewards(): Promise<MarketReward[]> {
+    try {
+      const res = await request<MarketReward[]>("/market/rewards");
+      if (Array.isArray(res) && res.length > 0) {
+        saveLocalMarketRewards(res);
+        return res;
+      }
+      return getLocalMarketRewards().filter((r) => r.is_active);
+    } catch {
+      return getLocalMarketRewards().filter((r) => r.is_active);
+    }
+  },
+
+  async getMyVouchers(): Promise<MarketRedemption[]> {
+    try {
+      const res = await request<MarketRedemption[]>("/market/vouchers");
+      return res;
+    } catch {
+      if (typeof window === "undefined") return [];
+      try {
+        const raw = localStorage.getItem("bcl_user_vouchers");
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+  },
+
+  async redeemMarketReward(rewardId: number): Promise<MarketRedemption> {
+    try {
+      const res = await request<MarketRedemption>(`/market/rewards/${rewardId}/redeem`, {
+        method: "POST",
+      });
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("bcl_user_vouchers");
+          const existing = raw ? JSON.parse(raw) : [];
+          localStorage.setItem("bcl_user_vouchers", JSON.stringify([res, ...existing]));
+        } catch {}
+      }
+      return res;
+    } catch (err: any) {
+      const rewards = getLocalMarketRewards();
+      const reward = rewards.find((r) => r.id === rewardId);
+      if (!reward) throw err;
+      if (reward.stock !== null && reward.stock !== undefined && reward.stock <= 0) {
+        throw new Error("This reward is currently out of stock");
+      }
+      if (reward.stock !== null && reward.stock !== undefined) {
+        reward.stock -= 1;
+        saveLocalMarketRewards(rewards);
+      }
+      const code = `BCL-${reward.category.slice(0, 3).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const redemption: MarketRedemption = {
+        id: Date.now(),
+        reward_id: reward.id,
+        reward_title: reward.title,
+        xp_cost: reward.xp_cost,
+        voucher_code: code,
+        status: "active",
+        created_at: new Date().toISOString(),
+      };
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("bcl_user_vouchers");
+          const existing = raw ? JSON.parse(raw) : [];
+          localStorage.setItem("bcl_user_vouchers", JSON.stringify([redemption, ...existing]));
+        } catch {}
+      }
+      return redemption;
+    }
+  },
+
+  // ── Admin: Market Rewards ──
+  async getAdminMarketRewards(): Promise<MarketReward[]> {
+    try {
+      const res = await request<MarketReward[]>("/admin/market/rewards");
+      if (Array.isArray(res)) {
+        saveLocalMarketRewards(res);
+        return res;
+      }
+      return getLocalMarketRewards();
+    } catch {
+      return getLocalMarketRewards();
+    }
+  },
+
+  async createAdminMarketReward(payload: MarketRewardCreate): Promise<MarketReward> {
+    try {
+      const created = await request<MarketReward>("/admin/market/rewards", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const current = getLocalMarketRewards();
+      saveLocalMarketRewards([created, ...current]);
+      return created;
+    } catch {
+      const current = getLocalMarketRewards();
+      const newReward: MarketReward = {
+        id: Date.now(),
+        title: payload.title,
+        description: payload.description || "",
+        category: payload.category || "Merch",
+        xp_cost: Number(payload.xp_cost) || 100,
+        badge: payload.badge || "Reward",
+        badge_color: payload.badge_color || "emerald",
+        meta_info: payload.meta_info || null,
+        image_url: payload.image_url || null,
+        min_level: Number(payload.min_level) || 1,
+        stock: payload.stock !== undefined ? payload.stock : 100,
+        is_active: payload.is_active !== undefined ? payload.is_active : true,
+        cta_label: payload.cta_label || "Redeem Reward",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      saveLocalMarketRewards([newReward, ...current]);
+      return newReward;
+    }
+  },
+
+  async updateAdminMarketReward(rewardId: number, payload: Partial<MarketRewardCreate & { is_active?: boolean }>): Promise<MarketReward> {
+    try {
+      const updated = await request<MarketReward>(`/admin/market/rewards/${rewardId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      const current = getLocalMarketRewards().map((r) => (r.id === rewardId ? updated : r));
+      saveLocalMarketRewards(current);
+      return updated;
+    } catch {
+      const current = getLocalMarketRewards();
+      let updatedReward: MarketReward | null = null;
+      const updated = current.map((r) => {
+        if (r.id === rewardId) {
+          updatedReward = {
+            ...r,
+            ...payload,
+            updated_at: new Date().toISOString(),
+          };
+          return updatedReward;
+        }
+        return r;
+      });
+      saveLocalMarketRewards(updated);
+      return updatedReward || (current[0] as MarketReward);
+    }
+  },
+
+  async deleteAdminMarketReward(rewardId: number): Promise<{ ok: boolean; deleted: number }> {
+    try {
+      const res = await request<{ ok: boolean; deleted: number }>(`/admin/market/rewards/${rewardId}`, {
+        method: "DELETE",
+      });
+      const current = getLocalMarketRewards().filter((r) => r.id !== rewardId);
+      saveLocalMarketRewards(current);
+      return res;
+    } catch {
+      const current = getLocalMarketRewards().filter((r) => r.id !== rewardId);
+      saveLocalMarketRewards(current);
+      return { ok: true, deleted: rewardId };
     }
   },
 };

@@ -12,6 +12,8 @@ import {
   DailyQuiz,
   DailyQuizCreate,
   CommunityEvent,
+  MarketReward,
+  MarketRewardCreate,
 } from "@/lib/api";
 import { getExplorerUrl } from "@/lib/contracts";
 import { LinkifiedText } from "@/components/common/LinkifiedText";
@@ -41,10 +43,13 @@ import {
   Clock,
   Radio,
   MapPin,
+  ShoppingBag,
+  Tag,
+  PackageOpen,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-type TabType = "submissions" | "manage_tasks" | "events" | "daily_quiz" | "users" | "milestones" | "mints" | "audit";
+type TabType = "submissions" | "manage_tasks" | "events" | "market" | "daily_quiz" | "users" | "milestones" | "mints" | "audit";
 
 interface AuditLog {
   id: number;
@@ -106,6 +111,30 @@ export default function AdminPage() {
   const [togglingEventLiveId, setTogglingEventLiveId] = useState<number | null>(null);
   const [editingEvent, setEditingEvent] = useState<CommunityEvent | null>(null);
   const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
+
+  // Market Rewards state
+  const [marketRewards, setMarketRewards] = useState<MarketReward[]>([]);
+  const [loadingMarketRewards, setLoadingMarketRewards] = useState(false);
+  const [showCreateRewardModal, setShowCreateRewardModal] = useState(false);
+  const [editingReward, setEditingReward] = useState<MarketReward | null>(null);
+  const [isCreatingReward, setIsCreatingReward] = useState(false);
+  const [isUpdatingReward, setIsUpdatingReward] = useState(false);
+  const [deletingRewardId, setDeletingRewardId] = useState<number | null>(null);
+  const [togglingRewardActiveId, setTogglingRewardActiveId] = useState<number | null>(null);
+  const [newReward, setNewReward] = useState<MarketRewardCreate>({
+    title: "",
+    description: "",
+    category: "Merch",
+    xp_cost: 300,
+    badge: "Official Swag",
+    badge_color: "emerald",
+    meta_info: "Shipped directly or redeemable via Botchain coordinator",
+    image_url: "",
+    min_level: 1,
+    stock: 25,
+    is_active: true,
+    cta_label: "Redeem Reward",
+  });
 
   const [adminUsers, setAdminUsers] = useState<UserType[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -175,6 +204,7 @@ export default function AdminPage() {
     if (activeTab === "submissions") loadSubmissions();
     if (activeTab === "manage_tasks") loadTasks();
     if (activeTab === "events") loadEvents();
+    if (activeTab === "market") loadMarketRewards();
     if (activeTab === "daily_quiz") loadQuizzes();
     if (activeTab === "users") loadUsers();
     if (activeTab === "milestones") loadMilestones();
@@ -218,6 +248,19 @@ export default function AdminPage() {
       setEvents([]);
     } finally {
       setLoadingEvents(false);
+    }
+  }
+
+  async function loadMarketRewards() {
+    try {
+      setLoadingMarketRewards(true);
+      const data = await api.getAdminMarketRewards();
+      setMarketRewards(data || []);
+    } catch (err) {
+      console.error("Failed to load market rewards:", err);
+      setMarketRewards([]);
+    } finally {
+      setLoadingMarketRewards(false);
     }
   }
 
@@ -739,6 +782,109 @@ export default function AdminPage() {
     }
   };
 
+  const handleCreateReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReward.title.trim() || Number(newReward.xp_cost) <= 0) {
+      toast.error("Please provide a title and valid XP cost");
+      return;
+    }
+    try {
+      setIsCreatingReward(true);
+      await api.createAdminMarketReward({
+        ...newReward,
+        xp_cost: Number(newReward.xp_cost),
+        min_level: Number(newReward.min_level) || 1,
+        stock:
+          newReward.stock !== undefined && newReward.stock !== null && `${newReward.stock}` !== ""
+            ? Number(newReward.stock)
+            : null,
+      });
+      toast.success("Market reward item added!");
+      setNewReward({
+        title: "",
+        description: "",
+        category: "Merch",
+        xp_cost: 300,
+        badge: "Official Swag",
+        badge_color: "emerald",
+        meta_info: "Shipped directly or redeemable via Botchain coordinator",
+        image_url: "",
+        min_level: 1,
+        stock: 25,
+        is_active: true,
+        cta_label: "Redeem Reward",
+      });
+      setShowCreateRewardModal(false);
+      await loadMarketRewards();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create market reward");
+    } finally {
+      setIsCreatingReward(false);
+    }
+  };
+
+  const handleUpdateRewardSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReward || !editingReward.title.trim()) return;
+    try {
+      setIsUpdatingReward(true);
+      await api.updateAdminMarketReward(editingReward.id, {
+        title: editingReward.title,
+        description: editingReward.description,
+        category: editingReward.category,
+        xp_cost: Number(editingReward.xp_cost),
+        badge: editingReward.badge,
+        badge_color: editingReward.badge_color,
+        meta_info: editingReward.meta_info || undefined,
+        image_url: editingReward.image_url || undefined,
+        min_level: Number(editingReward.min_level) || 1,
+        stock:
+          editingReward.stock !== undefined && editingReward.stock !== null && `${editingReward.stock}` !== ""
+            ? Number(editingReward.stock)
+            : null,
+        is_active: editingReward.is_active,
+        cta_label: editingReward.cta_label,
+      });
+      toast.success("Market reward updated!");
+      setEditingReward(null);
+      await loadMarketRewards();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update reward");
+    } finally {
+      setIsUpdatingReward(false);
+    }
+  };
+
+  const handleToggleRewardActive = async (reward: MarketReward) => {
+    try {
+      setTogglingRewardActiveId(reward.id);
+      const nextActive = !reward.is_active;
+      await api.updateAdminMarketReward(reward.id, {
+        is_active: nextActive,
+      });
+      toast.success(nextActive ? `"${reward.title}" is now active in market!` : `"${reward.title}" paused`);
+      await loadMarketRewards();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to toggle reward status");
+    } finally {
+      setTogglingRewardActiveId(null);
+    }
+  };
+
+  const handleDeleteReward = async (rewardId: number, title: string) => {
+    if (!confirm(`Delete market reward "${title}"? This cannot be undone.`)) return;
+    try {
+      setDeletingRewardId(rewardId);
+      await api.deleteAdminMarketReward(rewardId);
+      toast.success("Market reward deleted");
+      await loadMarketRewards();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete reward");
+    } finally {
+      setDeletingRewardId(null);
+    }
+  };
+
   const handleAdjustPointsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustPointsModal) return;
@@ -923,6 +1069,7 @@ export default function AdminPage() {
             { id: "submissions", label: "Review Queue", icon: ListOrdered },
             { id: "manage_tasks", label: "Quests", icon: PlusCircle },
             { id: "events", label: "Events & Spaces", icon: Calendar },
+            { id: "market", label: "Market Rewards", icon: ShoppingBag },
             { id: "daily_quiz", label: "Daily Quiz", icon: Terminal },
             { id: "users", label: "Users & Moderation", icon: Users },
             { id: "milestones", label: "Milestones", icon: Award },
@@ -1736,6 +1883,395 @@ export default function AdminPage() {
                             <span>Delete</span>
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: MARKET REWARDS ── */}
+      {activeTab === "market" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink/[0.06] pb-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-ink">Reward Bazaar & Market Catalog</span>
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                {marketRewards.filter((r) => r.is_active).length} Active · {marketRewards.length} Items Total
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadMarketRewards}
+                disabled={loadingMarketRewards}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink/[0.08] hover:bg-ink/[0.04] text-ink-3 hover:text-ink cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingMarketRewards ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={() => setShowCreateRewardModal((prev) => !prev)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand hover:bg-brand-hi text-white font-bold transition shadow-sm cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>{showCreateRewardModal ? "Close Creator" : "Add Market Reward"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Create Reward Panel */}
+          {showCreateRewardModal && (
+            <div className="bg-surface border border-brand/30 rounded-2xl p-5 shadow-lg space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+                    <ShoppingBag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-ink">Create New Marketplace Reward</h3>
+                    <p className="text-[11px] text-ink-3">Add items redeemable with XP points by community members across Web3 disciplines</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateRewardModal(false)}
+                  className="p-1 rounded-lg hover:bg-ink/[0.06] text-ink-3 hover:text-ink"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateReward} className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">Reward Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Official BCL Community Hoodie, 1-on-1 Portfolio Review"
+                      value={newReward.title}
+                      onChange={(e) => setNewReward({ ...newReward, title: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">Category</label>
+                    <select
+                      value={newReward.category || "Merch"}
+                      onChange={(e) => setNewReward({ ...newReward, category: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                    >
+                      <option value="Merch">Merch</option>
+                      <option value="Access">VIP / Access</option>
+                      <option value="Domain">Domain Perk</option>
+                      <option value="Grant">Grant / Bounty</option>
+                      <option value="Career">Career / Mentorship</option>
+                      <option value="Digital">Digital Collectible</option>
+                      <option value="Perk">Exclusive Perk</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">XP Cost *</label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      value={newReward.xp_cost}
+                      onChange={(e) => setNewReward({ ...newReward, xp_cost: Number(e.target.value) })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">Badge Tag Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Official Swag, VIP Pass, Free Mint"
+                      value={newReward.badge || ""}
+                      onChange={(e) => setNewReward({ ...newReward, badge: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">Badge Color</label>
+                    <select
+                      value={newReward.badge_color || "emerald"}
+                      onChange={(e) => setNewReward({ ...newReward, badge_color: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                    >
+                      <option value="emerald">Emerald (Green)</option>
+                      <option value="brand">Brand (Blue/Cyan)</option>
+                      <option value="amber">Amber (Gold/Orange)</option>
+                      <option value="violet">Violet (Purple)</option>
+                      <option value="sky">Sky (Bright Blue)</option>
+                      <option value="fuchsia">Fuchsia (Pink)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">Min Level Required</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={newReward.min_level ?? 1}
+                      onChange={(e) => setNewReward({ ...newReward, min_level: Number(e.target.value) })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">Available Stock (leave blank if unlimited)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Unlimited"
+                      value={newReward.stock ?? ""}
+                      onChange={(e) =>
+                        setNewReward({
+                          ...newReward,
+                          stock: e.target.value === "" ? undefined : Number(e.target.value),
+                        })
+                      }
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">Image URL (Optional)</label>
+                    <input
+                      type="url"
+                      placeholder="https://... (WebP, PNG, JPG)"
+                      value={newReward.image_url || ""}
+                      onChange={(e) => setNewReward({ ...newReward, image_url: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-ink-3 uppercase">CTA Button Text</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Redeem Reward, Claim Merch, Get Pass"
+                      value={newReward.cta_label || ""}
+                      onChange={(e) => setNewReward({ ...newReward, cta_label: e.target.value })}
+                      className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Delivery / Meta Info</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ships worldwide · Free delivery, Instant redeemable code sent via vouchers tab"
+                    value={newReward.meta_info || ""}
+                    onChange={(e) => setNewReward({ ...newReward, meta_info: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Provide details about this reward, sizing notes, or how to redeem it..."
+                    value={newReward.description || ""}
+                    onChange={(e) => setNewReward({ ...newReward, description: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-ink/[0.06]">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newReward.is_active}
+                      onChange={(e) => setNewReward({ ...newReward, is_active: e.target.checked })}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <span className="text-xs text-ink font-medium">Activate immediately in Market</span>
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateRewardModal(false)}
+                      className="px-4 py-2 text-xs text-ink-3 hover:text-ink cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingReward}
+                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-brand hover:bg-brand-hi text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-md shadow-brand/20"
+                    >
+                      {isCreatingReward ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                      )}
+                      <span>Publish Reward</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Rewards List */}
+          {loadingMarketRewards ? (
+            <div className="p-8 text-center text-xs text-ink-3 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-brand" />
+              <span>Loading market rewards...</span>
+            </div>
+          ) : marketRewards.length === 0 ? (
+            <div className="p-8 text-center text-xs text-ink-3 bg-surface border border-ink/[0.08] rounded-2xl">
+              No rewards created in the market yet. Click &quot;Add Market Reward&quot; above to create one.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {marketRewards.map((reward) => {
+                const badgeColorClass =
+                  reward.badge_color === "amber"
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                    : reward.badge_color === "violet"
+                    ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
+                    : reward.badge_color === "sky"
+                    ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                    : reward.badge_color === "fuchsia"
+                    ? "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20"
+                    : reward.badge_color === "brand"
+                    ? "bg-brand/10 text-brand border-brand/20"
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+
+                return (
+                  <div
+                    key={reward.id}
+                    className={`bg-surface border rounded-2xl p-4 flex flex-col justify-between transition hover:border-ink/[0.18] relative group ${
+                      reward.is_active ? "border-ink/[0.08]" : "border-ink/[0.08] opacity-65"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      {/* Image / Header bar */}
+                      <div className="relative w-full h-32 rounded-xl overflow-hidden bg-ink/[0.04] border border-ink/[0.06] flex items-center justify-center">
+                        {reward.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={reward.image_url}
+                            alt={reward.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-1 text-ink-3">
+                            <ShoppingBag className="w-8 h-8 opacity-40" />
+                            <span className="text-[10px] font-mono uppercase tracking-wider">{reward.category}</span>
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2 flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-md ${badgeColorClass}`}>
+                            {reward.badge || reward.category}
+                          </span>
+                        </div>
+                        <div className="absolute top-2 right-2">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md ${
+                              reward.is_active
+                                ? "bg-emerald-500/80 text-white"
+                                : "bg-zinc-800/80 text-zinc-300"
+                            }`}
+                          >
+                            {reward.is_active ? "Active" : "Paused"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm font-bold text-ink group-hover:text-brand transition line-clamp-1">
+                            {reward.title}
+                          </h4>
+                          <span className="shrink-0 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-bold text-[11px]">
+                            ⚡ {reward.xp_cost} XP
+                          </span>
+                        </div>
+                        <p className="text-xs text-ink-3 mt-1 line-clamp-2 leading-relaxed">
+                          {reward.description || "No description provided."}
+                        </p>
+                      </div>
+
+                      {/* Meta information */}
+                      <div className="flex items-center gap-2 text-[11px] text-ink-3 pt-1 border-t border-ink/[0.05]">
+                        <span className="rounded bg-ink/[0.04] px-1.5 py-0.5 font-medium">
+                          Lvl {reward.min_level}+
+                        </span>
+                        <span>•</span>
+                        <span className="font-mono">
+                          {reward.stock !== null && reward.stock !== undefined ? `${reward.stock} in stock` : "Unlimited"}
+                        </span>
+                        {reward.meta_info && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate" title={reward.meta_info}>
+                              {reward.meta_info}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-ink/[0.06]">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRewardActive(reward)}
+                        disabled={togglingRewardActiveId === reward.id}
+                        className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg transition cursor-pointer disabled:opacity-50 ${
+                          reward.is_active
+                            ? "bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25"
+                            : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
+                        }`}
+                      >
+                        {togglingRewardActiveId === reward.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <PackageOpen className="w-3 h-3" />
+                        )}
+                        <span>{reward.is_active ? "Pause" : "Activate"}</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditingReward(reward)}
+                          className="flex items-center gap-1 text-[11px] font-medium text-ink-3 hover:text-ink bg-ink/5 hover:bg-ink/10 px-2 py-1 rounded-lg transition cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReward(reward.id, reward.title)}
+                          disabled={deletingRewardId === reward.id}
+                          className="flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-lg transition cursor-pointer disabled:opacity-50"
+                        >
+                          {deletingRewardId === reward.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                          <span>Delete</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2915,6 +3451,208 @@ export default function AdminPage() {
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand hover:bg-brand-hi text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-sm"
                 >
                   {isUpdatingEvent ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: EDIT MARKET REWARD ── */}
+      {editingReward && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-surface border border-ink/[0.12] rounded-3xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ink/[0.06] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-ink">Edit Market Reward</h3>
+                  <p className="text-[11px] text-ink-3">Update reward information, pricing, stock, or status</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingReward(null)}
+                className="p-1 rounded-lg hover:bg-ink/[0.06] text-ink-3 hover:text-ink cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateRewardSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-ink-3 uppercase">Reward Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingReward.title}
+                  onChange={(e) => setEditingReward({ ...editingReward, title: e.target.value })}
+                  className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Category</label>
+                  <select
+                    value={editingReward.category}
+                    onChange={(e) => setEditingReward({ ...editingReward, category: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  >
+                    <option value="Merch">Merch</option>
+                    <option value="Access">VIP / Access</option>
+                    <option value="Domain">Domain Perk</option>
+                    <option value="Grant">Grant / Bounty</option>
+                    <option value="Career">Career / Mentorship</option>
+                    <option value="Digital">Digital Collectible</option>
+                    <option value="Perk">Exclusive Perk</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">XP Cost *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={editingReward.xp_cost}
+                    onChange={(e) => setEditingReward({ ...editingReward, xp_cost: Number(e.target.value) })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Badge Label</label>
+                  <input
+                    type="text"
+                    value={editingReward.badge || ""}
+                    onChange={(e) => setEditingReward({ ...editingReward, badge: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Badge Color</label>
+                  <select
+                    value={editingReward.badge_color || "emerald"}
+                    onChange={(e) => setEditingReward({ ...editingReward, badge_color: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  >
+                    <option value="emerald">Emerald (Green)</option>
+                    <option value="brand">Brand (Blue/Cyan)</option>
+                    <option value="amber">Amber (Gold/Orange)</option>
+                    <option value="violet">Violet (Purple)</option>
+                    <option value="sky">Sky (Bright Blue)</option>
+                    <option value="fuchsia">Fuchsia (Pink)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Min Level Required</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={editingReward.min_level}
+                    onChange={(e) => setEditingReward({ ...editingReward, min_level: Number(e.target.value) })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Available Stock (leave blank if unlimited)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Unlimited"
+                    value={editingReward.stock ?? ""}
+                    onChange={(e) =>
+                      setEditingReward({
+                        ...editingReward,
+                        stock: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">Image URL (Optional)</label>
+                  <input
+                    type="url"
+                    value={editingReward.image_url || ""}
+                    onChange={(e) => setEditingReward({ ...editingReward, image_url: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink font-mono focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-ink-3 uppercase">CTA Button Text</label>
+                  <input
+                    type="text"
+                    value={editingReward.cta_label || ""}
+                    onChange={(e) => setEditingReward({ ...editingReward, cta_label: e.target.value })}
+                    className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-ink-3 uppercase">Delivery / Meta Info</label>
+                <input
+                  type="text"
+                  value={editingReward.meta_info || ""}
+                  onChange={(e) => setEditingReward({ ...editingReward, meta_info: e.target.value })}
+                  className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-ink-3 uppercase">Description</label>
+                <textarea
+                  rows={2}
+                  value={editingReward.description || ""}
+                  onChange={(e) => setEditingReward({ ...editingReward, description: e.target.value })}
+                  className="w-full bg-page border border-ink/[0.12] rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand resize-none"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+                <input
+                  type="checkbox"
+                  checked={editingReward.is_active}
+                  onChange={(e) => setEditingReward({ ...editingReward, is_active: e.target.checked })}
+                  className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-ink">Active and visible in Market</span>
+              </label>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-ink/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setEditingReward(null)}
+                  className="px-3.5 py-1.5 text-xs text-ink-3 hover:text-ink cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingReward}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand hover:bg-brand-hi text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {isUpdatingReward ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <CheckCircle2 className="w-3.5 h-3.5" />
