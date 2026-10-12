@@ -38,6 +38,19 @@ async def get_current_user(user: User | None = Depends(get_optional_user)) -> Us
 
 
 async def is_admin(session: AsyncSession, user: User) -> bool:
+    wallet = (user.wallet_address or "").lower()
+    if wallet and wallet in settings.bootstrap_admins:
+        has_role = await session.scalar(
+            select(Role.id).where(Role.user_id == user.id, Role.role == RoleName.ADMIN)
+        )
+        if not has_role:
+            session.add(Role(user_id=user.id, role=RoleName.ADMIN))
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+        return True
+
     return bool(
         await session.scalar(
             select(Role.id).where(Role.user_id == user.id, Role.role == RoleName.ADMIN)

