@@ -245,61 +245,61 @@ export default function MarketPage() {
   if (sortBy === "xp-high") displayRewards = [...displayRewards].sort((a, b) => b.xpCost - a.xpCost);
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-10">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-10 overflow-x-hidden">
 
       {/* ── Hero Banner ─────────────────────────────────────────────────── */}
-      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 overflow-hidden shadow-xl">
+      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 p-4 sm:p-6 md:p-10 overflow-hidden shadow-xl">
         <div className="absolute -right-16 -top-24 w-96 h-96 rounded-full bg-accent/8 blur-3xl pointer-events-none" />
         <div className="absolute right-1/3 -bottom-20 w-80 h-80 rounded-full bg-purple-500/8 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 sm:gap-8">
 
           {/* Titles */}
-          <div className="max-w-2xl flex flex-col gap-3">
+          <div className="max-w-2xl flex flex-col gap-2.5 sm:gap-3">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ink/5 border border-ink/5 w-fit">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_rgba(0,245,160,0.8)]" />
               <span className="font-mono text-[10px] font-bold text-accent-fg uppercase tracking-wider">Treasury Synced</span>
               <span className="text-ink-4 font-mono text-[10px]">/ Block #19820412</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight break-words">
               Reward Vault & Marketplace
             </h1>
-            <p className="text-sm md:text-base text-ink-4 max-w-xl leading-relaxed">
+            <p className="text-xs sm:text-sm md:text-base text-ink-4 max-w-xl leading-relaxed">
               Convert your verified on-chain effort and XP into real-world gear, event tickets, hardware, and mentorship.
             </p>
           </div>
 
           {/* Metrics HUD */}
-          <div className="w-full lg:w-auto shrink-0 flex flex-col sm:flex-row items-stretch gap-4 bg-surface/90 backdrop-blur-xl border border-ink/5 p-4 rounded-2xl shadow-lg">
+          <div className="w-full lg:w-auto shrink-0 flex flex-col sm:flex-row items-stretch gap-3 sm:gap-4 bg-surface/90 backdrop-blur-xl border border-ink/5 p-3.5 sm:p-4 rounded-2xl shadow-lg">
 
             {/* Spendable */}
-            <div className="flex flex-col justify-between p-4 bg-ink/[0.03] rounded-xl min-w-[170px] border border-ink/5">
+            <div className="flex flex-col justify-between p-3.5 sm:p-4 bg-ink/[0.03] rounded-xl flex-1 sm:min-w-[170px] border border-ink/5">
               <div className="flex items-center justify-between text-ink-4 mb-2">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Spendable Balance</span>
                 <Zap className="w-4 h-4 text-accent-fg" />
               </div>
               <div className="flex items-baseline gap-1 my-1">
-                <span className="text-3xl font-heading font-bold text-accent-fg tracking-tight">
+                <span className="text-2xl sm:text-3xl font-heading font-bold text-accent-fg tracking-tight">
                   {spendableXp.toLocaleString()}
                 </span>
                 <span className="font-mono text-[10px] text-ink-4 font-bold ml-1">BCL-XP</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-fg" />
-                <span className="font-mono text-[10px] font-bold text-accent-fg">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-fg shrink-0" />
+                <span className="font-mono text-[10px] font-bold text-accent-fg truncate">
                   {eligibleCount} items eligible now
                 </span>
               </div>
             </div>
 
             {/* Lifetime & Tier */}
-            <div className="flex flex-col justify-between p-4 bg-ink/[0.03] rounded-xl min-w-[190px] border border-ink/5">
+            <div className="flex flex-col justify-between p-3.5 sm:p-4 bg-ink/[0.03] rounded-xl flex-1 sm:min-w-[190px] border border-ink/5">
               <div className="flex items-center justify-between text-ink-4 mb-2">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Lifetime Accumulated</span>
                 <Star className="w-4 h-4 text-amber-400" />
               </div>
               <div className="flex items-baseline gap-1 my-1">
-                <span className="text-3xl font-heading font-bold text-ink tracking-tight">
+                <span className="text-2xl sm:text-3xl font-heading font-bold text-ink tracking-tight">
                   {lifetimeXp.toLocaleString()}
                 </span>
                 <span className="font-mono text-[10px] text-ink-4 font-bold ml-1">XP</span>
@@ -313,10 +313,10 @@ export default function MarketPage() {
         </div>
 
         {/* Burn policy pill */}
-        <div className="relative z-10 mt-8 pt-5 border-t border-ink/5 flex flex-wrap items-center justify-between gap-4 bg-ink/[0.02] px-4 py-3 rounded-xl">
+        <div className="relative z-10 mt-6 sm:mt-8 pt-4 sm:pt-5 border-t border-ink/5 flex flex-wrap items-center justify-between gap-3 sm:gap-4 bg-ink/[0.02] px-3.5 sm:px-4 py-3 rounded-xl">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-accent-fg shrink-0" />
-            <span className="text-sm text-ink-4">
+            <span className="text-xs sm:text-sm text-ink-4">
               XP redemptions safely burn spendable XP while preserving your lifetime reputation score and guild level status.
             </span>
           </div>
@@ -332,12 +332,12 @@ export default function MarketPage() {
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
 
           {/* Category pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
             {CATEGORIES.map(cat => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`shrink-0 px-4 py-2 rounded-full font-mono text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm ${
+                className={`shrink-0 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm ${
                   activeCategory === cat
                     ? "bg-accent/20 text-accent-fg border border-accent/30 shadow-[0_0_16px_rgba(0,245,160,0.2)]"
                     : "bg-surface border border-ink/5 text-ink-4 hover:text-ink hover:bg-ink/5"
@@ -349,7 +349,7 @@ export default function MarketPage() {
           </div>
 
           {/* Search + Sort */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
             <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-4" />
               <input
@@ -364,7 +364,7 @@ export default function MarketPage() {
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="appearance-none bg-surface border border-ink/10 text-ink text-sm font-semibold pl-4 pr-9 py-2.5 rounded-xl cursor-pointer focus:outline-none focus:border-accent/40 shadow-inner"
+                className="w-full sm:w-auto appearance-none bg-surface border border-ink/10 text-ink text-xs sm:text-sm font-semibold pl-3.5 pr-9 py-2.5 rounded-xl cursor-pointer focus:outline-none focus:border-accent/40 shadow-inner"
               >
                 <option value="featured">Sort: Featured</option>
                 <option value="xp-low">XP: Low to High</option>

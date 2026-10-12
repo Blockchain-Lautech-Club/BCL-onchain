@@ -64,14 +64,14 @@ export default function LearnPage() {
   }
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-10">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-10 overflow-x-hidden">
       
       {/* 1. Hero Banner */}
-      <div className="relative w-full overflow-hidden rounded-2xl bg-surface border border-ink/5 p-6 md:p-10 shadow-sm">
+      <div className="relative w-full overflow-hidden rounded-2xl bg-surface border border-ink/5 p-4 sm:p-6 md:p-10 shadow-sm">
         <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-accent/5 blur-3xl pointer-events-none" />
         <div className="absolute -left-16 -bottom-16 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-8">
           <div className="max-w-3xl space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ink/5 border border-ink/5 text-accent-fg">
               <GraduationCap className="w-4 h-4" />
@@ -79,7 +79,7 @@ export default function LearnPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
               <span className="font-mono text-[10px] font-bold text-ink-4 uppercase">Cohort 2025</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">BCL Learning Academy</h1>
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">BCL Learning Academy</h1>
             <p className="text-sm md:text-base text-ink-4 max-w-2xl leading-relaxed">
               Interactive Web3 curriculum built for campus minds. Master development, design, tokenomics, and security through hands-on quests.
             </p>
@@ -97,7 +97,7 @@ export default function LearnPage() {
           </div>
         </div>
         
-        <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-ink/5">
+        <div className="mt-6 sm:mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-ink/5">
           <div className="bg-ink/[0.03] border border-ink/5 p-4 rounded-xl flex flex-col justify-between shadow-sm">
             <div className="flex items-center justify-between text-ink-4 mb-2">
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Catalog</span>

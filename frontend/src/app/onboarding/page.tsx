@@ -142,7 +142,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-10 space-y-8">
+    <div className="w-full max-w-2xl mx-auto px-3.5 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8 overflow-x-hidden">
       {/* Header */}
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-[11px] text-accent-fg font-semibold uppercase tracking-wider mb-2">

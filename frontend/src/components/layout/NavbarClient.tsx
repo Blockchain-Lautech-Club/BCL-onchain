@@ -98,14 +98,14 @@ export function NavbarClient() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.3)] border-b border-ink/[0.06]">
-      <div className="h-20 max-w-[1400px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.3)] border-b border-ink/[0.06] w-full overflow-x-hidden">
+      <div className="h-16 sm:h-20 max-w-[1400px] mx-auto px-3 sm:px-6 md:px-8 lg:px-12 flex items-center justify-between gap-2 sm:gap-4">
 
         {/* ── Logo → always goes to landing page ─────────────────────────── */}
-        <div className="flex items-center gap-3 shrink-0">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="BCL Onchain Logo" width={32} height={32} className="object-contain" />
-            <span className="font-heading text-base sm:text-lg font-semibold text-ink tracking-tight">BCL Onchain</span>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+          <Link href="/" className="flex items-center gap-2 min-w-0">
+            <Image src="/logo.png" alt="BCL Onchain Logo" width={30} height={30} className="object-contain shrink-0" />
+            <span className="font-heading text-sm sm:text-base md:text-lg font-bold text-ink tracking-tight truncate">BCL Onchain</span>
           </Link>
           <span className="hidden xl:flex items-center gap-1.5 text-[10px] font-semibold text-accent-fg bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse shadow-[0_0_6px_rgba(0,245,160,0.8)]" />
@@ -135,14 +135,14 @@ export function NavbarClient() {
         </nav>
 
         {/* ── Right Side ──────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 
           {walletAddress ? (
             <>
               {/* Streak */}
-              <div className="flex items-center gap-1.5 bg-ink/[0.05] border border-ink/[0.08] px-2.5 py-1.5 rounded-full shadow-[inset_0_0_10px_rgba(249,189,34,0.1)]">
-                <Flame className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-[11px] font-bold text-orange-500 font-mono">
+              <div className="hidden xs:flex items-center gap-1 sm:gap-1.5 bg-ink/[0.05] border border-ink/[0.08] px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full shadow-[inset_0_0_10px_rgba(249,189,34,0.1)]">
+                <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                <span className="text-[10px] sm:text-[11px] font-bold text-orange-500 font-mono">
                   {stats?.streak_days ?? 7}d
                 </span>
               </div>
@@ -169,7 +169,7 @@ export function NavbarClient() {
               {/* Notification bell */}
               <Link
                 href="/notifications"
-                className={`relative w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${
+                className={`hidden sm:flex relative w-8 h-8 sm:w-9 sm:h-9 rounded-full border items-center justify-center transition-colors ${
                   pathname === "/notifications"
                     ? "bg-accent/10 border-accent/25 text-accent-fg"
                     : "bg-ink/[0.04] border-ink/[0.06] text-ink-3 hover:text-ink hover:bg-ink/[0.08]"
@@ -184,24 +184,24 @@ export function NavbarClient() {
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setProfileOpen(prev => !prev)}
-                  className="flex items-center gap-2 bg-ink/[0.04] border border-ink/[0.06] pl-1 pr-2.5 py-1 rounded-full hover:bg-ink/[0.08] transition-colors"
+                  className="flex items-center gap-1.5 sm:gap-2 bg-ink/[0.04] border border-ink/[0.06] p-0.5 sm:pl-1 sm:pr-2.5 sm:py-1 rounded-full hover:bg-ink/[0.08] transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-ink/10 shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-ink/10 shrink-0">
                     {user?.avatar_url ? (
                       user.avatar_url.startsWith("http") || user.avatar_url.startsWith("/") || user.avatar_url.startsWith("data:") ? (
                         <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-base select-none leading-none">{user.avatar_url}</span>
+                        <span className="text-sm sm:text-base select-none leading-none">{user.avatar_url}</span>
                       )
                     ) : (
-                      <User className="w-4 h-4 text-surface" />
+                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-surface" />
                     )}
                   </div>
-                  <span className="hidden sm:block text-[13px] font-medium text-ink">
+                  <span className="hidden md:block text-[13px] font-medium text-ink max-w-[100px] truncate">
                     {displayName}
                   </span>
-                  <BadgeCheck className="w-4 h-4 text-accent-fg shrink-0" />
-                  <ChevronDown className={`w-3.5 h-3.5 text-ink-4 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+                  <BadgeCheck className="hidden xs:block w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-fg shrink-0" />
+                  <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-ink-4 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {/* Popup */}

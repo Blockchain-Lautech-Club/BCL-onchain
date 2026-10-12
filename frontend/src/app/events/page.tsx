@@ -163,10 +163,10 @@ export default function EventsPage() {
   const FILTERS = ["All", "Workshop", "Hackathon", "X Space", "Seminar", "Onboarding"];
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-8">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-5 sm:py-6 space-y-6 sm:space-y-8 overflow-x-hidden">
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="relative rounded-2xl bg-gradient-to-br from-subtle to-page border border-accent/15 px-6 py-8 overflow-hidden">
+      <div className="relative rounded-2xl bg-gradient-to-br from-subtle to-page border border-accent/15 px-4 sm:px-6 py-6 sm:py-8 overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern opacity-60" />
         <div className="absolute top-0 right-0 w-80 h-40 bg-accent/[0.07] blur-[80px] pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -185,7 +185,7 @@ export default function EventsPage() {
               attendance POAPs verified on-chain.
             </p>
           </div>
-          <div className="stat-card shrink-0 min-w-[140px]">
+          <div className="stat-card shrink-0 w-full sm:w-auto min-w-0 sm:min-w-[140px]">
             <div className="text-[10px] text-ink-5 uppercase tracking-wider mb-1">XP This Month</div>
             <div className="text-2xl font-extrabold font-heading text-accent-fg num-mono">+1,300</div>
             <div className="text-[10px] text-ink-5 mt-0.5">From attending events</div>

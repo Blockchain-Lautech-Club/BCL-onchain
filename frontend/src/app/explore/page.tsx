@@ -117,10 +117,10 @@ export default function ExplorePage() {
   const totalMembers = GUILDS.reduce((s, g) => s + g.members, 0);
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-8">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-5 sm:py-6 space-y-6 sm:space-y-8 overflow-x-hidden">
 
       {/* ── Hero ──────────────────────────────────────────────────── */}
-      <div className="relative rounded-2xl bg-gradient-to-br from-subtle to-page border border-accent/15 px-6 py-8 overflow-hidden">
+      <div className="relative rounded-2xl bg-gradient-to-br from-subtle to-page border border-accent/15 px-4 sm:px-6 py-6 sm:py-8 overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern opacity-60" />
         <div className="absolute top-0 right-0 w-96 h-48 bg-brand/[0.06] blur-[100px] pointer-events-none" />
         <div className="relative z-10 max-w-2xl">
@@ -130,7 +130,7 @@ export default function ExplorePage() {
             <span>·</span>
             <span className="text-accent-fg">{totalMembers.toLocaleString()} ACTIVE MEMBERS</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold font-heading text-ink tracking-tight mb-2">
+          <h1 className="text-2xl sm:text-4xl font-extrabold font-heading text-ink tracking-tight mb-2">
             Explore the BCL Ecosystem
           </h1>
           <p className="text-sm text-ink-4 leading-relaxed">

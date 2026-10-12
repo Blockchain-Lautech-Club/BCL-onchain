@@ -314,7 +314,7 @@ export function LandingHero() {
             <div className="text-[10px] text-purple-500 uppercase tracking-widest font-bold mb-1.5">// Missions Available</div>
             <h2 className="text-2xl sm:text-3xl font-heading font-bold text-ink">Featured Quests</h2>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none -mx-2 px-2 sm:mx-0 sm:px-0 max-w-full">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none w-full max-w-full">
             <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-ink text-surface text-xs font-bold whitespace-nowrap">All Quests</button>
             <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Beginner</button>
             <button className="px-3.5 sm:px-4 py-1.5 rounded-full bg-surface border border-ink/10 text-ink-3 text-xs font-bold whitespace-nowrap hover:bg-ink/5">Developer</button>

@@ -126,7 +126,7 @@ export function QuestDetailClient() {
   const catStyles = getCategoryStyles(task.category);
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
+    <div className="w-full max-w-[1280px] mx-auto px-3.5 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 sm:gap-8 overflow-x-hidden">
       
       {/* Breadcrumb Navigation */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-ink-4 font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2">
@@ -140,12 +140,12 @@ export function QuestDetailClient() {
       </nav>
 
       {/* Hero Banner: Cyber-Glass Surface */}
-      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 shadow-sm overflow-hidden p-6 md:p-10">
+      <section className="relative w-full rounded-2xl bg-surface border border-ink/5 shadow-sm overflow-hidden p-4 sm:p-6 md:p-10">
         {/* Ambient Specular Glows */}
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-accent/10 blur-[90px] pointer-events-none" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-purple-500/10 blur-[80px] pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 sm:gap-8">
           {/* Title & Tags */}
           <div className="space-y-4 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
@@ -163,7 +163,7 @@ export function QuestDetailClient() {
               </span>
             </div>
             
-            <h1 className="text-3xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-heading font-extrabold text-ink tracking-tight">
               {task.title}
             </h1>
             <p className="text-sm md:text-base text-ink-4 max-w-2xl leading-relaxed">
@@ -186,7 +186,7 @@ export function QuestDetailClient() {
           </div>
 
           {/* Rewards Summary Metric Cluster */}
-          <div className="shrink-0 bg-surface/90 border border-ink/5 rounded-2xl p-6 shadow-lg flex flex-col gap-4 min-w-[280px] backdrop-blur-md">
+          <div className="w-full lg:w-auto shrink-0 bg-surface/90 border border-ink/5 rounded-2xl p-4 sm:p-6 shadow-lg flex flex-col gap-4 min-w-0 sm:min-w-[280px] backdrop-blur-md">
             <div className="flex items-center justify-between pb-2 border-b border-ink/5">
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-ink-4">Reward Payload</span>
               <Shield className="text-accent-fg w-4 h-4" />
