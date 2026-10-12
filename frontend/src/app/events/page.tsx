@@ -468,10 +468,10 @@ export default function EventsPage() {
       <div className="surface-card rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h3 className="font-heading font-bold text-base text-ink mb-1">
-            Have a Quest or Hackathon to Sponsor?
+            Have a Quest, Hackathon, or Bounty to Sponsor?
           </h3>
           <p className="text-xs text-ink-4">
-            Deploy verified event criteria and XP rewards for 4,000+ certified student developers.
+            Deploy verified campaign criteria, grant bounties, and reward 4,000+ on-chain student builders, creators, and innovators across all Web3 domains.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

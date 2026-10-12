@@ -366,8 +366,8 @@ export default function TasksPage() {
             <Cpu className="w-7 h-7 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h4 className="text-xl sm:text-2xl font-heading font-bold text-ink mb-1.5 sm:mb-2">Have a Quest or Hackathon to Sponsor?</h4>
-            <p className="text-xs sm:text-sm text-ink-4 max-w-lg leading-relaxed">Deploy verified task criteria and XP rewards directly to the BCL ecosystem for 4,000+ certified student developers to solve.</p>
+            <h4 className="text-xl sm:text-2xl font-heading font-bold text-ink mb-1.5 sm:mb-2">Have a Quest, Hackathon, or Bounty to Sponsor?</h4>
+            <p className="text-xs sm:text-sm text-ink-4 max-w-lg leading-relaxed">Deploy verified task criteria and XP rewards directly to the BCL ecosystem for 4,000+ on-chain student builders, creators, and innovators to solve.</p>
           </div>
         </div>
         
