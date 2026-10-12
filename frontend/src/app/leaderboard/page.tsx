@@ -8,7 +8,7 @@ import {
   ChevronDown, Trophy, Medal, Shield, Star, Flame
 } from "lucide-react";
 import Link from "next/link";
-import { getOnchainUserDomains } from "@/lib/contracts";
+import { getOnchainUserDomains, getExplorerUrl } from "@/lib/contracts";
 
 function renderAvatar(
   avatar: string | null | undefined,
@@ -17,12 +17,22 @@ function renderAvatar(
   fallbackGradient = "from-purple-600 to-blue-700"
 ) {
   if (avatar) {
-    if (avatar.startsWith("http") || avatar.startsWith("/") || avatar.startsWith("data:")) {
+    let src = avatar.trim();
+    if (src.startsWith("ipfs://")) {
+      src = `https://ipfs.io/ipfs/${src.replace("ipfs://", "")}`;
+    } else if (src.startsWith("bafy") || src.startsWith("Qm")) {
+      src = `https://ipfs.io/ipfs/${src}`;
+    }
+    if (src.startsWith("http") || src.startsWith("/") || src.startsWith("data:")) {
       return (
         <img
-          src={avatar}
+          src={src}
           alt={fallbackText}
           className={`${sizeClass} rounded-full object-cover shadow-md border-2 border-surface select-none shrink-0`}
+          onError={(e) => {
+            const target = e.currentTarget;
+            target.style.display = "none";
+          }}
         />
       );
     }
@@ -114,7 +124,6 @@ export default function LeaderboardPage() {
   });
 
   const top3 = filtered.slice(0, 3);
-  const rest = filtered.slice(3);
 
   const gold = top3[0];
   const silver = top3[1];
@@ -261,7 +270,7 @@ export default function LeaderboardPage() {
         <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent-fg" /></div>
       ) : top3.length > 0 ? (
         <section className="py-4 sm:py-8">
-          <div className="flex flex-col md:flex-row items-stretch md:items-end justify-center gap-6 pt-6 sm:pt-10">
+          <div className="flex flex-col md:flex-row items-stretch md:items-end justify-center gap-6 pt-10 sm:pt-14">
             
             {/* #2 Silver */}
             {silver && (
@@ -436,21 +445,38 @@ export default function LeaderboardPage() {
 
           {/* Table Rows */}
           <div className="divide-y divide-ink/5">
-            {rest.length === 0 && !loading && (
+            {filtered.length === 0 && !loading && (
               <div className="py-12 text-center text-sm text-ink-5">No entries found matching your criteria.</div>
             )}
-            {rest.map((entry) => {
+            {filtered.map((entry) => {
               const isMe = Boolean(walletAddress && entry.wallet_address.toLowerCase() === walletAddress.toLowerCase());
               const displayName = getDisplayName(entry, isMe, myDomain);
               return (
-                <div key={entry.rank} className={`px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 lg:py-5 hover:bg-ink/[0.02] transition-colors relative ${isMe ? "bg-accent/[0.03]" : ""}`}>
+                <div key={`${entry.rank}-${entry.wallet_address}`} className={`px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 lg:py-5 hover:bg-ink/[0.02] transition-colors relative ${isMe ? "bg-accent/[0.03]" : ""}`}>
                   {isMe && <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-fg" />}
                   
                   {/* Desktop Layout: 12-col grid */}
                   <div className="hidden lg:grid grid-cols-12 gap-4 items-center">
                     {/* Rank */}
-                    <div className="col-span-1">
-                      <span className="text-xl font-heading font-bold text-ink">#{entry.rank}</span>
+                    <div className="col-span-1 flex items-center">
+                      {entry.rank === 1 ? (
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                          <Crown className="w-3.5 h-3.5" />
+                          <span className="font-heading font-extrabold text-xs">#1</span>
+                        </div>
+                      ) : entry.rank === 2 ? (
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-400/15 text-slate-400 border border-slate-400/30">
+                          <Medal className="w-3.5 h-3.5" />
+                          <span className="font-heading font-extrabold text-xs">#2</span>
+                        </div>
+                      ) : entry.rank === 3 ? (
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-500/15 text-orange-500 border border-orange-500/30">
+                          <Medal className="w-3.5 h-3.5" />
+                          <span className="font-heading font-extrabold text-xs">#3</span>
+                        </div>
+                      ) : (
+                        <span className="text-xl font-heading font-bold text-ink pl-1">#{entry.rank}</span>
+                      )}
                     </div>
 
                     {/* Citizen */}
@@ -459,7 +485,7 @@ export default function LeaderboardPage() {
                         entry.avatar_url || (isMe ? user?.avatar_url : null),
                         displayName,
                         "w-10 h-10 text-lg",
-                        "from-slate-600 to-slate-800"
+                        entry.rank === 1 ? "from-amber-400 to-amber-600" : entry.rank === 2 ? "from-slate-400 to-slate-600" : entry.rank === 3 ? "from-orange-400 to-red-500" : "from-slate-600 to-slate-800"
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 mb-0.5">
@@ -488,23 +514,45 @@ export default function LeaderboardPage() {
 
                     {/* Action */}
                     <div className="col-span-2 flex items-center justify-end">
-                      <button className="px-4 py-2 rounded-xl bg-ink/5 hover:bg-ink/10 text-ink text-xs font-bold transition-colors">
+                      <Link
+                        href={isMe ? "/profile" : getExplorerUrl(entry.wallet_address, "address")}
+                        target={isMe ? "_self" : "_blank"}
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-xl bg-ink/5 hover:bg-ink/10 text-ink text-xs font-bold transition-colors inline-block"
+                      >
                         Passport
-                      </button>
+                      </Link>
                     </div>
                   </div>
 
                   {/* Mobile Layout: Compact, single-scan row */}
                   <div className="lg:hidden flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <span className="text-sm sm:text-base font-heading font-extrabold text-ink min-w-[28px] shrink-0">
-                        #{entry.rank}
-                      </span>
+                      {entry.rank === 1 ? (
+                        <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30 shrink-0">
+                          <Crown className="w-3 h-3" />
+                          <span className="font-heading font-extrabold text-[10px]">#1</span>
+                        </div>
+                      ) : entry.rank === 2 ? (
+                        <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-400/15 text-slate-400 border border-slate-400/30 shrink-0">
+                          <Medal className="w-3 h-3" />
+                          <span className="font-heading font-extrabold text-[10px]">#2</span>
+                        </div>
+                      ) : entry.rank === 3 ? (
+                        <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-500 border border-orange-500/30 shrink-0">
+                          <Medal className="w-3 h-3" />
+                          <span className="font-heading font-extrabold text-[10px]">#3</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm sm:text-base font-heading font-extrabold text-ink min-w-[28px] shrink-0">
+                          #{entry.rank}
+                        </span>
+                      )}
                       {renderAvatar(
                         entry.avatar_url || (isMe ? user?.avatar_url : null),
                         displayName,
                         "w-9 h-9 sm:w-10 sm:h-10 text-base",
-                        "from-slate-600 to-slate-800"
+                        entry.rank === 1 ? "from-amber-400 to-amber-600" : entry.rank === 2 ? "from-slate-400 to-slate-600" : entry.rank === 3 ? "from-orange-400 to-red-500" : "from-slate-600 to-slate-800"
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
@@ -527,9 +575,14 @@ export default function LeaderboardPage() {
 
                     <div className="flex flex-col items-end shrink-0 pl-1">
                       <span className="text-sm sm:text-base font-heading font-bold text-ink num-mono">{entry.total_points.toLocaleString()} XP</span>
-                      <button className="mt-1 px-2.5 py-1 rounded-lg bg-ink/5 hover:bg-ink/10 text-ink text-[10px] font-bold transition-colors">
+                      <Link
+                        href={isMe ? "/profile" : getExplorerUrl(entry.wallet_address, "address")}
+                        target={isMe ? "_self" : "_blank"}
+                        rel="noopener noreferrer"
+                        className="mt-1 px-2.5 py-1 rounded-lg bg-ink/5 hover:bg-ink/10 text-ink text-[10px] font-bold transition-colors inline-block"
+                      >
                         Passport
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -540,7 +593,7 @@ export default function LeaderboardPage() {
           {/* Pagination Footer */}
           <div className="px-6 lg:px-8 py-4 bg-ink/[0.02] border-t border-ink/5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider">
-              Showing ranks 1-{Math.min(50, entries.length)} of {entries.length} contributors
+              Showing ranks 1-{Math.min(50, filtered.length)} of {entries.length} contributors
             </span>
           </div>
         </div>
