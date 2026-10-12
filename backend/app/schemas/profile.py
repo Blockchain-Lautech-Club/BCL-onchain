@@ -53,6 +53,9 @@ class MintOut(BaseModel):
     id: int
     token_id: int
     milestone_type: str
+    milestone_name: str | None = None
+    description: str | None = None
+    metadata_uri: str | None = None
     status: str  # queued|pending|whitelisted|confirmed|failed
     transaction_hash: str | None
     explorer_url: str | None = None

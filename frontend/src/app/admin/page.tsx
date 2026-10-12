@@ -130,6 +130,7 @@ export default function AdminPage() {
   const [awardMilestoneModal, setAwardMilestoneModal] = useState<Milestone | null>(null);
   const [awardWallet, setAwardWallet] = useState("");
   const [isAwardingMilestone, setIsAwardingMilestone] = useState(false);
+  const [deletingMilestoneTokenId, setDeletingMilestoneTokenId] = useState<number | null>(null);
 
   const [mints, setMints] = useState<NFTMintRecord[]>([]);
   const [loadingMints, setLoadingMints] = useState(false);
@@ -809,6 +810,20 @@ export default function AdminPage() {
       toast.error(err instanceof Error ? err.message : "Award action failed");
     } finally {
       setIsAwardingMilestone(false);
+    }
+  };
+
+  const handleDeleteMilestone = async (tokenId: number, name: string) => {
+    if (!confirm(`Permanently delete milestone "${name}" (Token #${tokenId})? This action cannot be undone.`)) return;
+    try {
+      setDeletingMilestoneTokenId(tokenId);
+      await api.deleteMilestone(tokenId);
+      toast.success(`Milestone "${name}" deleted`);
+      await loadMilestones();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete milestone");
+    } finally {
+      setDeletingMilestoneTokenId(null);
     }
   };
 
@@ -2228,20 +2243,50 @@ export default function AdminPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {milestones.map((m) => (
-                <div key={m.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
-                      {m.milestone_type} • ID #{m.token_id}
-                    </span>
+                <div key={m.id} className="surface-card rounded-2xl p-4 border border-ink/[0.06] space-y-2.5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] text-purple-700 dark:text-purple-400 uppercase font-bold bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
+                        {m.milestone_type} • ID #{m.token_id}
+                      </span>
+                      {m.points_threshold ? (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono font-bold">
+                          {m.points_threshold} PTS
+                        </span>
+                      ) : null}
+                    </div>
+                    <h4 className="text-sm font-bold font-heading text-ink">{m.name}</h4>
+                    <p className="text-xs text-ink-3 mt-1">{m.description || "No description provided."}</p>
+                    {m.metadata_uri && (
+                      <p className="text-[11px] font-mono text-ink-4 truncate mt-1">
+                        URI: {m.metadata_uri}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-ink/[0.06]">
                     <button
                       onClick={() => setAwardMilestoneModal(m)}
-                      className="text-xs text-brand hover:underline font-bold cursor-pointer"
+                      className="text-xs text-brand hover:underline font-bold cursor-pointer flex items-center gap-1"
                     >
-                      Award to Wallet →
+                      <Award className="w-3.5 h-3.5" />
+                      <span>Award to Wallet →</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteMilestone(m.token_id, m.name)}
+                      disabled={deletingMilestoneTokenId === m.token_id}
+                      className="flex items-center gap-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1 rounded-lg transition cursor-pointer disabled:opacity-50"
+                      title="Permanently delete milestone"
+                    >
+                      {deletingMilestoneTokenId === m.token_id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3 h-3" />
+                      )}
+                      <span>Delete</span>
                     </button>
                   </div>
-                  <h4 className="text-sm font-bold font-heading text-ink">{m.name}</h4>
-                  <p className="text-xs text-ink-3">{m.description || "No description provided."}</p>
                 </div>
               ))}
             </div>

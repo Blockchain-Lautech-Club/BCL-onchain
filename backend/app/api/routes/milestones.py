@@ -15,8 +15,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_session, require_admin
-from app.models.enums import MilestoneType
+from app.models.enums import MilestoneType, MintStatus
 from app.models.milestone import Milestone, token_id_for
+from app.models.nft import NFTMint
 from app.models.user import User
 from app.services.milestone_service import (
     award_community_milestone,
@@ -156,7 +157,37 @@ async def award(
         raise HTTPException(404, "Wallet not registered")
 
     mint = await queue_milestone_mint(session, user, m)
-    await session.commit()
     if mint is None:
+        existing = await session.scalar(
+            select(NFTMint).where(
+                NFTMint.wallet == user.wallet_address,
+                NFTMint.token_id == m.token_id,
+            )
+        )
+        if existing:
+            existing.status = MintStatus.CONFIRMED
+            existing.on_chain_confirmed = True
+            await session.commit()
+            return {"queued": True, "mint_id": existing.id, "token_id": token_id, "milestone": m.name, "status": "confirmed"}
         raise HTTPException(409, "Mint job already exists for this wallet and milestone")
-    return {"queued": True, "mint_id": mint.id, "token_id": token_id, "milestone": m.name}
+
+    mint.status = MintStatus.CONFIRMED
+    mint.on_chain_confirmed = True
+    await session.commit()
+    return {"queued": True, "mint_id": mint.id, "token_id": token_id, "milestone": m.name, "status": "confirmed"}
+
+
+@router.delete("/{token_id}", status_code=status.HTTP_200_OK)
+async def delete_milestone_endpoint(
+    token_id: int,
+    _admin: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    """Admin permanently deletes an unneeded or misconfigured milestone."""
+    m = await get_milestone_by_token_id(session, token_id)
+    if not m:
+        raise HTTPException(404, "Milestone not found")
+    await session.delete(m)
+    await session.commit()
+    return {"ok": True, "deleted": token_id}
+

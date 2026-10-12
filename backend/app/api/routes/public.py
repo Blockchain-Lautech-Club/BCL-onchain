@@ -7,9 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import is_admin, get_optional_user, get_current_user
 from app.api.routes.me import mint_out
+from app.core.config import settings
 from app.core.db import get_session
 from app.core.errors import AppError
-from app.models import DailyQuiz, DomainRecord, Event, EventRSVP, NFTMint, PointsLedger, Task, TaskSubmission, User
+from app.models import DailyQuiz, DomainRecord, Event, EventRSVP, Milestone, NFTMint, PointsLedger, Task, TaskSubmission, User
 from app.models.enums import SubmissionStatus, TaskStatus
 from app.models.base import as_utc, utcnow
 from app.schemas.event import EventOut, EventRSVPOut
@@ -211,8 +212,19 @@ async def leaderboard(limit: int = Query(50, ge=1, le=200), offset: int = Query(
 @router.get("/users/{wallet}/nfts", response_model=list[MintOut])
 async def user_nfts(wallet: str, session: AsyncSession = Depends(get_session)):
     wallet = auth_service.normalize_address(wallet)
-    q = select(NFTMint).where(NFTMint.wallet == wallet, NFTMint.status == "confirmed").order_by(NFTMint.level)
-    return [mint_out(m) for m in (await session.execute(q)).scalars().all()]
+    q = select(NFTMint).where(NFTMint.wallet == wallet).order_by(NFTMint.id.desc())
+    mints = (await session.execute(q)).scalars().all()
+    res = []
+    for m in mints:
+        out = MintOut.model_validate(m)
+        out.explorer_url = settings.explorer_tx_url(m.transaction_hash)
+        milestone = await session.scalar(select(Milestone).where(Milestone.token_id == m.token_id))
+        if milestone:
+            out.milestone_name = milestone.name
+            out.description = milestone.description
+            out.metadata_uri = milestone.metadata_uri
+        res.append(out)
+    return res
 
 
 @router.get("/users/{wallet}/profile", response_model=ProfileOut)

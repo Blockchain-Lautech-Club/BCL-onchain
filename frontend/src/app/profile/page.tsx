@@ -290,7 +290,7 @@ export default function ProfilePage() {
   const levelProgress   = nextThreshold > 0 ? Math.min(100, Math.round(((nextThreshold - pointsToNext) / nextThreshold) * 100)) : 0;
   const displayName     = profile?.username || user?.username || `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
   const shortAddr       = `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
-  const confirmedNfts   = nfts.filter(n => n.status === "confirmed");
+  const confirmedNfts   = nfts.filter(n => n.status !== "failed");
   const streakDays      = stats?.streak_days ?? 0;
   const completedTasks  = submissions.filter(s => s.status === "verified").length;
   const displayAvatar   = profile?.avatar_url || profile?.avatar_emoji || "🧑‍💻";
@@ -614,10 +614,17 @@ export default function ProfilePage() {
                             {nft.milestone_type === "level" ? "⚡" : nft.milestone_type === "streak" ? "🔥" : nft.milestone_type === "task" ? "🏅" : "🏆"}
                           </span>
                         </div>
-                        <span className="text-base font-heading font-bold text-ink capitalize mb-1">{nft.milestone_type} Milestone</span>
-                        <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider mb-5">Token #{nft.token_id}</span>
-                        <div className="w-full flex items-center justify-between pt-4 border-t border-ink/5">
-                          <span className="px-2 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent-fg">Soulbound</span>
+                        <span className="text-base font-heading font-bold text-ink capitalize mb-1">
+                          {nft.milestone_name || `${nft.milestone_type} Milestone`}
+                        </span>
+                        <span className="font-mono text-[10px] text-ink-4 font-bold uppercase tracking-wider mb-2">Token #{nft.token_id}</span>
+                        {nft.description && (
+                          <p className="text-xs text-ink-3 line-clamp-2 mb-4 px-2">{nft.description}</p>
+                        )}
+                        <div className="w-full flex items-center justify-between pt-4 border-t border-ink/5 mt-auto">
+                          <span className="px-2 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent-fg">
+                            {nft.status === "confirmed" ? "Soulbound" : "Awarded"}
+                          </span>
                           {nft.transaction_hash && (
                             <a href={getExplorerUrl(nft.transaction_hash)} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] font-bold uppercase tracking-wider text-ink-4 hover:text-ink flex items-center gap-1">
                               View Tx <ExternalLink className="w-3 h-3" />

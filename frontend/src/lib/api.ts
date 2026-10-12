@@ -63,6 +63,9 @@ export interface NFTMintRecord {
   wallet: string;
   token_id: number;
   milestone_type: string;
+  milestone_name?: string;
+  description?: string;
+  metadata_uri?: string;
   status: "queued" | "pending" | "whitelisted" | "confirmed" | "failed";
   transaction_hash?: string;
   failure_reason?: string;
@@ -744,6 +747,12 @@ export const api = {
     return request(`/milestones/${tokenId}/award`, {
       method: "POST",
       body: JSON.stringify({ wallet }),
+    });
+  },
+
+  async deleteMilestone(tokenId: number): Promise<{ ok: boolean; deleted: number }> {
+    return request<{ ok: boolean; deleted: number }>(`/milestones/${tokenId}`, {
+      method: "DELETE",
     });
   },
 
