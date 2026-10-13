@@ -10,6 +10,7 @@ import {
   BadgeCheck, LogOut, Copy, ExternalLink, ChevronDown, Wallet, Shield
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { ConnectModal } from "@/components/common/ConnectModal";
 import { ThemeToggle } from "./ThemeToggle";
 import toast from "react-hot-toast";
 
@@ -28,10 +29,11 @@ const NAV_LINKS = [
 export function NavbarClient() {
   const pathname = usePathname();
   const router   = useRouter();
-  const { walletAddress, connectWallet, disconnectWallet, user, stats } = useAuth();
+  const { walletAddress, disconnectWallet, user, stats } = useAuth();
 
   const [mobileOpen,   setMobileOpen]   = useState(false);
   const [profileOpen,  setProfileOpen]  = useState(false);
+  const [connectOpen,  setConnectOpen]  = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Redirect "/" based on wallet connection state
@@ -283,7 +285,7 @@ export function NavbarClient() {
                         <button
                           onClick={() => {
                             setProfileOpen(false);
-                            connectWallet();
+                            setConnectOpen(true);
                           }}
                           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-accent-fg bg-accent/10 hover:bg-accent/20 transition-colors w-full text-left mb-1"
                         >
@@ -340,7 +342,7 @@ export function NavbarClient() {
           ) : (
             /* ── Not connected ─ */
             <button
-              onClick={connectWallet}
+              onClick={() => setConnectOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-accent text-surface text-xs sm:text-[13px] font-bold hover:shadow-[0_0_20px_rgba(0,245,160,0.4)] transition-all shrink-0"
             >
               <Wallet className="w-3.5 h-3.5 shrink-0" />
@@ -364,6 +366,9 @@ export function NavbarClient() {
           </button>
         </div>
       </div>
+
+      {/* ── Connect Modal ───────────────────────────────────────────────── */}
+      <ConnectModal open={connectOpen} onClose={() => setConnectOpen(false)} />
 
       {/* ── Mobile Dropdown ─────────────────────────────────────────────── */}
       {mobileOpen && (
@@ -487,7 +492,7 @@ export function NavbarClient() {
               </>
             ) : (
               <button
-                onClick={() => { setMobileOpen(false); connectWallet(); }}
+                onClick={() => { setMobileOpen(false); setConnectOpen(true); }}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2.5 mt-1 rounded-xl text-sm font-bold bg-accent text-surface hover:shadow-[0_0_16px_rgba(0,245,160,0.3)] transition cursor-pointer"
               >
                 <Wallet className="w-4 h-4" />

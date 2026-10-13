@@ -51,6 +51,35 @@ async def issue_nonce(session: AsyncSession, address: str) -> tuple[str, str]:
     return row.nonce, build_message(address, row.nonce, issued_at)
 
 
+async def get_or_create_user(session: AsyncSession, address: str) -> User:
+    """
+    Used by the /auth/wallet-token endpoint — address is already verified
+    by the custom wallet backend, so no signature check is needed here.
+    """
+    address = normalize_address(address)
+    user = await session.scalar(select(User).where(User.wallet_address == address))
+    if user is None:
+        try:
+            async with session.begin_nested():
+                user = User(wallet_address=address)
+                session.add(user)
+                await session.flush()
+        except IntegrityError:
+            await session.rollback()
+            user = await session.scalar(select(User).where(User.wallet_address == address))
+    if user.status != "active":
+        raise AppError(403, "account_suspended", "This account is suspended")
+
+    if address in settings.bootstrap_admins:
+        has_admin = await session.scalar(
+            select(Role.id).where(Role.user_id == user.id, Role.role == RoleName.ADMIN)
+        )
+        if not has_admin:
+            session.add(Role(user_id=user.id, role=RoleName.ADMIN))
+    await session.commit()
+    return user
+
+
 async def verify_login(session: AsyncSession, address: str, signature: str) -> User:
     address = normalize_address(address)
     row = await session.scalar(select(AuthNonce).where(AuthNonce.address == address).with_for_update())

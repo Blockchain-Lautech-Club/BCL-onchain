@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     indexer_poll_seconds: int      = 6
     reconcile_every_seconds: int   = 600
 
+    # Custom embedded wallet backend
+    wallet_backend_url: str = ""   # e.g. https://wallet-api.faucetdrops.io
+
     # Mint worker
     relayer_private_key: str = ""
     # "whitelist" = relayer whitelists on-chain, user calls claim(); gas-free for platform

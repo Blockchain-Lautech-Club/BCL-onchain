@@ -3,7 +3,7 @@
  * Typed API client for FastAPI backend endpoints.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://bcl-onchain-backend.vercel.app";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
 
 export interface User {
   id: number;
@@ -543,6 +543,32 @@ export const api = {
   async getMe(): Promise<{ id: number; wallet_address: string; is_admin: boolean }> {
     return request("/auth/me");
   },
+
+  /**
+   * Authenticate with the BCL backend using a token from the custom
+   * embedded wallet backend.  The backend validates it by calling
+   * /wallet/me on the wallet service, then issues a BCL session cookie.
+   */
+  async loginWithWalletToken(
+  walletToken: string,
+): Promise<{ wallet_address: string; is_admin: boolean; token: string }> {
+  const res = await request<{ wallet_address: string; is_admin: boolean; token: string }>(
+    "/auth/wallet-token",
+    {
+      method: "POST",
+      body: JSON.stringify({ wallet_token: walletToken }),
+    },
+  );
+  if (typeof window !== "undefined") {
+    if (res?.token) {
+      localStorage.setItem("bcl_auth_token", res.token);
+    }
+    if (res?.wallet_address) {
+      localStorage.setItem("bcl_wallet_address", res.wallet_address.toLowerCase());
+    }
+  }
+  return res;
+},
 
   async claimDaily(): Promise<{ ok: boolean; points_delta: number; total_points: number; level: number }> {
     return request("/me/claim-daily", { method: "POST" });

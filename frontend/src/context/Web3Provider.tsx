@@ -1,84 +1,49 @@
 "use client";
 
+/**
+ * Web3Provider — Reown AppKit removed; using wagmi with injected connector.
+ *
+ * For wallet login/auth the custom embedded wallet backend (walletApi.ts)
+ * is used.  Wagmi is kept only to provide a web3 signer for on-chain
+ * transactions in domains/page.tsx and reward/page.tsx.
+ */
+
 import React, { useState, useEffect } from "react";
-import { createAppKit } from "@reown/appkit/react";
-import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+import { createConfig, WagmiProvider, http, injected } from "wagmi";
 import { defineChain } from "viem";
-import { celoAlfajores, celo } from "@reown/appkit/networks";
-import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "react-hot-toast";
 
-// Botchain Testnet Configuration
+// ── Chain definitions ─────────────────────────────────────────────────────
+
 export const botchainTestnet = defineChain({
   id: 968,
   name: "Botchain Testnet",
-  nativeCurrency: {
-    name: "BOT",
-    symbol: "BOT",
-    decimals: 18,
-  },
+  nativeCurrency: { name: "BOT", symbol: "BOT", decimals: 18 },
   rpcUrls: {
-    default: {
-      http: ["https://rpc.bohr.life"],
-    },
+    default: { http: ["https://rpc.bohr.life"] },
   },
   blockExplorers: {
-    default: {
-      name: "Botchain Scan",
-      url: "https://scan.bohr.life",
-    },
+    default: { name: "Botchain Scan", url: "https://scan.bohr.life" },
   },
   testnet: true,
 });
 
-// 1. Get Project ID strictly from environment variable
-export const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
+// ── Wagmi config (injected connector only — MetaMask, Coinbase, etc.) ────
 
-// 2. Set up Networks (Botchain Testnet is primary)
-export const networks = [botchainTestnet, celoAlfajores, celo] as const;
-
-// 3. Set up Wagmi Adapter
-export const wagmiAdapter = new WagmiAdapter({
-  projectId,
-  networks: [botchainTestnet, celoAlfajores, celo],
+export const wagmiConfig = createConfig({
+  chains:      [botchainTestnet],
+  connectors:  [injected()],
+  transports:  { [botchainTestnet.id]: http("https://rpc.bohr.life") },
 });
 
-// 4. Configure AppKit metadata
-const metadata = {
-  name: "BCL Onchain",
-  description: "Blockchain Club LAUTECH - Engage • Earn • Build",
-  url: "https://bcl-onchain.org",
-  icons: ["/bcl-onchain_logo.PNG"],
-};
-
-// 5. Initialize AppKit
-createAppKit({
-  adapters: [wagmiAdapter],
-  networks: [botchainTestnet, celoAlfajores, celo],
-  defaultNetwork: botchainTestnet,
-  projectId,
-  metadata,
-  themeMode: "dark",
-  themeVariables: {
-    "--w3m-accent": "#0052FF",
-    "--w3m-border-radius-master": "12px",
-    "--w3m-color-mix": "#06080E",
-    "--w3m-color-mix-strength": 30,
-  },
-  features: {
-    analytics: false,
-    email: false,
-    socials: [],
-  },
-});
+// ── Provider tree ─────────────────────────────────────────────────────────
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
-    // Suppress unhandled promise rejections from third-party browser wallet extensions
     const handleRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason?.message || String(event.reason || "");
       if (
@@ -94,7 +59,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           {children}
@@ -111,18 +76,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
                 padding: "12px 16px",
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.6)",
               },
-              success: {
-                iconTheme: {
-                  primary: "#00d26a",
-                  secondary: "#0c101a",
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: "#ef4444",
-                  secondary: "#0c101a",
-                },
-              },
+              success: { iconTheme: { primary: "#00d26a", secondary: "#0c101a" } },
+              error:   { iconTheme: { primary: "#ef4444", secondary: "#0c101a" } },
             }}
           />
         </AuthProvider>
