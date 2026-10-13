@@ -48,7 +48,7 @@ interface AuthContextType {
   connectWallet:   () => Promise<void>;
   disconnectWallet:() => Promise<void>;
   refreshUserData: () => Promise<void>;
-  awardClaimedXp:  (points: number) => void;
+  awardClaimedXp:  (points: number, label?: string) => void;
   /**
    * Call this after a successful walletApi.socialLogin() to complete the
    * BCL session.  The WalletResponse token is stored and the BCL backend is
@@ -296,8 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Optimistic XP update ─────────────────────────────────────────────────
 
-  const awardClaimedXp = useCallback((points: number) => {
-    setUser(prev => {
+  const awardClaimedXp = useCallback((points: number, label?: string) => {    setUser(prev => {
       if (!prev) return null;
       const pts = (prev.total_points ?? 0) + points;
       return { ...prev, total_points: pts, level: pts >= 100 ? 1 : 0 };
