@@ -475,7 +475,7 @@ export default function EventsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button className="btn-outline px-4 py-2 text-sm">Read Docs</button>
+          <Link href="/docs" className="btn-outline px-4 py-2 text-sm">Read Docs</Link>
           <button className="btn-green px-4 py-2 text-sm flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5" /> Submit Event RFP
           </button>

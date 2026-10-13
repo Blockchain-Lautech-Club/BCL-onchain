@@ -13,6 +13,7 @@ import {
   Award, ArrowRight, Shield, Hexagon, Play, 
   Users, TrendingUp, Cpu, AlertCircle
 } from "lucide-react";
+import Link from "next/link";
 
 const CATEGORIES = ["All", "Community", "Social", "Design", "Content", "DeFi", "Developer", "Learning", "Events", "Hackathon"];
 
@@ -372,9 +373,9 @@ export default function TasksPage() {
         </div>
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full md:w-auto relative z-10">
-          <button className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-full bg-surface border border-ink/10 text-ink hover:bg-ink/5 transition-all text-xs sm:text-sm font-bold">
+          <Link href="/docs" className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-full bg-surface border border-ink/10 text-ink hover:bg-ink/5 transition-all text-xs sm:text-sm font-bold text-center">
             Read Docs
-          </button>
+          </Link>
           <button className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-full bg-ink text-surface hover:shadow-lg transition-all text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
             Submit Quest RFP <ArrowRight className="w-4 h-4" />
           </button>
